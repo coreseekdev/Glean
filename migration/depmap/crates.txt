@@ -1,0 +1,35 @@
+glean-angle	7
+glean-bytecode	6
+glean-cli	26
+glean-client	27
+glean-core	27
+glean-db	90
+glean-fb303	5
+glean-glass	88
+glean-indexer-angle	4
+glean-indexer-api	2
+glean-indexer-clang	10
+glean-indexer-dotnet-scip	1
+glean-indexer-erlang	1
+glean-indexer-flow	1
+glean-indexer-go	1
+glean-indexer-hack	7
+glean-indexer-haskell	4
+glean-indexer-java-alpha	1
+glean-indexer-java-lsif	1
+glean-indexer-lsif	9
+glean-indexer-python-pyrefly	1
+glean-indexer-python-scip	1
+glean-indexer-rust-scip	1
+glean-indexer-scip	2
+glean-indexer-swift	1
+glean-indexer-typescript	1
+glean-lsp	3
+glean-registry	1
+glean-schema	9
+glean-server	8
+glean-storage	2
+glean-typed	9
+glean-util	26
+# crate-level SCCs > 1 (the compiler-enforced partition):
+# crates=33 crate_edges=102 crate_cycles=0
