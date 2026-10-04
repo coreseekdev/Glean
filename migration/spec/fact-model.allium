@@ -1,0 +1,115 @@
+-- allium: 1
+-- Glean behavioral spec — surface 1: fact model & batch write
+-- Distilled from the Haskell implementation (executable spec):
+--   fact model:   glean/rts/{id.h,fact.h,factset.cpp}
+--   batch format: glean/if/glean.thrift:147-183 + rts/binary.h
+--   write path:   glean/db/Glean/Database/Write/{Batch,Queue}.hs
+-- Checked against BOTH implementations via judge obligations; `allium plan`
+-- binds each rule to a golden pair or a dual-implementation parity test.
+
+config {
+    first_free_id: Integer = 1024
+    max_key_bytes: Integer = 268435455
+}
+
+value Repo { name: String }
+value Bytes { length: Integer }
+value PredicateRef { name: String, version: Integer }
+
+entity Fact {
+    id: Integer                    -- 64-bit, dense from first_free_id
+    predicate: PredicateRef
+    key: Bytes
+    value: Bytes
+    refs: Set<Integer>             -- fact ids referenced by key/value bytes
+}
+
+entity Batch {
+    first_id: Integer
+    facts: List<Fact>
+}
+
+entity Repo {
+    name: String
+    status: open | finished
+    immutable: Boolean = false
+
+    transitions status {
+        open -> finished
+        terminal: finished
+    }
+}
+
+entity Written { batch: Batch, ids: Integer }
+
+invariant DenseFactIds {
+    for fact in Fact:
+        fact.id >= config.first_free_id
+}
+
+invariant KeySizeBound {
+    for fact in Fact:
+        fact.key.length <= config.max_key_bytes
+}
+
+invariant BatchesStartAboveBase {
+    for batch in Batch:
+        batch.first_id >= config.first_free_id
+}
+
+invariant PredicatesAreVersioned {
+    for fact in Fact:
+        fact.predicate.version >= 1
+}
+
+invariant FactsCarryValue {
+    for fact in Fact:
+        fact.value.length >= 0
+}
+
+invariant RepoNamesNonEmpty {
+    for repo in Repo:
+        repo.name != ""
+}
+
+-- Within a batch, a fact references either forward ids (resolved by the
+-- substitution at commit) or facts that already exist in the store.
+rule BatchFactsAreForwardOrExisting {
+    when: batch: Batch.created
+    ensures:
+        for f in batch.facts:
+            for ref in f.refs:
+                ref >= f.id or exists Fact{id: ref}
+    @guidance
+        -- rts/factset.cpp Define: substitution resolves forward refs at
+        -- commit; judge exercises this via glean-write batch.json cases.
+}
+
+-- Commit assigns ids densely in batch order and produces the substitution.
+rule CommitAssignsIdsAndSubst {
+    when: CommitRequested(batch)
+    requires: not exists Written{batch: batch}
+    ensures: Written.created(batch: batch, ids: batch.facts.count)
+    ensures: SubstProduced(batch)
+    @guidance
+        -- Write/Queue.hs allocates wrNextId sequentially; subst maps
+        -- pre-commit ids to post-commit ids; the Rust port must produce the
+        -- identical substitution (judge: glean-write cases).
+}
+
+-- A created repo starts open.
+rule CreateRepo {
+    when: repo: Repo.created
+    ensures: repo.status = open
+}
+
+-- Finishing a repo makes it immutable (closed for writes).
+rule FinishMakesRepoImmutable {
+    when: repo: Repo.finish_requested
+    requires: repo.status = open
+    ensures: repo.status = finished
+    ensures: repo.immutable = true
+    @guidance
+        -- Database/Finish.hs + CLI finish; judge writes with --finish then
+        -- queries read-only.
+}
