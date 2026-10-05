@@ -48,7 +48,8 @@ IMPORT_RE = re.compile(r"^import\s+(?:qualified\s+)?([A-Z][A-Za-z0-9_.']*)")
 
 def find_hs_files(root: Path):
     out = []
-    for p in sorted(root.rglob("*.hs")):
+    hs_files = sorted(root.rglob("*.hs")) + sorted(root.rglob("*.hsc"))
+    for p in hs_files:
         rel = p.relative_to(root)
         if any(part in SKIP_DIR_PARTS for part in rel.parts):
             continue
@@ -163,6 +164,10 @@ CRATE_PREFIXES = [
     # the composition root (imports every indexer; only binaries import it)
     ("glean/index/list/", "glean-registry"),
     ("glean/index/", "glean-indexer-api"),  # Indexer record, External driver
+    # bootstrap helpers: leaf dependencies of binaries/tests in every layer
+    # (MUST precede the general github/Glean rule — first match wins)
+    ("glean/github/Glean/Init.hsc", "glean-util"),
+    ("glean/github/TestRunner.hs", "glean-util"),
     # shared github LIBRARY bits used by db (DefaultConfigs, AclKnobs, ...)
     ("glean/github/Glean/", "glean-db"),
     # client-level helper library (Derive, Init, SimpleAsync, Util/*)

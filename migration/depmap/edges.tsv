@@ -138,6 +138,7 @@ glean/client/hs/local/Glean/LocalOrRemote.hs	glean/util/Glean/Util/Some.hs
 glean/client/hs/local/Glean/LocalOrRemote.hs	glean/util/Glean/Util/ThriftSource.hs
 glean/db/Glean/Database/ACLOwnership.hs	glean/db/Glean/Database/ACLConfig.hs
 glean/db/Glean/Database/ACLOwnership.hs	glean/db/Glean/Database/Storage.hs
+glean/db/Glean/Database/ACLOwnership.hs	glean/hs/Glean/RTS/Foreign/Ownership.hsc
 glean/db/Glean/Database/Backup.hs	glean/db/Glean/Database/Backup/Backend.hs
 glean/db/Glean/Database/Backup.hs	glean/db/Glean/Database/Backup/Locator.hs
 glean/db/Glean/Database/Backup.hs	glean/db/Glean/Database/Catalog.hs
@@ -152,6 +153,7 @@ glean/db/Glean/Database/Backup.hs	glean/db/Glean/Database/Storage.hs
 glean/db/Glean/Database/Backup.hs	glean/db/Glean/Database/Trace.hs
 glean/db/Glean/Database/Backup.hs	glean/db/Glean/Database/Types.hs
 glean/db/Glean/Database/Backup.hs	glean/db/Glean/Logger.hs
+glean/db/Glean/Database/Backup.hs	glean/hs/Glean/RTS/Foreign/Ownership.hsc
 glean/db/Glean/Database/Backup.hs	glean/util/Glean/Util/Observed.hs
 glean/db/Glean/Database/Backup.hs	glean/util/Glean/Util/Some.hs
 glean/db/Glean/Database/Backup.hs	glean/util/Glean/Util/Trace.hs
@@ -201,6 +203,7 @@ glean/db/Glean/Database/CompletePredicates.hs	glean/db/Glean/Database/Storage.hs
 glean/db/Glean/Database/CompletePredicates.hs	glean/db/Glean/Database/Types.hs
 glean/db/Glean/Database/CompletePredicates.hs	glean/db/Glean/Database/Writes.hs
 glean/db/Glean/Database/CompletePredicates.hs	glean/db/Glean/Logger.hs
+glean/db/Glean/Database/CompletePredicates.hs	glean/hs/Glean/RTS/Foreign/Ownership.hsc
 glean/db/Glean/Database/CompletePredicates.hs	glean/hs/Glean/RTS/Types.hs
 glean/db/Glean/Database/CompletePredicates.hs	glean/hs/Glean/Repo/Text.hs
 glean/db/Glean/Database/CompletePredicates.hs	glean/util/Glean/Util/Mutex.hs
@@ -251,6 +254,7 @@ glean/db/Glean/Database/Create.hs	glean/hs/Glean/RTS/Types.hs
 glean/db/Glean/Database/Create.hs	glean/util/Glean/Util/Observed.hs
 glean/db/Glean/Database/Data.hs	glean/db/Glean/Database/Exception.hs
 glean/db/Glean/Database/Data.hs	glean/db/Glean/Database/Storage.hs
+glean/db/Glean/Database/Data.hs	glean/hs/Glean/RTS/Foreign/Ownership.hsc
 glean/db/Glean/Database/Delete.hs	glean/db/Glean/Database/Catalog.hs
 glean/db/Glean/Database/Delete.hs	glean/db/Glean/Database/Catalog/Filter.hs
 glean/db/Glean/Database/Delete.hs	glean/db/Glean/Database/Close.hs
@@ -309,6 +313,7 @@ glean/db/Glean/Database/List.hs	glean/db/Glean/Database/Meta.hs
 glean/db/Glean/Database/List.hs	glean/db/Glean/Database/Types.hs
 glean/db/Glean/Database/Logger.hs	glean/db/Glean/Database/Types.hs
 glean/db/Glean/Database/Logger.hs	glean/db/Glean/Logger/Database.hs
+glean/db/Glean/Database/Logger.hs	glean/hs/Glean/RTS/Foreign/Ownership.hsc
 glean/db/Glean/Database/Logger.hs	glean/util/Glean/Util/Some.hs
 glean/db/Glean/Database/Open.hs	glean/db/Glean/Database/Catalog.hs
 glean/db/Glean/Database/Open.hs	glean/db/Glean/Database/Catalog/Filter.hs
@@ -325,6 +330,7 @@ glean/db/Glean/Database/Open.hs	glean/db/Glean/Logger.hs
 glean/db/Glean/Database/Open.hs	glean/db/Glean/Query/Codegen.hs
 glean/db/Glean/Database/Open.hs	glean/hs/Glean/RTS/Foreign/Lookup.hs
 glean/db/Glean/Database/Open.hs	glean/hs/Glean/RTS/Foreign/LookupCache.hs
+glean/db/Glean/Database/Open.hs	glean/hs/Glean/RTS/Foreign/Ownership.hsc
 glean/db/Glean/Database/Open.hs	glean/hs/Glean/RTS/Foreign/Stacked.hs
 glean/db/Glean/Database/Open.hs	glean/hs/Glean/RTS/Types.hs
 glean/db/Glean/Database/Open.hs	glean/hs/Glean/Repo/Text.hs
@@ -336,6 +342,7 @@ glean/db/Glean/Database/Open.hs	glean/util/Glean/Util/Warden.hs
 glean/db/Glean/Database/Ownership.hs	glean/db/Glean/Database/Open.hs
 glean/db/Glean/Database/Ownership.hs	glean/db/Glean/Database/Storage.hs
 glean/db/Glean/Database/Ownership.hs	glean/db/Glean/Database/Types.hs
+glean/db/Glean/Database/Ownership.hs	glean/hs/Glean/RTS/Foreign/Ownership.hsc
 glean/db/Glean/Database/Ownership.hs	glean/hs/Glean/RTS/Types.hs
 glean/db/Glean/Database/PredicateStats.hs	glean/backend-api/Glean/Backend/Types.hs
 glean/db/Glean/Database/PredicateStats.hs	glean/db/Glean/Database/Open.hs
@@ -398,6 +405,7 @@ glean/db/Glean/Database/Storage.hs	glean/db/Glean/Database/Backup/Backend.hs
 glean/db/Glean/Database/Storage.hs	glean/hs/Glean/RTS/Foreign/FactSet.hs
 glean/db/Glean/Database/Storage.hs	glean/hs/Glean/RTS/Foreign/Inventory.hs
 glean/db/Glean/Database/Storage.hs	glean/hs/Glean/RTS/Foreign/Lookup.hs
+glean/db/Glean/Database/Storage.hs	glean/hs/Glean/RTS/Foreign/Ownership.hsc
 glean/db/Glean/Database/Storage.hs	glean/hs/Glean/RTS/Types.hs
 glean/db/Glean/Database/Storage.hs	glean/util/Glean/Util/Some.hs
 glean/db/Glean/Database/Storage/DB.hs	glean/db/Glean/Database/Backup/Backend.hs
@@ -405,6 +413,7 @@ glean/db/Glean/Database/Storage/DB.hs	glean/db/Glean/Database/Storage.hs
 glean/db/Glean/Database/Storage/DB.hs	glean/hs/Glean/FFI.hs
 glean/db/Glean/Database/Storage/DB.hs	glean/hs/Glean/RTS/Foreign/FactSet.hs
 glean/db/Glean/Database/Storage/DB.hs	glean/hs/Glean/RTS/Foreign/Lookup.hs
+glean/db/Glean/Database/Storage/DB.hs	glean/hs/Glean/RTS/Foreign/Ownership.hsc
 glean/db/Glean/Database/Storage/DB.hs	glean/hs/Glean/RTS/Foreign/Stats.hs
 glean/db/Glean/Database/Storage/DB.hs	glean/hs/Glean/RTS/Types.hs
 glean/db/Glean/Database/Storage/DB.hs	glean/hs/Glean/Repo/Text.hs
@@ -414,6 +423,7 @@ glean/db/Glean/Database/Storage/LMDB.hs	glean/db/Glean/Database/Storage.hs
 glean/db/Glean/Database/Storage/LMDB.hs	glean/db/Glean/Database/Storage/DB.hs
 glean/db/Glean/Database/Storage/LMDB.hs	glean/hs/Glean/FFI.hs
 glean/db/Glean/Database/Storage/LMDB.hs	glean/hs/Glean/RTS/Foreign/Lookup.hs
+glean/db/Glean/Database/Storage/LMDB.hs	glean/hs/Glean/RTS/Foreign/Ownership.hsc
 glean/db/Glean/Database/Storage/LMDB.hs	glean/hs/Glean/RTS/Types.hs
 glean/db/Glean/Database/Storage/LMDB.hs	glean/util/Glean/Impl/MemoryReader.hs
 glean/db/Glean/Database/Storage/LMDB.hs	glean/util/Glean/Util/Disk.hs
@@ -428,6 +438,7 @@ glean/db/Glean/Database/Storage/RocksDB.hs	glean/db/Glean/Database/Storage.hs
 glean/db/Glean/Database/Storage/RocksDB.hs	glean/db/Glean/Database/Storage/DB.hs
 glean/db/Glean/Database/Storage/RocksDB.hs	glean/hs/Glean/FFI.hs
 glean/db/Glean/Database/Storage/RocksDB.hs	glean/hs/Glean/RTS/Foreign/Lookup.hs
+glean/db/Glean/Database/Storage/RocksDB.hs	glean/hs/Glean/RTS/Foreign/Ownership.hsc
 glean/db/Glean/Database/Storage/RocksDB.hs	glean/hs/Glean/RTS/Types.hs
 glean/db/Glean/Database/Storage/RocksDB.hs	glean/util/Glean/Impl/MemoryReader.hs
 glean/db/Glean/Database/Storage/RocksDB.hs	glean/util/Glean/Util/Disk.hs
@@ -445,6 +456,7 @@ glean/db/Glean/Database/Types.hs	glean/db/Glean/Logger/Database.hs
 glean/db/Glean/Database/Types.hs	glean/db/Glean/Logger/Server.hs
 glean/db/Glean/Database/Types.hs	glean/hs/Glean/RTS/Foreign/FactSet.hs
 glean/db/Glean/Database/Types.hs	glean/hs/Glean/RTS/Foreign/LookupCache.hs
+glean/db/Glean/Database/Types.hs	glean/hs/Glean/RTS/Foreign/Ownership.hsc
 glean/db/Glean/Database/Types.hs	glean/hs/Glean/RTS/Foreign/Subst.hs
 glean/db/Glean/Database/Types.hs	glean/hs/Glean/RTS/Types.hs
 glean/db/Glean/Database/Types.hs	glean/hs/Glean/Write/Stats.hs
@@ -474,6 +486,7 @@ glean/db/Glean/Database/Write/Batch.hs	glean/hs/Glean/RTS/Foreign/Define.hs
 glean/db/Glean/Database/Write/Batch.hs	glean/hs/Glean/RTS/Foreign/FactSet.hs
 glean/db/Glean/Database/Write/Batch.hs	glean/hs/Glean/RTS/Foreign/Lookup.hs
 glean/db/Glean/Database/Write/Batch.hs	glean/hs/Glean/RTS/Foreign/LookupCache.hs
+glean/db/Glean/Database/Write/Batch.hs	glean/hs/Glean/RTS/Foreign/Ownership.hsc
 glean/db/Glean/Database/Write/Batch.hs	glean/hs/Glean/RTS/Foreign/Stacked.hs
 glean/db/Glean/Database/Write/Batch.hs	glean/hs/Glean/RTS/Foreign/Subst.hs
 glean/db/Glean/Database/Write/Batch.hs	glean/hs/Glean/RTS/Types.hs
@@ -502,6 +515,7 @@ glean/db/Glean/Database/Writes.hs	glean/db/Glean/Database/Write/Queue.hs
 glean/db/Glean/Database/Writes.hs	glean/db/Glean/Write/JSON.hs
 glean/db/Glean/Database/Writes.hs	glean/github/ServiceData/GlobalStats.hs
 glean/db/Glean/Database/Writes.hs	glean/github/ServiceData/Types.hs
+glean/db/Glean/Database/Writes.hs	glean/hs/Glean/RTS/Foreign/Ownership.hsc
 glean/db/Glean/Database/Writes.hs	glean/hs/Glean/RTS/Foreign/Subst.hs
 glean/db/Glean/Database/Writes.hs	glean/util/Glean/Util/Metric.hs
 glean/db/Glean/Database/Writes.hs	glean/util/Glean/Util/Observed.hs
@@ -527,6 +541,7 @@ glean/db/Glean/Query/Codegen.hs	glean/hs/Glean/RTS/Bytecode/Code.hs
 glean/db/Glean/Query/Codegen.hs	glean/hs/Glean/RTS/Bytecode/Disassemble.hs
 glean/db/Glean/Query/Codegen.hs	glean/hs/Glean/RTS/Foreign/Bytecode.hs
 glean/db/Glean/Query/Codegen.hs	glean/hs/Glean/RTS/Foreign/Lookup.hs
+glean/db/Glean/Query/Codegen.hs	glean/hs/Glean/RTS/Foreign/Query.hsc
 glean/db/Glean/Query/Codegen.hs	glean/hs/Glean/RTS/Term.hs
 glean/db/Glean/Query/Codegen.hs	glean/hs/Glean/RTS/Traverse.hs
 glean/db/Glean/Query/Codegen.hs	glean/hs/Glean/RTS/Types.hs
@@ -619,6 +634,7 @@ glean/db/Glean/Query/Transform.hs	glean/db/Glean/Query/Codegen/QueryRegs.hs
 glean/db/Glean/Query/Transform.hs	glean/db/Glean/Query/Codegen/Types.hs
 glean/db/Glean/Query/Transform.hs	glean/hs/Glean/RTS.hs
 glean/db/Glean/Query/Transform.hs	glean/hs/Glean/RTS/Bytecode/Code.hs
+glean/db/Glean/Query/Transform.hs	glean/hs/Glean/RTS/Foreign/Query.hsc
 glean/db/Glean/Query/Transform.hs	glean/hs/Glean/RTS/Term.hs
 glean/db/Glean/Query/Transform.hs	glean/hs/Glean/RTS/Types.hs
 glean/db/Glean/Query/Typecheck.hs	glean/angle/Glean/Angle/Types.hs
@@ -687,6 +703,8 @@ glean/db/Glean/Query/UserQuery.hs	glean/hs/Glean/RTS/Bytecode/Disassemble.hs
 glean/db/Glean/Query/UserQuery.hs	glean/hs/Glean/RTS/Foreign/Bytecode.hs
 glean/db/Glean/Query/UserQuery.hs	glean/hs/Glean/RTS/Foreign/FactSet.hs
 glean/db/Glean/Query/UserQuery.hs	glean/hs/Glean/RTS/Foreign/Lookup.hs
+glean/db/Glean/Query/UserQuery.hs	glean/hs/Glean/RTS/Foreign/Ownership.hsc
+glean/db/Glean/Query/UserQuery.hs	glean/hs/Glean/RTS/Foreign/Query.hsc
 glean/db/Glean/Query/UserQuery.hs	glean/hs/Glean/RTS/Foreign/Stacked.hs
 glean/db/Glean/Query/UserQuery.hs	glean/hs/Glean/RTS/Types.hs
 glean/db/Glean/Query/UserQuery.hs	glean/util/Glean/Util/Observed.hs
@@ -718,6 +736,7 @@ glean/github/Facebook/Service.hs	glean/github/Facebook/Fb303.hs
 glean/github/Facebook/Service.hs	glean/github/Facebook/Service/HttpFb303.hs
 glean/github/Facebook/Service/HttpFb303.hs	glean/github/Facebook/Fb303.hs
 glean/github/Glean/DefaultConfigs.hs	glean/util/Glean/Util/ThriftSource.hs
+glean/github/Glean/Init.hsc	glean/github/TestRunner.hs
 glean/github/Logger/GleanGlass.hs	glean/github/Logger/IO.hs
 glean/github/Logger/GleanGlassErrors.hs	glean/github/Logger/IO.hs
 glean/github/Logger/IO.hs	glean/util/Glean/Impl/ConfigProvider.hs
@@ -869,6 +888,7 @@ glean/glass/Glean/Glass/Main.hs	glean/client/hs/Glean.hs
 glean/glass/Glean/Glass/Main.hs	glean/client/hs/local/Glean/LocalOrRemote.hs
 glean/glass/Glean/Glass/Main.hs	glean/github/Facebook/Fb303.hs
 glean/glass/Glean/Glass/Main.hs	glean/github/Facebook/Service.hs
+glean/glass/Glean/Glass/Main.hs	glean/github/Glean/Init.hsc
 glean/glass/Glean/Glass/Main.hs	glean/github/Logger/IO.hs
 glean/glass/Glean/Glass/Main.hs	glean/glass/Glean/Glass/Env.hs
 glean/glass/Glean/Glass/Main.hs	glean/glass/Glean/Glass/ErrorClassification.hs
@@ -1244,6 +1264,19 @@ glean/hs/Glean/RTS/Foreign/Lookup.hs	glean/hs/Glean/FFI.hs
 glean/hs/Glean/RTS/Foreign/Lookup.hs	glean/hs/Glean/RTS/Types.hs
 glean/hs/Glean/RTS/Foreign/LookupCache.hs	glean/hs/Glean/FFI.hs
 glean/hs/Glean/RTS/Foreign/LookupCache.hs	glean/hs/Glean/RTS/Foreign/Lookup.hs
+glean/hs/Glean/RTS/Foreign/Ownership.hsc	glean/hs/Glean/FFI.hs
+glean/hs/Glean/RTS/Foreign/Ownership.hsc	glean/hs/Glean/RTS/Foreign/Inventory.hs
+glean/hs/Glean/RTS/Foreign/Ownership.hsc	glean/hs/Glean/RTS/Foreign/Lookup.hs
+glean/hs/Glean/RTS/Foreign/Ownership.hsc	glean/hs/Glean/RTS/Foreign/Subst.hs
+glean/hs/Glean/RTS/Foreign/Ownership.hsc	glean/hs/Glean/RTS/Types.hs
+glean/hs/Glean/RTS/Foreign/Ownership.hsc	glean/util/Glean/Util/Vector.hs
+glean/hs/Glean/RTS/Foreign/Query.hsc	glean/hs/Glean/FFI.hs
+glean/hs/Glean/RTS/Foreign/Query.hsc	glean/hs/Glean/RTS/Foreign/Bytecode.hs
+glean/hs/Glean/RTS/Foreign/Query.hsc	glean/hs/Glean/RTS/Foreign/Define.hs
+glean/hs/Glean/RTS/Foreign/Query.hsc	glean/hs/Glean/RTS/Foreign/Inventory.hs
+glean/hs/Glean/RTS/Foreign/Query.hsc	glean/hs/Glean/RTS/Foreign/Ownership.hsc
+glean/hs/Glean/RTS/Foreign/Query.hsc	glean/hs/Glean/RTS/Traverse.hs
+glean/hs/Glean/RTS/Foreign/Query.hsc	glean/hs/Glean/RTS/Types.hs
 glean/hs/Glean/RTS/Foreign/Stacked.hs	glean/hs/Glean/RTS/Foreign/Define.hs
 glean/hs/Glean/RTS/Foreign/Stacked.hs	glean/hs/Glean/RTS/Foreign/Lookup.hs
 glean/hs/Glean/RTS/Foreign/Stats.hs	glean/hs/Glean/FFI.hs
@@ -1412,6 +1445,7 @@ glean/lang/hack/Glean/Indexer/HackWithDeriver.hs	glean/lang/hack/Derive/HackDecl
 glean/lang/hack/Glean/Indexer/HackWithDeriver.hs	glean/lang/hack/Glean/Indexer/Hack.hs
 glean/lang/hack/Glean/Indexer/HackWithDeriver.hs	glean/lib/Glean/Derive.hs
 glean/lang/hack/deriver/Derive.hs	glean/client/hs/Glean/Remote.hs
+glean/lang/hack/deriver/Derive.hs	glean/github/Glean/Init.hsc
 glean/lang/hack/deriver/Derive.hs	glean/lang/clang/Derive/Types.hs
 glean/lang/hack/deriver/Derive.hs	glean/lang/hack/Derive/All.hs
 glean/lang/hack/deriver/Derive.hs	glean/util/Glean/Impl/ConfigProvider.hs
@@ -1424,6 +1458,7 @@ glean/lang/haskell/HieIndexer/Index.hs	glean/lib/Glean/Util/Range.hs
 glean/lang/haskell/HieIndexer/Index.hs	glean/util/Glean/Impl/ConfigProvider.hs
 glean/lang/haskell/HieIndexer/Main.hs	glean/client/hs/Glean.hs
 glean/lang/haskell/HieIndexer/Main.hs	glean/client/hs/local/Glean/LocalOrRemote.hs
+glean/lang/haskell/HieIndexer/Main.hs	glean/github/Glean/Init.hsc
 glean/lang/haskell/HieIndexer/Main.hs	glean/lang/haskell/HieIndexer/Index.hs
 glean/lang/haskell/HieIndexer/Main.hs	glean/lang/haskell/HieIndexer/Options.hs
 glean/lang/haskell/HieIndexer/Main.hs	glean/util/Glean/Impl/ConfigProvider.hs
@@ -1452,6 +1487,7 @@ glean/lang/lsif/indexer/Glean/Indexer/LSIF.hs	glean/index/Glean/Indexer.hs
 glean/lang/lsif/indexer/Glean/Indexer/LSIF.hs	glean/index/Glean/Indexer/External.hs
 glean/lang/lsif/indexer/Glean/Indexer/LSIF.hs	glean/lang/lsif/Glean/LSIF/Driver.hs
 glean/lang/lsif/indexer/Glean/Indexer/LSIF.hs	glean/lib/Glean/Derive.hs
+glean/lang/lsif/indexer/Glean/Indexer/LSIF/Main.hs	glean/github/Glean/Init.hsc
 glean/lang/lsif/indexer/Glean/Indexer/LSIF/Main.hs	glean/lang/lsif/Glean/LSIF/Driver.hs
 glean/lang/python-pyrefly/Glean/Indexer/PythonPyrefly.hs	glean/index/Glean/Indexer.hs
 glean/lang/python-pyrefly/Glean/Indexer/PythonPyrefly.hs	glean/index/Glean/Indexer/External.hs
@@ -1596,6 +1632,7 @@ glean/shell/Glean/Shell.hs	glean/db/Glean/Database/Schema/Types.hs
 glean/shell/Glean/Shell.hs	glean/db/Glean/Database/Storage.hs
 glean/shell/Glean/Shell.hs	glean/db/Glean/Database/Types.hs
 glean/shell/Glean/Shell.hs	glean/github/Glean/BuildInfo.hs
+glean/shell/Glean/Shell.hs	glean/hs/Glean/RTS/Foreign/Query.hsc
 glean/shell/Glean/Shell.hs	glean/hs/Glean/RTS/Types.hs
 glean/shell/Glean/Shell.hs	glean/index/Glean/Indexer.hs
 glean/shell/Glean/Shell.hs	glean/index/list/Glean/Indexer/List.hs
@@ -1665,6 +1702,7 @@ glean/tools/gleancli/GleanCLI.hs	glean/db/Glean/Database/Finish.hs
 glean/tools/gleancli/GleanCLI.hs	glean/db/Glean/Database/Schema.hs
 glean/tools/gleancli/GleanCLI.hs	glean/db/Glean/Database/Schema/Types.hs
 glean/tools/gleancli/GleanCLI.hs	glean/db/backup/s3/Glean/Database/Backup/S3.hs
+glean/tools/gleancli/GleanCLI.hs	glean/github/Glean/Init.hsc
 glean/tools/gleancli/GleanCLI.hs	glean/hs/Glean/RTS/Foreign/Inventory.hs
 glean/tools/gleancli/GleanCLI.hs	glean/shell/Glean/Shell.hs
 glean/tools/gleancli/GleanCLI.hs	glean/tools/gleancli/GleanCLI/Backup.hs
@@ -1724,6 +1762,7 @@ glean/tools/gleancli/GleanCLI/Merge.hs	glean/db/Glean/Write/JSON.hs
 glean/tools/gleancli/GleanCLI/Merge.hs	glean/hs/Glean/RTS/Foreign/Define.hs
 glean/tools/gleancli/GleanCLI/Merge.hs	glean/hs/Glean/RTS/Foreign/FactSet.hs
 glean/tools/gleancli/GleanCLI/Merge.hs	glean/hs/Glean/RTS/Foreign/Inventory.hs
+glean/tools/gleancli/GleanCLI/Merge.hs	glean/hs/Glean/RTS/Foreign/Ownership.hsc
 glean/tools/gleancli/GleanCLI/Merge.hs	glean/hs/Glean/RTS/Types.hs
 glean/tools/gleancli/GleanCLI/Merge.hs	glean/tools/gleancli/GleanCLI/Common.hs
 glean/tools/gleancli/GleanCLI/Merge.hs	glean/tools/gleancli/plugin/GleanCLI/Types.hs
@@ -1815,6 +1854,7 @@ glean/util/Glean/Impl/TestConfigProvider.hs	glean/util/Glean/Impl/ConfigProvider
 glean/util/Glean/Impl/TestConfigProvider.hs	glean/util/Glean/Util/ConfigProvider.hs
 glean/util/Glean/Impl/ThriftService.hs	glean/util/Glean/Util/Service.hs
 glean/util/Glean/Impl/ThriftService.hs	glean/util/Glean/Util/ThriftService.hs
+glean/util/Glean/Util/ConfigProvider.hs	glean/github/Glean/Init.hsc
 glean/util/Glean/Util/ThriftService.hs	glean/util/Glean/Util/Service.hs
 glean/util/Glean/Util/ThriftSource.hs	glean/util/Glean/Util/ConfigProvider.hs
 glean/util/Glean/Util/ThriftSource.hs	glean/util/Glean/Util/Observed.hs
@@ -1836,6 +1876,7 @@ glean/write/Glean/Write/SendAndRebaseQueue.hs	glean/hs/Glean/RTS/Foreign/FactSet
 glean/write/Glean/Write/SendAndRebaseQueue.hs	glean/hs/Glean/RTS/Foreign/Inventory.hs
 glean/write/Glean/Write/SendAndRebaseQueue.hs	glean/hs/Glean/RTS/Foreign/Lookup.hs
 glean/write/Glean/Write/SendAndRebaseQueue.hs	glean/hs/Glean/RTS/Foreign/LookupCache.hs
+glean/write/Glean/Write/SendAndRebaseQueue.hs	glean/hs/Glean/RTS/Foreign/Ownership.hsc
 glean/write/Glean/Write/SendAndRebaseQueue.hs	glean/hs/Glean/RTS/Foreign/Stacked.hs
 glean/write/Glean/Write/SendAndRebaseQueue.hs	glean/hs/Glean/RTS/Foreign/Subst.hs
 glean/write/Glean/Write/SendAndRebaseQueue.hs	glean/hs/Glean/RTS/Types.hs

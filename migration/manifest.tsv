@@ -54,6 +54,7 @@ glean/db/Glean/Database/Exception.hs	rust/glean-db/src/database/exception.rs
 glean/db/Glean/Database/Catalog.hs	rust/glean-db/src/database/catalog.rs
 glean/db/Glean/Database/ACLConfig.hs	rust/glean-db/src/database/acl_config.rs
 glean/db/Glean/Database/Backup/Backend.hs	rust/glean-db/src/database/backup/backend.rs
+glean/hs/Glean/RTS/Foreign/Ownership.hsc	rust/glean-core/src/rts/foreign/ownership.rs
 glean/db/Glean/Database/Storage.hs	rust/glean-db/src/database/storage.rs
 glean/db/Glean/Database/ACLOwnership.hs	rust/glean-db/src/database/acl_ownership.rs
 glean/db/Glean/Database/Data.hs	rust/glean-db/src/database/data.rs
@@ -73,6 +74,8 @@ glean/db/Glean/Database/Trace.hs	rust/glean-db/src/database/trace.rs
 glean/db/Glean/Logger/Database.hs	rust/glean-db/src/logger/database.rs
 glean/db/Glean/Logger/Server.hs	rust/glean-db/src/logger/server.rs
 glean/github/Glean/Database/AclKnobs.hs	rust/glean-db/src/database/acl_knobs.rs
+glean/github/TestRunner.hs	rust/glean-util/src/test_runner.rs
+glean/github/Glean/Init.hsc	rust/glean-util/src/init.rs
 glean/util/Glean/Util/ConfigProvider.hs	rust/glean-util/src/util/config_provider.rs
 glean/util/Glean/Util/Observed.hs	rust/glean-util/src/util/observed.rs
 glean/util/Glean/Util/ThriftSource.hs	rust/glean-util/src/util/thrift_source.rs
@@ -88,6 +91,7 @@ glean/db/Glean/Query/Typecheck/Monad.hs	rust/glean-db/src/query/typecheck/monad.
 glean/db/Glean/Query/Typecheck/Unify.hs	rust/glean-db/src/query/typecheck/unify.rs
 glean/db/Glean/Query/Typecheck.hs	rust/glean-db/src/query/typecheck.rs
 glean/db/Glean/Query/Prune.hs	rust/glean-db/src/query/prune.rs
+glean/hs/Glean/RTS/Foreign/Query.hsc	rust/glean-core/src/rts/foreign/query.rs
 glean/db/Glean/Query/Transform.hs	rust/glean-db/src/query/transform.rs
 glean/github/ServiceData/Types.hs	rust/glean-fb303/src/service_data/types.rs
 glean/github/ServiceData/GlobalStats.hs	rust/glean-fb303/src/service_data/global_stats.rs
@@ -182,7 +186,6 @@ glean/github/Glean/Server/PublishShards.hs	rust/glean-db/src/server/publish_shar
 glean/github/Logger/IO.hs	rust/glean-server/src/logger/io.rs
 glean/github/Logger/GleanGlass.hs	rust/glean-server/src/logger/glean_glass.rs
 glean/github/Logger/GleanGlassErrors.hs	rust/glean-server/src/logger/glean_glass_errors.rs
-glean/github/TestRunner.hs	rust/glean-server/src/test_runner.rs
 glean/glass/Glean/Glass/SourceControl.hs	rust/glean-glass/src/glass/source_control.rs
 glean/glass/Glean/Glass/Attributes/Class.hs	rust/glean-glass/src/glass/attributes/class.rs
 glean/glass/Glean/Glass/Tracing.hs	rust/glean-glass/src/glass/tracing.rs

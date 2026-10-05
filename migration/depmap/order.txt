@@ -53,6 +53,7 @@ glean/db/Glean/Database/Exception.hs
 glean/db/Glean/Database/Catalog.hs
 glean/db/Glean/Database/ACLConfig.hs
 glean/db/Glean/Database/Backup/Backend.hs
+glean/hs/Glean/RTS/Foreign/Ownership.hsc
 glean/db/Glean/Database/Storage.hs
 glean/db/Glean/Database/ACLOwnership.hs
 glean/db/Glean/Database/Data.hs
@@ -72,6 +73,8 @@ glean/db/Glean/Database/Trace.hs
 glean/db/Glean/Logger/Database.hs
 glean/db/Glean/Logger/Server.hs
 glean/github/Glean/Database/AclKnobs.hs
+glean/github/TestRunner.hs
+glean/github/Glean/Init.hsc
 glean/util/Glean/Util/ConfigProvider.hs
 glean/util/Glean/Util/Observed.hs
 glean/util/Glean/Util/ThriftSource.hs
@@ -87,6 +90,7 @@ glean/db/Glean/Query/Typecheck/Monad.hs
 glean/db/Glean/Query/Typecheck/Unify.hs
 glean/db/Glean/Query/Typecheck.hs
 glean/db/Glean/Query/Prune.hs
+glean/hs/Glean/RTS/Foreign/Query.hsc
 glean/db/Glean/Query/Transform.hs
 glean/github/ServiceData/Types.hs
 glean/github/ServiceData/GlobalStats.hs
@@ -181,7 +185,6 @@ glean/github/Glean/Server/PublishShards.hs
 glean/github/Logger/IO.hs
 glean/github/Logger/GleanGlass.hs
 glean/github/Logger/GleanGlassErrors.hs
-glean/github/TestRunner.hs
 glean/glass/Glean/Glass/SourceControl.hs
 glean/glass/Glean/Glass/Attributes/Class.hs
 glean/glass/Glean/Glass/Tracing.hs
