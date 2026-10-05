@@ -133,3 +133,17 @@ undercounting trailer is a finding.
    to `migration/inventory.tsv` by path; the file is the definition of done."
 2. ratify DEV-001/DEV-002 and the before-Step-3 re-review commitment.
 3. ratify crate partition (33 crates) and the manifest naming rule.
+4. **cxx scope ruling** (joint-audit F1/F5): §1 currently sanctions cxx for
+   "rts + storage wrappers" only, but inventory rows need it (or raw extern
+   "C") at every C++ ABI call site (Init.hsc folly init, Write.hs
+   parseJsonFacts, Benchmarking). Ruling needed: widen cxx to all C++ ABI
+   sites, or mandate raw extern "C" outside rts/storage. Interim per
+   inventory: raw extern "C" outside rts/storage.
+5. **regex rule dead** (audit F10): zero regex-pcre sites in the OSS tree —
+   amend §1 regex row to record that (keep the crate choice for any future
+   addition).
+6. **S3 backup scope** (audit F4): s3-support flag is default-True in cabal
+   and the impl is Amazonka-based. Decide v1 scope: port with aws-sdk-s3
+   (§1 amendment) or feature-gate S3 backup out of v1.
+7. **smallvec** (audit F3): not needed (Subst → Vec<u64>); no amendment
+   required — recorded here to close the question.
