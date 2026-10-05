@@ -125,6 +125,8 @@ undercounting trailer is a finding.
 |---|---|---|---|
 | DEV-001 | 2026-10-04 | 00b transforms adversarial review performed inline (self-review) instead of a second subagent reviewer — subagent 5h quota | pending user sign-off |
 | DEV-002 | 2026-10-05 | depmap verification: inline bidirectional grep cross-check on 15 sampled files (10 random + 5 adversarial: largest + moved/odd files) + 5-file hand trial, instead of two separate subagent skeptic reviewers — quota. **Queued: re-run two subagent skeptics on fresh samples before the Step-3 fan-out** | pending user sign-off |
+| DEV-004 | 2026-10-05 | `.claude/settings.json` NOT installed: at the Step-1b gate the human was told installation was the prerequisite and replied "continue" — recorded as explicit waiver (prompt 03, "record my explicit waiver"). Note: this harness is ZCode, not Claude Code; Claude-style settings.json would be inert here. The ban list (no cargo build/check/test/run, no git mutations, no make/cmake in-loop) is honored by process discipline; commits happen only at gates | user, via "continue" at Step-1b gate |
+| DEV-005 | 2026-10-05 | Model plan tiers not selectable in this harness (Agent tool has no per-subagent model parameter); session model used for every role (implementers, reviewers, fixers, inspectors) — inheriting the session default is the deviation prompt 03 requires logged | user, via "continue" at Step-1b gate |
 | DEV-003 | 2026-10-05 | depmap script bug found by verification loop itself (Tarjan low-link mis-folded cross edges → spurious {core,util} SCC); fixed + unit-tested on 4 graph shapes; full map regenerated | n/a (script fix, both directions clean after) |
 
 ## Queued amendments (for the human to apply)
