@@ -1,0 +1,76 @@
+-- allium: 1
+-- Glean behavioral spec — surface 5: storage protocol (RocksDB/LMDB/memory)
+-- Distilled from:
+--   storage:  glean/storage/{common.h,ffi.cpp}, glean/rocksdb/, glean/lmdb/
+--   hs side:  glean/db/Glean/Database/Storage/{DB,RocksDB,LMDB,Memory}.hs
+--   config:   glean/db/Glean/Database/Config.hs (defaultStorage = rocksdb)
+-- The Rust port binds the SAME C++ backends via the same extern "C" ABI;
+-- the memory backend is the pure-Rust reference implementation.
+
+value RepoName { name: String }
+
+entity StoredDatabase {
+    repo: RepoName
+    backend: rocksdb | lmdb | memory
+    open: Boolean = true
+}
+
+entity Column {
+    db: StoredDatabase
+    key: String
+    value: String          -- opaque blob (spec-level)
+}
+
+entity StorageOp {
+    db: StoredDatabase
+    column: Column
+    kind: put | get | scan | delete
+    outcome: String        -- backend-observable result (bytes/ok/error)
+}
+
+-- All backends present one key/value blob protocol: put, get, range-scan,
+-- delete; commit is atomic per database.
+rule BackendsAreInterchangeable {
+    when: op: StorageOp.completed
+    ensures:
+        same_op_same_outcome(op)
+    @guidance
+        -- DB.hs drives rocksdb/lmdb through the same 28-ccall surface;
+        -- Memory.hs mirrors it purely. Judge: run the same op sequence
+        -- against backends and compare resulting fact reads.
+}
+
+-- A commit makes all its column writes visible together; a crash between
+-- batches leaves the database at the last committed state.
+rule CommitsAreAtomic {
+    when: CommitRequested(writes)
+    ensures: all_visible(writes)
+    ensures: not partial_visible(writes)
+    @guidance
+        -- glean_rocksdb_commit / glean_lmdb commit; crash semantics are
+        -- the backend's (WAL / mmap), inherited unchanged by the port.
+}
+
+-- Ownership (ACL) data is stored alongside facts and adds usets per fact
+-- without changing fact bytes.
+entity OwnershipEntry { fact_id: Integer, usets: List<Integer> }
+
+rule OwnershipAddsUsets {
+    when: oe: OwnershipEntry.created
+    ensures: fact_bytes_unchanged(oe.fact_id)
+    @guidance
+        -- Storage/DB.hs addOwnership; rts/ownership/. Judge: ACL-gated
+        -- queries return the same slices on old and new.
+}
+
+-- Database names are unique per root; reopening a stored database preserves
+-- its facts and schema id.
+rule ReopenPreservesState {
+    when: db: StoredDatabase.open
+    requires: db.open = false
+    ensures:
+        facts_unchanged(db)
+    @guidance
+        -- Catalog + Open.hs restore path; judge determinism rerun covers
+        -- the fresh-build half; a reopen case covers this rule.
+}

@@ -1,0 +1,67 @@
+-- allium: 1
+-- Glean behavioral spec — surface 7: snapshot/golden contract (the judge)
+-- Distilled from:
+--   driver:  glean/test/regression/Glean/Regression/Snapshot/{Query,Transform}.hs
+--   corpus:  1,945 .query / 6,977 .out pairs under glean/ (upstream truth)
+--   judge:   migration/judge/judge.py (validated parity harness)
+-- This surface IS the migration's exit condition: both implementations must
+-- satisfy it identically.
+
+entity GoldenCase {
+    name: String
+    batch: String              -- batch*.json facts
+    query_text: String         -- raw Angle
+    transform: String          -- sort|gensort|extract|normord (harness-side)
+    expected: String           -- .out bytes: ["@generated", ...]
+}
+
+entity ObservedResult {
+    case: GoldenCase
+    implementation: haskell | rust
+    output: String             -- normalized judge output bytes
+}
+
+-- Byte parity: for every golden case, both implementations produce output
+-- identical to the golden.
+rule GoldenByteParity {
+    when: obs: ObservedResult.created
+    ensures:
+        obs.output = obs.case.expected
+    @guidance
+        -- judge validate-old proves the Haskell side; parity mode proves
+        -- the Rust side; 1,945 pairs = full burndown target, seed cases
+        -- are the smoke subset.
+}
+
+-- Cross-implementation parity is independent of goldens: same inputs =>
+-- same outputs on both implementations (covers cases without goldens).
+rule CrossImplementationParity {
+    when: obs: ObservedResult.created
+    ensures:
+        obs.output = twin_output(obs.case)
+    @guidance
+        -- judge parity mode; asymmetric skip (one side refuses what the
+        -- other runs) is a divergence, not a pass.
+}
+
+-- The judge itself must be mutation-sensitive: any perturbation of the
+-- raw result stream that is semantically visible MUST change the verdict.
+rule JudgeCatchesBreakage {
+    when: mutant: ObservedResult.created
+    requires: mutant.implementation = rust
+    ensures: verdict_changes(mutant)
+    @guidance
+        -- mutation-selftest: 5/5 CAUGHT baseline; new mutations extend
+        -- the set only with a covering case (no blind spots).
+}
+
+-- Transform semantics are pinned by the harness port, not re-invented:
+-- gensort/normord use Text.JSON's derived Ord ranking.
+rule TransformSemanticsPinned {
+    when: obs: ObservedResult.created
+    ensures:
+        sorted_like_text_json_ord(obs.case, obs.output)
+    @guidance
+        -- judge.py _tsj_key is the reference implementation; null < bool <
+        -- number < string < array < object; assoc-list object compare.
+}

@@ -1,0 +1,74 @@
+-- allium: 1
+-- Glean behavioral spec — surface 4: schema-ID hashing (compatibility linchpin)
+-- Distilled from:
+--   hash:    glean/angle/Glean/Angle/Hash.hs (GHC.Fingerprint = MD5-based)
+--   ids:     glean/db/Glean/Database/Schema/ComputeIds.hs (fingerprintDef,
+--            cycleHash, schemaId), dbShardWord consumer
+--   binary:  Data.Binary encodings over Angle/Types.hs instances (11)
+-- The Rust port must reproduce these BYTE-EXACTLY; obligations run against
+-- the old binary's getSchemaInfo output for all 96 schema sources.
+
+value Hash { lo: Integer, hi: Integer }        -- 64-bit fingerprint pair
+value SchemaId { text: String }
+value PredicateId { hash: Hash }
+
+entity SchemaSource { path: String, version: Integer }
+
+entity ResolvedSchema {
+    sources: List<SchemaSource>
+    id: SchemaId
+}
+
+-- Hashing a byte string is the GHC fingerprint algorithm (MD5-based,
+-- byte-exact). It is deterministic and total.
+rule HashIsByteExact {
+    when: s: SchemaSource.created
+    ensures:
+        hash_of(s) = hash_of_bytes(encode_binary(s))
+    @guidance
+        -- hashByteString = unsafeDupablePerformIO (GHC.fingerprintData)
+        -- (Hash.hs:43). Rust: dedicated fingerprint module; NO shortcut
+        -- hash. Judge obligation: compare against old binary
+        -- getSchemaInfo for every schema source.
+}
+
+-- A predicate's ID derives from its definition's binary encoding hash.
+rule PredicateIdBindsDefinition {
+    when: def: SchemaSource.created
+    ensures:
+        pid_of(def) = PredicateId{ hash: hash_of_bytes(encode_binary(def)) }
+    @guidance
+        -- ComputeIds.hs:268 fingerprintDef. encode_binary must replicate
+        -- Data.Binary's put/get byte format exactly (RULEBOOK §2
+        -- binary-fmt row: hand-written encoder, never serde).
+}
+
+-- The schema ID binds the full ordered set of predicate hashes (including
+-- evolution history), so two schemas with the same predicates but different
+-- versions get different IDs.
+rule SchemaIdBindsAllVersions {
+    when: rs: ResolvedSchema.created
+    ensures:
+        rs.id = schema_id_of(rs.sources)
+    ensures:
+        for s1 in rs.sources:
+            for s2 in rs.sources:
+                (s1 != s2 and s1.version != s2.version) implies
+                    (pid_of(s1) != pid_of(s2))
+    @guidance
+        -- ComputeIds.hs:159-169 (hashes = map fingerprintDef defs1,
+        -- allVersion). The Rust schema table must be dropped if these IDs
+        -- drift — existing DBs store them.
+}
+
+-- Shard routing depends on the schema ID (dbShardWord), so byte-exact IDs
+-- are also an operational compatibility surface.
+rule ShardRoutingFollowsSchemaId {
+    when: rs: ResolvedSchema.created
+    ensures:
+        shard_word(rs) = shard_word_of(rs.id)
+    @guidance
+        -- Backend/Types.hs:474-480 dbShardWord (second fingerprint
+        -- consumer); Remote.hs routing. Byte drift silently reroutes
+        -- clients.
+}

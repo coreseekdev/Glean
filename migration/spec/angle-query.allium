@@ -1,0 +1,102 @@
+-- allium: 1
+-- Glean behavioral spec — surface 3: Angle query semantics (user-facing)
+-- Distilled from:
+--   pipeline:    glean/db/Glean/Query/{Typecheck,UserQuery}.hs
+--   protocol:    glean/if/glean.thrift userQuery/userQueryResults
+--   driver:      migration/judge/judge.py (validated comparator)
+-- Obligations bind to golden .query/.out pairs (1,945 upstream) and to the
+-- judge's mutation selftest.
+
+value AngleQueryText { text: String }
+
+entity Repo {
+    name: String
+    immutable: Boolean = false
+}
+
+entity QueryRequest {
+    text: AngleQueryText
+    syntax: angle
+    recursive: Boolean = true
+    expand_results: Boolean
+    well_typed: Boolean = true
+    max_results: Integer?
+    max_bytes: Integer?
+    repo: Repo
+}
+
+entity QueryResults {
+    request: QueryRequest
+    facts: List<String>
+    has_continuation: Boolean = false
+}
+
+entity Continuation {
+    request: QueryRequest
+    page_facts: List<String>
+    next_page_facts: List<String>
+}
+
+-- A well-typed query executes against the schema resolved for the repo and
+-- returns facts whose JSON encoding matches the golden corpus byte-for-byte.
+rule QueryResultsAreByteParity {
+    when: request: QueryRequest.created
+    requires: request.well_typed = true
+    ensures: QueryResults.created(request: request, facts: facts_of(request))
+    @guidance
+        -- Byte parity is asserted by the judge against .out goldens; the
+        -- comparator implements Text.JSON Ord exactly (judge.py _tsj_key).
+        -- facts_of is the query pipeline's denotation — see plan obligations.
+}
+
+-- Ordering of results is NOT semantic unless a harness transform sorts them;
+-- the server preserves its natural order and transforms are harness-side
+-- pure functions (sort/gensort/extract/normord).
+rule TransformsAreHarnessSide {
+    when: results: QueryResults.created
+    ensures: results.facts = results.request.facts_order
+    @guidance
+        -- Snapshot/Query.hs applies transforms AFTER userQuery returns; the
+        -- server never sorts. gensort hides input order by design;
+        -- untransformed queries expose it (judge reverse-lines mutation).
+}
+
+-- Paging: a continuation resumes exactly where the page ended; pages never
+-- repeat facts.
+rule PagingIsResumable {
+    when: cont: Continuation.created
+    ensures:
+        for f in cont.next_page_facts:
+            not (f in cont.page_facts)
+    @guidance
+        -- UserQuery.hs continuation = opaque serialized UserQueryCont; the
+        -- CLI loop subtracts the seen count (GleanCLI/Query.hs
+        -- subtract_limit); judge limit-paging case covers N < total.
+}
+
+-- A query against a finished database is deterministic: re-running the same
+-- request yields the same facts in the same order.
+entity QueryRerun { request: QueryRequest, first: QueryResults, again: QueryResults }
+
+rule QueryDeterminism {
+    when: rerun: QueryRerun.created
+    requires: rerun.request.repo.immutable = true
+    ensures:
+        rerun.again.facts = rerun.first.facts
+    @guidance
+        -- Judge determinism rerun (fresh DB rebuild) asserts this.
+}
+
+-- Bad queries fail with a typed error carrying position info, never a
+-- partial result.
+entity BadQuery { request: QueryRequest, position: String, detail: String }
+
+rule BadQueryFailsTyped {
+    when: request: QueryRequest.created
+    requires: request.well_typed = false
+    ensures: BadQuery.created(request: request, position: "...", detail: "...")
+    @guidance
+        -- Glean.BadQuery carries "line X, column Y" + type mismatch detail
+        -- (observed: "does not match: string" for a src.File pattern).
+        -- Position/detail values are pinned by judge golden cases.
+}

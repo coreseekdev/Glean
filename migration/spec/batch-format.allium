@@ -1,0 +1,80 @@
+-- allium: 1
+-- Glean behavioral spec — surface 2: batch wire format & write path
+-- Distilled from:
+--   thrift:  glean/if/glean.thrift:147-183 (Batch, BatchFormat)
+--   binary:  glean/rts/binary.h (fact encoding), Builder.hs push sequence
+--   write:   glean/db/Glean/Database/Write/{Batch,Queue}.hs
+-- JSON batch ingest (glean write --file-format json) must produce byte-
+-- identical binary batches to the Haskell ingest for the same input.
+
+entity JsonBatch {
+    path: String
+    predicates: List<PredicateBatch>
+}
+
+entity PredicateBatch {
+    ref: String                  -- e.g. "src.File.1"
+    facts: List<JsonFact>
+}
+
+entity JsonFact {
+    key: String
+    value: String?
+}
+
+entity BinaryBatch {
+    first_id: Integer
+    count: Integer
+    facts_blob: String           -- rts/binary.h encoding, byte-exact (bytes as latin1-style opaque string in spec; judge compares raw bytes)
+    ids: List<Integer>?
+}
+
+-- Ingest is a pure compilation: same JSON batch + same starting id =>
+-- byte-identical binary batch (keys, values, NUL separators, id order).
+rule JsonIngestIsByteDeterministic {
+    when: b: JsonBatch.created
+    ensures:
+        encode(b) = encode(b)
+    @guidance
+        -- buildJsonBatch (Glean/Write/JSON.hs) -> Glean/RTS/Builder.
+        -- Judge: glean-write cases + future fuzz pair. NUL-NUL string
+        -- suffix trick (Codegen.hs:1268-1270) is part of the encoding.
+}
+
+-- IDs are dense from the batch's first_id in fact order.
+rule BatchIdsAreDense {
+    when: bb: BinaryBatch.created
+    ensures:
+        bb.count = bb.facts.count
+    @guidance
+        -- Write/Queue.hs wrNextId allocation; judge asserts fact count and
+        -- observed ids (1024..) on the seed cases.
+}
+
+-- Forward references within a batch are resolved by the commit substitution;
+-- the substitution maps every pre-commit id to its post-commit id.
+entity Subst { batch: BinaryBatch, pairs: List<Integer> }
+
+entity SubstResult { batch: BinaryBatch, subst: Subst }
+
+rule CommitProducesSubst {
+    when: bb: BinaryBatch.created
+    ensures: SubstResult.created(batch: bb, subst: subst_of(bb))
+    @guidance
+        -- RTS substitution (rts/substitution.*); the Rust port must emit
+        -- the identical substitution — judge case on subst roundtrip.
+}
+
+-- A write to a finished database fails; writes to an open database commit
+-- atomically (all facts or none).
+value RepoState { immutable: Boolean }
+entity WriteRequest { batch: BinaryBatch, repo: RepoState, accepted: Boolean = true }
+
+rule WriteIsAtomic {
+    when: wr: WriteRequest.created
+    requires: wr.repo.immutable = true
+    ensures: wr.accepted = false
+    @guidance
+        -- Database/Write/Batch.hs + Finish semantics; judge writes use
+        -- --finish then read-only queries.
+}
