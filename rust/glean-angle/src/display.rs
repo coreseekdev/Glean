@@ -192,6 +192,13 @@ impl From<String> for Doc {
 /// Semigroup `<>` on Doc. Exposed as a method (Rust has no `<>`); `+` is
 /// provided below as syntactic sugar with the same meaning.
 impl Doc {
+    /// Method form of the free [`append_space`] (the `<+>` operator):
+    /// chosen over rewriting 25 sibling call sites to free-fn form.
+    /// RULE §2: one canonical mapping for `<+>`.
+    pub fn append_space(self, rhs: Doc) -> Doc {
+        append_space(self, rhs)
+    }
+
     pub fn append(self, rhs: Doc) -> Doc {
         Doc::Cat(Box::new(self), Box::new(rhs))
     }
