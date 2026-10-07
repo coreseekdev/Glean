@@ -1,4 +1,4 @@
-// Ported from: glean/hs/Glean/RTS/Types.hs (205 lines)
+// Ported from: glean/hs/Glean/RTS/Types.hs (204 lines)
 // Manifest unit: rust/glean-core/src/rts/types.rs (crate glean-core) —
 // migration/manifest.tsv row 11. RULE §4 (naming): one source file → one
 // target file; the manifest path is authoritative. Crate edge legality:
@@ -66,7 +66,7 @@
 //     persisted or golden surface in this unit renders via Show (the
 //     human surfaces go through Display below).
 //   Storable → `#[repr(transparent)]` over i64 + Copy: the by-value FFI
-//     seam (see INVENTORY block). ffi.h has no Pid/Fid typedefs — the
+//     seam (see INVENTORY block). ffi.h typedefs Pid/Fid as plain int64_t aliases (ffi.h:105-106), no distinct struct — the
 //     C ABI passes them as int64_t, which transparent-i64 matches.
 //   Enum → no Rust trait. In-tree consumers use it ONLY as arithmetic
 //     ranges over the wrapped Int64: `[lowestPid..]` (Database/Schema.hs:
@@ -97,7 +97,7 @@ use glean_angle::schema::util::{
 };
 
 // ASSUMED-IMPORT (RULE §4): see the header block. The source's export
-// list re-exports `Id` (Types.hs:14).
+// list re-exports `Id` (Types.hs:15).
 pub use glean_thrift::Id;
 use glean_thrift::FIRST_FREE_ID;
 
@@ -314,7 +314,7 @@ pub fn sum_like(ty: &Type) -> Option<Vec<FieldDef>> {
 
 /// Compare types for (structural) equality (source doc).
 ///
-/// `eqType :: AngleVersion -> Type -> Type -> Bool` (Types.hs:140-174).
+/// `eqType :: AngleVersion -> Type -> Type -> Bool` (Types.hs:150-174).
 /// Arm ORDER is load-bearing: the Haskell case rows fire top to bottom,
 /// so the NamedTy/MaybeTy/EnumeratedTy/BooleanTy half-rows (one side a
 /// wildcard) must stay in exactly this sequence — e.g. `(MaybeTy t,
@@ -355,7 +355,7 @@ pub fn eq_type(version: AngleVersion, a: &Type, b: &Type) -> bool {
         (Type_::PredicateTy(_, PidRef { pid: p, .. }), Type_::PredicateTy(_, PidRef { pid: q, .. })) => {
             p == q
         }
-        // n == m is TypeId's Eq — hash-only (angle/types.rs:591-598),
+        // n == m is TypeId's Eq — hash-only (angle/types.rs:992 (impl PartialEq for TypeId, hash-only)),
         // the source's semantics via its derived instance.
         (Type_::NamedTy(_, x), Type_::NamedTy(_, y)) => {
             x.expanded_type_ref == y.expanded_type_ref
