@@ -2051,20 +2051,24 @@ fn show_byte_string(bytes: &[u8]) -> String {
             0x0D => out.push_str("\\r"),
             0x09 => out.push_str("\\t"),
             0x0B => out.push_str("\\v"),
-            // '\SO': protectEsc (== 'H') (GHC.Show.hs:388)
+            // '\SO': protectEsc (== 'H') (GHC.Show.hs:384). When the
+            // guard fires, protectEsc prepends the TWO-CHAR sequence
+            // `\&` before the rest (GHC.Show.hs:422-424,
+            // cont s@(c:_) | p c = "\\&" ++ s) — never `;`.
             0x0E => {
                 out.push_str("\\SO");
                 if next_is_h {
-                    out.push(';');
+                    out.push_str("\\&");
                 }
             }
             // c > '\DEL': \DDD decimal + protectEsc isDec
-            // (GHC.Show.hs:378)
+            // (GHC.Show.hs:373, same two-char `\&` terminator,
+            // GHC.Show.hs:422-424)
             b if b > 0x7F => {
                 out.push('\\');
                 out.push_str(&(b as u32).to_string());
                 if next_is_digit {
-                    out.push(';');
+                    out.push_str("\\&");
                 }
             }
             b => {
