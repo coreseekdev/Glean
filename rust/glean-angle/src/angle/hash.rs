@@ -71,6 +71,16 @@ use crate::angle::types::Binary;
 // Extrapolation beyond the quoted row: Haskell `String` (hashString's
 // input) likewise maps to `String`/`&str`, and `Word64` stays `u64`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+/// In-memory std Hash (amendment 3, 2026-10-07): delegates to the two
+/// words — stable, never persisted (schema-ID hashing uses fingerprint_data
+/// above, not this impl). Owned here behind the hashable-chain TODO(port).
+impl std::hash::Hash for Fingerprint {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.fingerprint1);
+        state.write_u64(self.fingerprint2);
+    }
+}
+
 pub struct Fingerprint {
     pub fingerprint1: u64,
     pub fingerprint2: u64,

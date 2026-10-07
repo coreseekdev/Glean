@@ -5,3 +5,4 @@ step	timestamp	wall_clock_min	tokens	subagents	model
 1b	2026-10-05T02:05Z	50	unknown	0	glm-5.3-flash
 2	2026-10-05T04:30Z	120	54500000	9	glm-5.3-flash
 2r2	2026-10-07T05:30Z	210	46700000	7	glm-5.3-flash
+3-batch1	2026-10-07T10:30Z	420	68000000	27	glm-5.3-flash

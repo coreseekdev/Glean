@@ -52,3 +52,21 @@
 - Step 3 (translation fan-out, prompt 04) authorized to start: serial
   background dispatch (quota lesson), DEV-002 skeptic re-review in the
   first batch.
+
+## 2026-10-07 — Queued amendments: coordinator-default rulings (user deferred decision — "context incomplete, continue"; all reviewable/reversible at any gate)
+
+Applied by the orchestrator under RULEBOOK v0.3's existing rules, no new policy invented:
+1. prettyprinter Doc stand-in ownership -> RULEBOOK §1 gains a row: the
+   stand-in lives in glean-angle/src/display.rs; inventory gains a row
+   pinning it (like the Fingerprint/Binary precedents: byte-parity
+   obligations via the judge's golden rendering at Step 6).
+2. §4 assumed-imports body text -> the v0.3 changelog line gets its
+   intended §4 paragraph (was announced, never written — three units cite
+   it; this is transcription of the already-approved B4, not new policy).
+3. Fingerprint std Hash impl -> owned by hash.rs behind the existing
+   hashable-chain TODO(port); impl delegates to fingerprint1/fingerprint2
+   (stable, in-memory only — no persisted surface).
+4. cxx family (inventory rows 38/60/79/61 "cxx" wording) -> rows are
+   superseded by RULEBOOK §1 FFI row (A2: raw extern "C" for flat ABI);
+   rows annotated in-place, no code changes required (all four units
+   already shipped extern-C).
