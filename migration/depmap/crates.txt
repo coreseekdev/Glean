@@ -32,4 +32,4 @@ glean-storage	2
 glean-typed	9
 glean-util	28
 # crate-level SCCs > 1 (the compiler-enforced partition):
-# crates=33 crate_edges=103 crate_cycles=0
+# crates=33 crate_edges=102 crate_cycles=0

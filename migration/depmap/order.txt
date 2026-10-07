@@ -324,10 +324,10 @@ glean/lang/clang/Derive/CxxTargetUses.hs
 glean/lang/clang/Derive/Generic.hs
 glean/lang/clang/Derive/Lib.hs
 glean/lang/clang/Derive.hs
+glean/lang/hack/Derive/Types.hs
+glean/lang/hack/Derive/Env.hs
 glean/lang/hack/Derive/HackDeclarationTarget.hs
 glean/lang/hack/Derive/All.hs
-glean/lang/hack/Derive/Env.hs
-glean/lang/hack/Derive/Types.hs
 glean/lang/hack/Glean/Indexer/HackWithDeriver.hs
 glean/lang/hack/deriver/Derive.hs
 glean/lang/haskell/HieIndexer/Options.hs

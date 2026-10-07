@@ -325,10 +325,10 @@ glean/lang/clang/Derive/CxxTargetUses.hs	rust/glean-indexer-clang/src/derive/cxx
 glean/lang/clang/Derive/Generic.hs	rust/glean-indexer-clang/src/derive/generic.rs
 glean/lang/clang/Derive/Lib.hs	rust/glean-indexer-clang/src/derive/lib.rs
 glean/lang/clang/Derive.hs	rust/glean-indexer-clang/src/derive.rs
+glean/lang/hack/Derive/Types.hs	rust/glean-indexer-hack/src/derive/types.rs
+glean/lang/hack/Derive/Env.hs	rust/glean-indexer-hack/src/derive/env.rs
 glean/lang/hack/Derive/HackDeclarationTarget.hs	rust/glean-indexer-hack/src/derive/hack_declaration_target.rs
 glean/lang/hack/Derive/All.hs	rust/glean-indexer-hack/src/derive/all.rs
-glean/lang/hack/Derive/Env.hs	rust/glean-indexer-hack/src/derive/env.rs
-glean/lang/hack/Derive/Types.hs	rust/glean-indexer-hack/src/derive/types.rs
 glean/lang/hack/Glean/Indexer/HackWithDeriver.hs	rust/glean-indexer-hack/src/indexer/hack_with_deriver.rs
 glean/lang/hack/deriver/Derive.hs	rust/glean-indexer-hack/src/derive.rs
 glean/lang/haskell/HieIndexer/Options.hs	rust/glean-indexer-haskell/src/hie_indexer/options.rs

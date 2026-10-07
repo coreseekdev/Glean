@@ -175,7 +175,6 @@ CRATE_PREFIXES = [
     ("glean/github/", "glean-server"),
     ("glean/server/", "glean-server"),
     ("glean/if/", "glean-server"),
-    ("glean/lib/", "glean-util"),
     ("glean/util/", "glean-util"),
 ]
 
@@ -205,11 +204,36 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     files = find_hs_files(root)
-    mod2file = {}
+    mod2files = {}
     for p in files:
         m = module_of(p)
         if m:
-            mod2file.setdefault(m, p)
+            mod2files.setdefault(m, []).append(p)
+
+    # Duplicate module names (e.g. Derive/Derive.Env/Derive.Types exist in
+    # BOTH glean/lang/clang/ and glean/lang/hack/): resolve per-importer by
+    # nearest-common-ancestor proximity — the importer's own subtree copy
+    # wins (per-stanza hs-source-dirs semantics). Ties keep the sorted-first
+    # copy (stable, deterministic).
+    def resolve(mod, importer):
+        cands = mod2files.get(mod)
+        if not cands:
+            return None
+        if len(cands) == 1:
+            return cands[0]
+        iparts = importer.parent.parts
+        def proximity(c):
+            cparts = c.parent.parts
+            n = 0
+            for a, b in zip(iparts, cparts):
+                if a != b:
+                    break
+                n += 1
+            return n
+        return max(cands, key=lambda c: (proximity(c), -cands.index(c)))
+
+    mod2file = {m: v[0] for m, v in mod2files.items() if len(v) == 1}
+    dupes = {m: v for m, v in mod2files.items() if len(v) > 1}
 
     nodes = sorted(p.relative_to(root).as_posix() for p in files)
     edges = {}
@@ -217,7 +241,7 @@ def main():
         rel = p.relative_to(root).as_posix()
         deps = set()
         for m in imports_of(p):
-            t = mod2file.get(m)
+            t = resolve(m, p) if m in dupes else mod2file.get(m)
             if t and t != p:
                 deps.add(t.relative_to(root).as_posix())
         edges[rel] = sorted(deps)
