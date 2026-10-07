@@ -44,3 +44,11 @@
   (generated-thrift adjacent), pinned in inventory.
 - §7 queued items 1-3 ratified as written (inventory delegation rule,
   DEV-001/002 + re-review commitment, crate partition + naming).
+
+## 2026-10-07 — Step 2 round-2 amendment batch approved; Step 3 fan-out signed off (user, via "continue 1 2 3")
+
+- Amendment queue B1-B6 (stress-test/report-r2.md) APPROVED -> RULEBOOK v0.3.
+- Inventory rows 120/121 fixed per the confirmed INVENTORY-BUG-CANDIDATEs.
+- Step 3 (translation fan-out, prompt 04) authorized to start: serial
+  background dispatch (quota lesson), DEV-002 skeptic re-review in the
+  first batch.
