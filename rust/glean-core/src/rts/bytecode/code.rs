@@ -14,7 +14,8 @@
 //             consumer).
 //     :1229 → glean/hs/Glean/RTS/Foreign/Bytecode.hs — crate-internal,
 //             manifest row 18 (rust/glean-core/src/rts/foreign/bytecode.rs),
-//             NOT yet shipped → ASSUMED-IMPORT below.
+//             SHIPPED (committed 5784ca8) → import below; contract
+//             reconciled 2026-10-15 (ASSUMED-IMPORTS 2).
 //     :1230 → glean/hs/Glean/RTS/Types.hs — crate-internal, SHIPPED at
 //             rust/glean-core/src/rts/types.rs (Pid).
 //   IN (Code.hs is the target of edges 397/540/549/636/1293/1298):
@@ -46,8 +47,8 @@
 //     IDs are allocated when a block is closed (`new_block`), never at
 //     mint; every `x <- label` site emits its block split.
 //   - row 64 (RTS/Foreign/Bytecode.hs inspect): the disassembly surface
-//     that will verify the identity gate — consumed via the assumed
-//     import below, no commitment made here.
+//     that will verify the identity gate — consumed via the import below
+//     (now SHIPPED), no commitment made here.
 // No divergence from any row; no INVENTORY-BUG-CANDIDATE.
 //
 // SIBLING CONTRACTS (RULE §4; DONE units' real APIs read, never
@@ -100,19 +101,25 @@
 //     Code, Haskell.hs:76) and will issue through `Code::issue` /
 //     `Code::issue_end_block` per its `issue effects` dispatch
 //     (Haskell.hs:265-267: EndBlock ⇒ issueEndBlock).
-//   2. crate::rts::foreign::bytecode (manifest row 18, not yet shipped;
-//     source Foreign/Bytecode.hs):
+//   2. crate::rts::foreign::bytecode (manifest row 18; SHIPPED at
+//     rust/glean-core/src/rts/foreign/bytecode.rs; source Foreign/
+//     Bytecode.hs) — reconciled 2026-10-15 against the shipped unit:
 //         pub struct Subroutine<S>(..);  // phantom S: CompiledTypecheck,
 //                                         // CompiledQuery, ... (Bytecode.hs:52-55)
 //         pub fn subroutine<S>(
 //             code: &[u64], inputs: u64, outputs: u64, locals: u64,
-//             consts: &[u64], literals: &[&[u8]],
-//         ) -> Result<Subroutine<S>, crate::ffi::FfiError>;
+//             consts: &[u64], lits: &[&[u8]],
+//         ) -> Subroutine<S>;
 //     (mirrors subroutine :: V.Vector Word64 -> Word64 -> Word64 ->
 //      Word64 -> [Word64] -> [ByteString] -> IO (Subroutine s),
 //      Foreign/Bytecode.hs:63-70; V.unsafeWith/withArrayLen/withMany are
-//      borrows → slices; construct/invoke → Result<FfiError> per the
-//      shipped crate::ffi conventions.)
+//      borrows → slices. INFALLIBLE at the type level: allocation-class
+//      failure aborts inside (unit 15's allocation_guard_abort per
+//      inventory.tsv row 63's allocation-guard ruling + RULE §2
+//      error-recovery rule) — same seam as unit 15's own note:
+//      `subroutine::<S>(&[u64], u64, u64, u64, &[u64], &[&[u8]]) ->
+//      Subroutine<S>`, generic in the phantom marker because Code.hs:261
+//      is `IO (Meta, Subroutine t)`.)
 //   3. glean_util::log::vlog (RULE §1 logging row: glog-style logging
 //     maps to a glean_util::log module with LAZY message thunks — message
 //     never forced unless verbose; hsthrift Util/Log/String.hs:34-38
@@ -132,7 +139,9 @@
 //     sequenced by `&mut`". The IO in the monad exists ONLY for vlog
 //     (Code.hs:501) and for generate's tail (subroutine construction) —
 //     vlog's effect moves into the glean_util::log module (assumed
-//     import 3), generate's into its Result return (below).
+//     import 3); generate's tail crosses to unit 15's infallible
+//     `subroutine` (allocation-class failure aborts inside it), and its
+//     Result return (below) carries only generate's `fail` path.
 //
 //   (2) The `CodeGen` variadic-sugar class (Code.hs:122-143), its two
 //     instances, and the `CodeResult` type family exist to auto-apply
@@ -142,10 +151,10 @@
 //     cg)` would need a blanket `impl<F: FnOnce(Register<T>) -> Rest>
 //     CodeGen for F`, which is E0207 (type params constrained only by
 //     Fn-trait predicates) and E0119 against any arity-sibling or
-//     base-case blanket (verified by scratch rustc probe, 2026-10-07,
-//     three shapes — base+recursive blankets and two arity blankets all
-//     rejected; the probes live under /tmp/probe-code/ per the supply.rs
-//     probe precedent). Canonical mapping (RULE §0: translating, not
+//     base-case blanket (re-verified 2026-10-15 with rustc 1.98.1:
+//     three shapes, all rejected — base+recursive blankets E0207;
+//     base+one-arity blanket E0207; one-arity vs two-arity blankets
+//     E0119 + E0207). Canonical mapping (RULE §0: translating, not
 //     improving; same discipline as RULE §2's Template-Haskell row —
 //     compile-time arity code becomes plain Rust):
 //       - `CodeGen s cg` / `CodeResult cg` ↦ the (pull, body) closure
@@ -183,9 +192,10 @@
 //     the encoding), harmless elsewhere (sizes are tiny in practice).
 //     EXCEPT `succ` sites, which ERROR in the source, never wrap:
 //     checked_add(1) + panic with base's exact message (bytecode/
-//     types.rs + supply.rs dispositions; messages pinned to
-//     base-4.17.1.0 on disk: GHC/Enum.hs:508-510 for Int,
-//     GHC/Word.hs:717-722 + GHC/Enum.hs:206-211 for Word64).
+//     types.rs + supply.rs dispositions; messages pinned to the only
+//     base on disk, base-4.17.2.0: GHC/Enum.hs:509-512, message at :511,
+//     for Int; GHC/Word.hs:719-722, `succError "Word64"` at :722, +
+//     GHC/Enum.hs:206-209 for Word64).
 //
 // List-reversal algebra (RULE §0 structure notes; the flips are forced
 // by cons-list → Vec, semantics identical): the source keeps csInsns /
@@ -222,8 +232,8 @@ use crate::ffi::FfiError;
 use crate::rts::bytecode::supply::{peek_supply, reg_supply, RegSupply, Supply};
 use crate::rts::types::Pid;
 
-// ASSUMED-IMPORTS (contracts in the header block; owners: the generator
-// port at manifest rows 150-152, and manifest row 18):
+// ASSUMED-IMPORTS (contracts in the header block; owner: the generator
+// port at manifest rows 150-152) + the SHIPPED row-18 sibling:
 use crate::rts::bytecode::gen::instruction::{
     insn_labels, insn_size, insn_words, map_labels, Insn,
 };
@@ -337,11 +347,19 @@ impl Code {
         )
     }
 
-    /// Supply of `Register 'BinaryOutputPtr` (cf. `output`). (Source doc,
-    /// Code.hs:171.) `newtype OutputSupply = OutputSupply RegSupply deriving
-    /// (Supply (Register 'BinaryOutputPtr))` (Code.hs:172-173) — the
-    /// newtype-deriving of exactly ONE instance; Rust has no deriving
-    /// through newtype, so this is the manual delegating impl the shipped
+    /// Declare registers of type `Register 'BinaryOutputPtr`. The registers
+    /// are inputs to the subroutine. Use `resetOutput` to reset the byte
+    /// array stored in these registers to empty. (Source doc, Code.hs:
+    /// 175-177 — "resetOutput" names the ResetOutput instruction.)
+    ///
+    /// `outputUninitialized :: CodeGen OutputSupply cg => cg -> Code
+    /// (CodeResult cg)` (Code.hs:178-183). The Supply it runs over is
+    /// OutputSupply — "Supply of `Register 'BinaryOutputPtr` (cf.
+    /// 'output')" (source doc, Code.hs:171): `newtype OutputSupply =
+    /// OutputSupply RegSupply deriving (Supply (Register
+    /// 'BinaryOutputPtr))` (Code.hs:172-173), the newtype-deriving of
+    /// exactly ONE instance; Rust has no deriving through newtype, so the
+    /// impl on the struct below is the manual delegation the shipped
     /// supply.rs consumer-contract block prescribed (it calls the shipped
     /// polymorphic RegSupply instance and needs no field access).
     pub fn output_uninitialized<REGS, A>(
@@ -360,18 +378,11 @@ impl Code {
             body,
         )
     }
-
-    /// Declare registers of type `Register 'BinaryOutputPtr`. The registers
-    /// are inputs to the subroutine. Use `resetOutput` to reset the byte
-    /// array stored in these registers to empty. (Source doc, Code.hs:
-    /// 175-177 — "resetOutput" names the ResetOutput instruction.)
-    ///
-    /// `outputUninitialized :: CodeGen OutputSupply cg => cg -> Code
-    /// (CodeResult cg)` (Code.hs:178-183).
-    pub struct_placeholder_output_uninitialized: (),
 }
 
-/// OutputSupply (Code.hs:172-173) — see the method doc above.
+/// Supply of `Register 'BinaryOutputPtr` (cf. `output`). (Source doc,
+/// Code.hs:171.) See also the elaboration on
+/// [`Code::output_uninitialized`].
 pub struct OutputSupply(RegSupply);
 
 impl Supply<Register<BinaryOutputPtr>> for OutputSupply {
@@ -475,13 +486,13 @@ impl Code {
 
     /// `calledFrom :: [CallSite] -> Code a -> Code a` (Code.hs:228-238).
     pub fn called_from<A, F: FnOnce(&mut Code) -> A>(&mut self, frames: &[CallSite], inner: F) -> A {
-        // maximum (map callSiteNextLocal frames): base-4.17.1.0/GHC/List.hs
-        // :725-726 `maximum [] = errorEmptyList "maximum"` → "Prelude.
-        // maximum: empty list" (errorEmptyList, GHC/List.hs — `prel_list_str
-        // ++ fun ++ ": empty list"`). The source would raise on an empty
-        /// frame list; panic with the same message (RULE §2 partial-functions
-        // row). In-tree call sites pass non-empty lists (Codegen.hs:479/:589/
-        // :1461).
+        // maximum (map callSiteNextLocal frames): base-4.17.2.0/GHC/List.hs
+        // :715-718, `maximum [] = errorEmptyList "maximum"` at :717; the
+        // message "Prelude.maximum: empty list" is the :708 doctest
+        // (errorEmptyList, GHC/List.hs — `prel_list_str ++ fun ++ ": empty
+        // list"`). The source would raise on an empty frame list; panic
+        // with the same message (RULE §2 partial-functions row). In-tree
+        // call sites pass non-empty lists (Codegen.hs:479/:589/:1461).
         let max_local = frames
             .iter()
             .map(|f| f.call_site_next_local)
@@ -596,10 +607,18 @@ impl Code {
     /// `vlog :: HasCallStack => String -> Code ()` (Code.hs:500-501). The
     /// message becomes a THUNK (`impl FnOnce() -> String`) so it is never
     /// forced unless verbose — RULE §1 (logging row), mirroring the
-    /// Haskell's lazy String argument. HasCallStack is GHC.Stack debugging
-    /// metadata with no semantic content; dropped (documented disposition,
-    /// not a gap). The one IO effect of the monad lives here and in
-    /// generate's tail (header DESIGN (1)).
+    /// Haskell's lazy String argument. HasCallStack is NOT just GHC.Stack
+    /// metadata: hsthrift's vlog feeds the caller's file/line into the
+    /// glog call via getCallStack/getCaller (Util/Log/String.hs:36-39,
+    /// getCaller :43-48, caller arm :47); the pinned glean_util::log
+    /// contract (assumed import 3) cannot carry it. The one IO effect of
+    /// the monad lives here and in generate's tail (header DESIGN (1)).
+    ///
+    /// TODO(port): vlog caller-location — HasCallStack → getCallStack/
+    /// getCaller feeds hsthrift's glog caller field (Util/Log/String.hs:
+    /// 36-39, getCaller :43-48); the pinned glean_util::log contract
+    /// drops it. Decision owned by the glean-util log unit (candidate:
+    /// #[track_caller]).
     pub fn vlog(&mut self, msg: impl FnOnce() -> String) {
         glean_util::log::vlog(2, msg); // Log.vlog 2 msg, lifted through StateT
     }
@@ -656,10 +675,12 @@ pub struct Meta {
 /// `generate :: (CodeGen RegSupply cg, CodeResult cg ~ ()) => Optimised ->
 /// cg -> IO (Meta, Subroutine t)` (Code.hs:259-261) — the (pull, body)
 /// form of the CodeGen walk (header DESIGN (2)); flat-syntax sugar: the
-/// `generate!` macro. The IO return ↦ `Result` (FfiError): the source's
-/// two failure sources are generate's `fail "unterminated basic block"`
-/// (a userError IOException — carried as the FfiError message verbatim)
-/// and subroutine's FFI construction (Result per the assumed contract).
+/// `generate!` macro. The IO return ↦ `Result` (FfiError) with ONE
+/// failure source: generate's `fail "unterminated basic block"`
+/// (Code.hs:279-280 — a userError IOException, carried as the FfiError
+/// message verbatim). Subroutine construction is infallible at the type
+/// level in the shipped unit 15 (allocation-class failure aborts inside
+/// `subroutine`; inventory.tsv row 63's allocation-guard ruling).
 /// The phantom `S` (source `t`) distinguishes CompiledTypecheck /
 /// CompiledQuery subroutines (Foreign/Bytecode.hs:52-55) and is inferred
 /// from the call site exactly as in the source.
@@ -733,8 +754,13 @@ pub fn generate<S, REGS>(
     //   assert (addr /= maxBound) $ addr - pc (Code.hs:284-286)
     let get_label = |pc: u64, label: Label| -> u64 {
         let addr = offsets[label.0 as usize]; // VP.! — panics OOB like the source
-        // Control.Exception.assert fires under -O (the graded build);
-        // assert! is the always-on rendering of the same check.
+        // Control.Exception.assert is ERASED under -O (the graded build
+        // has NO check here; -fignore-asserts is implied by -O). This
+        // assert! is therefore port-side: a deliberate ALWAYS-ON
+        // invariant, equivalent to the source's -O0 check. Unreachable
+        // for well-formed code — every label referenced by an emitted
+        // instruction is inserted into layout_todo by add_insns and
+        // emitted by layout. Documented; no marker needed.
         assert!(addr != u64::MAX); // maxBound for not-yet-emitted blocks
         // addr - pc: BACKWARD jumps wrap into the 2^64 complement — the
         // evaluator's unsigned pc addition wraps back to addr; the wrap IS
@@ -802,15 +828,20 @@ pub fn generate<S, REGS>(
     //   reverse csConstants                         ↦ &cs_constants (already in
     //                                                allocation order)
     //   literals                                    ↦ &lit_slices
-    subroutine(
-        &words,
-        final_input_size,
-        final_input_size.wrapping_sub(register_index(next_input)),
-        register_index(code.cs_max_local).wrapping_add(constants_size),
-        &code.cs_constants,
-        &lit_slices,
-    )
-    .map(|sub| (meta, sub))
+    // The shipped `subroutine` is infallible at the type level (aborts on
+    // allocation-class failure inside, unit 15), so the pair wraps in Ok
+    // directly; no Result mapping.
+    Ok((
+        meta,
+        subroutine(
+            &words,
+            final_input_size,
+            final_input_size.wrapping_sub(register_index(next_input)),
+            register_index(code.cs_max_local).wrapping_add(constants_size),
+            &code.cs_constants,
+            &lit_slices,
+        ),
+    ))
 }
 
 /// `replicateM n (S.state supply)` (Code.hs:138) — pull `n` values from
@@ -901,18 +932,29 @@ fn shortcut(cfg: CFG) -> CFG {
         }
     }
     if !converged {
-        // BUG(port): the source's knot DIVERGES here — forcing `shortcuts`
-        // on a cycle of single-Jump blocks (e.g. two blocks ending in
-        // mutual `Jump`s, or a block whose only insn jumps to its own
-        // label — reachable in principle by `jump L; ... L <- label; jump
-        // L` shapes) raises GHC's NonTermination "<<loop>>" when
-        // `V.all isNothing shortcuts` (Code.hs:333) forces the element.
-        // The source marks this "FIXME: This can loop if the generated
-        // code contains infinite loops" (Code.hs:348). Reproduced
-        // bug-for-bug as a panic rather than a hang; a fix (cycle-proof
-        // shortcutting) ships only as a flagged post-parity change (RULE
-        // §2 BUG rule). Repro: build a subroutine whose block graph has a
-        // cycle of single-instruction Jump blocks, call
+        // BUG(port): the source's knot DIVERGES here. Ground reading
+        // (Code.hs:331-357): the guard `V.all isNothing shortcuts` (:333)
+        // forces only the Just/Nothing CONSTRUCTORS — each
+        // single-instruction element is `Just <thunk>`, and WHNF stops at
+        // the Just. The `<<loop>>` NonTermination fires when a cyclic
+        // chain's PAYLOAD is demanded: by `inline`/`relabel`/`mapLabels`
+        // over blocks REACHED FROM THE ENTRY (:335-340), forced by
+        // `layout` when it scrutinises each reached block's insns
+        // (:401/:427). Divergent shape: a cycle of blocks each holding
+        // exactly ONE `Jump` (a single-insn self-jump block, or two such
+        // blocks); a block with other insns + a Jump is multi-insn →
+        // `Nothing` → it cannot participate. The source marks this
+        // "FIXME: This can loop if the generated code contains infinite
+        // loops" (:348). The port's EAGER Jacobi fixpoint has a strictly
+        // SUPERSET panic domain: it panics on any such cycle (reachable
+        // or not) and on out-of-range targets from unreachable blocks,
+        // whereas the source leaves unreachable blocks behind ("NOTE:
+        // This will leave behind unreachable blocks", :330) and never
+        // forces them — all of it confined to already-defective inputs.
+        // Reproduced bug-for-bug as a panic rather than a hang; a fix
+        // (cycle-proof shortcutting) ships only as a flagged post-parity
+        // change (RULE §2 BUG rule). Repro: build a subroutine whose
+        // block graph has a cycle of single-instruction Jump blocks, call
         // generate(Optimised, ...).
         panic!("<<loop>>");
     }
@@ -1205,19 +1247,15 @@ fn register_index_word(i: u64) -> u64 {
 
 /// `succ csLabel` (Code.hs:462). Label's `deriving Enum` (Types.hs:52)
 /// newtype-derives from Int's Enum instance — pinned on disk:
-/// base-4.17.1.0/GHC/Enum.hs:508-510
+/// base-4.17.2.0/GHC/Enum.hs:509-512 (message at :511)
 ///   `succ x | x == maxBound = errorWithoutStackTrace
 ///      "Prelude.Enum.succ{Int}: tried to take `succ' of maxBound"`
 /// so succ ERRORS at the bound, never wraps (bytecode/types.rs +
 /// supply.rs dispositions; RULE §2 partial-functions row: panic with the
-/// same text).
-///
-/// TODO(port): RULE §2 (TIMING row, A6) divergence — the source's
-/// `let !label = succ csLabel` defers the error into the strict-field
-/// thunk of the State record while this port panics at mint; unreachable
-/// in any real run (one label per emitted basic block; 2^63-1 blocks
-/// first). Same divergence class and recovery note as supply.rs's
-/// succ_register.
+/// same text). No TIMING divergence: Code.hs:462 is `let !label = succ
+/// csLabel`, a BANG binding that forces the succ at the same program
+/// point as this call (contrast succ_word_register below, where the succ
+/// is deferred by the lazy State update).
 fn succ_label(l: Label) -> Label {
     Label(l.0.checked_add(1).unwrap_or_else(|| {
         panic!("Prelude.Enum.succ{{Int}}: tried to take `succ' of maxBound")
@@ -1226,14 +1264,22 @@ fn succ_label(l: Label) -> Label {
 
 /// `succ csNextConstant` (Code.hs:156). Register's `deriving Enum`
 /// (Types.hs:45) newtype-derives from Word64's — pinned on disk:
-/// base-4.17.1.0/GHC/Word.hs:717-722 `succ x | x /= maxBound = x + 1 |
-/// otherwise = succError "Word64"` with GHC/Enum.hs:206-211 raising
-/// "Enum.succ{Word64}: tried to take `succ' of maxBound". Errors at the
-/// bound, never wraps.
+/// base-4.17.2.0/GHC/Word.hs:719-722 (`succError "Word64"` at :722) with
+/// GHC/Enum.hs:206-209 raising "Enum.succ{Word64}: tried to take `succ'
+/// of maxBound". Errors at the bound, never wraps.
 ///
-/// TODO(port): RULE §2 (TIMING row, A6) divergence — the source's error
-/// sits in the lazy `succ` application forced by the State update, this
-/// port panics at mint; unreachable below 2^64-1 constant allocations
+/// TODO(port): RULE §2 (TIMING row, A6) divergence — the source defers
+/// the succ error past the `constant` call, because Code.hs:154-156's
+/// `S.put s { csNextConstant = succ csNextConstant }` is a State.Strict
+/// update whose strict bind pattern forces only the (a, s') PAIR, not
+/// the new state record: the error fires at the NEXT scrutiny of that
+/// field (a later `S.gets` projection, or the final
+/// `registerIndex csNextConstant` in generate) — while this port panics
+/// at mint. Probe (2026-10-15, GHC 9.4.7 replica): a State.Strict action
+/// that `put`s a record with a bottom field and `return`s a payload runs
+/// and its result pair and final record both force to WHNF with NO
+/// error; the error fires only when the bottom field is projected.
+/// REAL timing divergence, unreachable below 2^64-1 constant allocations
 /// (each constant register exists only because codegen emitted an
 /// instruction referencing it). Recovery path: poison the next-constant
 /// field and raise on the following `constant` call.
@@ -1323,14 +1369,20 @@ macro_rules! generate {
 }
 
 // Marker inventory (reviewer counts the trailer against this): TWO
-// TODO(port) — the A6 error-timing divergences at succ_label and
-// succ_word_register (both practically unreachable below 2^63/2^64
-// allocations; recovery paths recorded at each). ONE BUG(port) — the
-// shortcut knot's cyclic case: source raises GHC NonTermination "<<loop>>",
-// port panics (repro + FIXME citation at the site). ONE PERF(port) — the
-// shortcut fixpoint's per-pass Insn clones. Zero `unsafe` blocks (RULE §3
-// vacuously satisfied — pure code; the Haskell's one FFI touchpoint,
-// subroutine construction, crosses via the assumed sibling contract).
+// TODO(port) — the succ_word_register A6 error-timing divergence
+// (practically unreachable below 2^64 allocations; recovery path at the
+// site) and the vlog caller-location drop (HasCallStack → glog caller
+// field; decision owned by the glean-util log unit). ONE BUG(port) — the
+// shortcut knot's cyclic case: source raises GHC NonTermination
+// "<<loop>>" for cycles forced from the entry, port panics with a
+// strictly superset domain (unreachable cycles/OOB targets too; repro +
+// FIXME citation at the site). ONE PERF(port) — the shortcut fixpoint's
+// per-pass Insn clones. Zero `unsafe` blocks (RULE §3 vacuously satisfied
+// — pure code; the Haskell's one FFI touchpoint, subroutine construction,
+// crosses via the SHIPPED row-18 sibling, infallible at the type level:
+// allocation-class failure aborts inside). Zero
+// INVENTORY-BUG-CANDIDATE (no inventory row governs this unit; see the
+// header INVENTORY note).
 //
 // Coverage: every export of the Haskell module has a Rust counterpart —
 // Code [the monad-as-state struct; CodeS folded in], Register/Label/
@@ -1349,7 +1401,8 @@ macro_rules! generate {
 // Layout (+emit/emitNext/stillTodo/addInsns), Segment, register/
 // registerSegment/registerIndex. Dispositions for dropped Haskell
 // artifacts (no silent gaps): runST/unsafeFreeze [purity device], V.*
-// [representation], HasCallStack [GHC.Stack metadata], the Code-a action
+// [representation], HasCallStack [its observable caller-location is a
+// TODO(port) at vlog], the Code-a action
 // TYPE [DESIGN (1) &mut-methods], the succ/Many CodeGen instances
 // [DESIGN (2) macros/methods].
 //
@@ -1357,7 +1410,7 @@ macro_rules! generate {
 // is deliberately NOT a manifest unit; owned by the Step-4 survey build
 // (do not create ad-hoc here — same note as rts/types.rs and
 // supply.rs). The macros are #[macro_export] (crate-root namespace per
-// Rust rules), the assumed-import paths (crate::rts::bytecode::gen::
-// instruction, crate::rts::foreign::bytecode, glean_util::log) carry
-// their contracts in the header.
+// Rust rules), the import paths (crate::rts::bytecode::gen::instruction
+// [assumed], crate::rts::foreign::bytecode [shipped], glean_util::log
+// [assumed]) carry their contracts in the header.
 // PORT STATUS: confidence=medium todos=2
