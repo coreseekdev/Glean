@@ -1,6 +1,58 @@
 # Glean → Rust migration handoff
 
 **Kit**: Claude Code Migration Kit (`~/.claude/skills/code-migration/`, six-step
+process). Read DECISIONS.md first, then this file.
+
+## STATUS (supersedes the stale gate line below — 2026-10-16)
+
+**Step 3 (translation fan-out) IN FLIGHT: 17/386 units on disk + committed** on
+branch `migration/rust-port`, HEAD `ace571d`. Steps 0b/1/2 are COMPLETE and
+signed off (see DECISIONS.md's dated entries; RULEBOOK v0.3).
+
+Unit numbering follows DISPATCH order (not manifest lines). Shipped:
+1 hash.rs, 2 display.rs, 3 angle/types.rs, 4 schema/types.rs, 5 evolve.rs,
+6 resolve.rs, 7 Schema/Resolve.hs, 8 Glean/FFI.hs, 9 RTS/Builder.hs,
+10 RTS/Types.hs, 11 RTS/Term.hs, 12 Bytecode/Types.hs, 13 Bytecode/Supply.hs,
+14 RTS/Bytecode/Code.hs, 15 RTS/Foreign/Bytecode.hs, 16 RTS.hs,
+17 RTS/Set.hs.
+
+Batch 2 (glean-core) remaining in manifest order: RTS/Foreign/Lookup.hs,
+RTS/Traverse.hs, RTS/Typecheck.hs, Foreign/Inventory.hs, Foreign/Subst.hs,
+Util/Vector.hs, then RTS/Foreign/{Define,LookupCache,Stacked,Stats,FactSet}.hsc,
+Bytecode/Supply.hs is shipped (13) — then the glean-typed crate starts
+(typed/Build.hs, Id.hs, Binary.hs). Queue = manifest rows with no target on
+disk; check `grep -v` of shipped paths against manifest.tsv.
+
+Pipeline per unit: implementer → 2 adversarial reviewers (semantics A /
+obedience B, separate contexts, assume wrong, touch nothing) → fixer
+(confirmed findings only) → commit. RULEBOOK v0.3 is authoritative; §0 bans
+cargo build/check in-loop; markers TODO(port)/BUG(port)/PERF(port)/SAFETY are
+load-bearing; the PORT STATUS trailer is terminal and must match the actual
+marker count.
+
+Operational notes from 2026-10-15/16 sessions:
+- QUOTA is the live constraint (5h rolling subagent cap). Reviewer A for unit
+  16 could not dispatch twice (ECONNRESET, then rate limit) and was performed
+  INLINE by the coordinator against pinned ground truth (DEV-001 precedent);
+  log such substitutions in the commit message. A combined fixer for a
+  unit PAIR is acceptable (units 12+13 precedent).
+- Never trust "verified-by-sibling" or "grep-verified zero/max" claims;
+  verify against pinned on-disk sources (GHC 9.4.7 at
+  ~/glean-build/ghc-9.4.7-install/bin/ghc — used for `!!` panic-message and
+  `deriving newtype Show` probes this batch).
+- QUEUED (needs its own review pass, shipped-file doc alignment):
+  rts/builder.rs claims "allocation failures abort inside C++ and never cross
+  the boundary" while crate::ffi + rts.rs + rts/set.rs correctly record
+  wrap.h's real behavior (every std::exception, bad_alloc included, crosses as
+  a returned message — wrap.h:21-32). Disposition (abort) is the same; the
+  builder.rs wording should be aligned.
+- Marker-grep hygiene: breakdown bullets that spell the marker names
+  (`TODO(port):` etc.) over-count on raw grep. Prefer prose that avoids the
+  literal spellings inside the tally block.
+- Handoff history: git log on branch migration/rust-port is the record of
+  every unit's review findings + resolutions.
+
+**Kit**: Claude Code Migration Kit (`~/.claude/skills/code-migration/`, six-step
 process). **Gate status: Step 0b (judge) COMPLETE, awaiting human sign-off to
 start Step 1.** Read DECISIONS.md first, then this file.
 
