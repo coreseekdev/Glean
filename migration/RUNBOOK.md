@@ -128,3 +128,16 @@ skeleton (fill in per unit):
 - Marker grammar is load-bearing: `TODO(port):`, `BUG(port):`,
   `PERF(port):`, `// SAFETY:`, `INVENTORY-BUG-CANDIDATE row N:`.
 - All ui-visible progress claims must match `git log` reality.
+
+## Session topology (2026-10-17) — idle-time execution
+
+Migration units execute inside IDLE-TIME TASKS (free off-peak compute).
+Platform rules for any idle-time run: dispatch agents FOREGROUND only
+(no background agents in that mode), and NEVER create further
+idle-time tasks or automations — replenishment is owned by the
+scheduled SUPERVISOR automation (creation spec: migration/SUPERVISOR.md;
+it fires on a cron, keeps the idle queue non-empty by pre-staging one
+successor whenever a task is running with none queued, and ships a
+single heartbeat unit itself only after an 8h commit stall). Paused
+idle tasks are user-held spares — leave them alone. Collisions between
+two concurrent runs are prevented by Step 0's seconds-fresh triage.
