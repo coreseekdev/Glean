@@ -1,4 +1,4 @@
-# Idle-queue supervisor — creation spec (pending one step in a FRESH chat)
+# Idle-queue supervisor — creation spec (CREATED 2026-10-17: automation-a60b5841-7b60-43c2-9cc6-47a58c624c40; old worker automation-c6386d8d… deleted)
 
 ## Why this exists (platform constraints, verified 2026-10-17)
 

@@ -3,11 +3,11 @@
 **Kit**: Claude Code Migration Kit (`~/.claude/skills/code-migration/`, six-step
 process). Read DECISIONS.md first, then this file.
 
-## STATUS (supersedes the stale gate line below — 2026-10-16)
+## STATUS (supersedes the stale gate line below — 2026-10-17)
 
-**Step 3 (translation fan-out) IN FLIGHT: 31 units on disk + committed**
-on branch `migration/rust-port`, HEAD `d54cd8a` (26 dispatch-order units
-+ manifest-line units 5, 15, 16, 17, 33). Steps 0b/1/2 are
+**Step 3 (translation fan-out) IN FLIGHT: 33 units on disk + committed**
+on branch `migration/rust-port`, HEAD `e879d8a` (26 dispatch-order units
++ manifest-line units 5, 15, 16, 17, 33, 34, 35). Steps 0b/1/2 are
 COMPLETE and signed off (see DECISIONS.md's dated entries; RULEBOOK
 v0.3 + the §4 assumed-imports paragraph, transcribed 2026-10-16).
 
@@ -29,7 +29,10 @@ Shipped (dispatch-order names, then manifest-line units):
 32 RTS/Foreign/FactSet.rs; manifest-line units: 5 schema/util.rs (1f9a2fa),
 15 typed/build.rs (e4626cc), 16 typed/id.rs (4382ebe), 17 typed/binary.rs
 (ae1b1eb, completed from a dead-session draft), 33 typed/predicate.rs
-(d54cd8a).
+(d54cd8a), 34 typed/build_fact.rs (367f952, NewFact/Facts/FactsM/
+buildBatch; the insertWith NEW++OLD order was probe-fixed in review),
+35 typed/fact.rs (e879d8a, decodeFact/decodeRef; decode_as_fact
+override contract verified against Gen/Haskell.hs:327-328).
 
 Blocked: manifest lines 23-24 (RTS/Traverse.hs, RTS/Typecheck.hs) — their
 module `Glean.RTS.Bytecode.Gen.Issue` is missing from the Haskell tree;
@@ -37,10 +40,10 @@ semantics reconstructable from glean/rts/bytecode/subroutine.cpp if ever
 needed.
 
 Queue = manifest lines with no target on disk (file-line numbering):
-next is line 34 (Typed/BuildFact.hs — its deps Predicate/Binary/Id all
-shipped), then 35 Fact.hs, 36 Prim.hs, 37 Typed.hs (the glean-typed crate
-root — will wire `pub mod`s and needs once_cell in Cargo.toml), 38-40
-glean-util (Some/Service/ThriftService), 41+ backend-api. Check with:
+next is line 36 (Typed/Prim.hs — deps all shipped), then 37 Typed.hs
+(the glean-typed crate root — will wire `pub mod`s and needs once_cell
+in Cargo.toml), 38-40 glean-util (Some/Service/ThriftService), 41+
+backend-api. Check with:
 `tail -n +2 migration/manifest.tsv | awk -F'\t' '{print NR+1"\t"$2}' |
 while IFS=$'\t' read r t; do [ -f "$t" ] || echo "$r $t"; done`.
 
@@ -71,6 +74,23 @@ Operational notes from 2026-10-15/16 sessions:
   this now binds REVIEWERS too: unit 33's reviewer-B proposed cite
   "corrections" (glean.thrift off-by-ones) that were themselves wrong;
   the fixer's grep-refutation stood after coordinator re-verification.
+  Unit 35 recurred it: a reviewer's Binary.hs:235-236 "off-by-one" was
+  refuted by the coordinator's sed — the cite was exact.
+- Coordinator BRIEFS must not assert library semantics (unit 34,
+  2026-10-17): the brief's parenthetical claimed Data.HashMap's
+  insertWith combines as old++new; the truth is f NEW OLD (fresh value
+  PREPENDED) — reviewer A's pinned-GHC probe caught it and the
+  coordinator re-probed independently (unordered-containers-0.2.20 from
+  the baseline cabal store) before applying. Briefs pin APIs and cites;
+  a semantics claim needs a probe or a library cite. (Unit 35's brief
+  also mis-stated thrift `Fact` field 2 as `Byte` — the implementer's
+  correction to `Value` stood.)
+- The supervisor automation edits migration/SUPERVISOR.md in-flight
+  (its own queue bookkeeping; mtimes of other migration/ files can be
+  touched with no content change). It is NOT a rival unit session:
+  verify the edit's accuracy (CronList), commit it verbatim at records
+  time, and expect the Edit tool's staleness check to fire on files it
+  touched — re-read and continue.
 - Assumed-import images must match the PINNED thrift compiler, never
   intuition: unit 17's `Byte(pub u8)` was wrong — hsthrift GenUtils.hs:231
   maps thrift byte → Int8 (set.rs:467-470 had already pinned it for the
