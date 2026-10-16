@@ -291,6 +291,23 @@ impl Drop for Subst {
 }
 
 impl Subst {
+    /// Raw `Substitution*` accessor — the marshalling seam sibling units
+    /// need to pass an owned `Subst` as an INPUT to their externs (the
+    /// consumer: `foreign/fact_set.rs`'s `glean_factset_rebase`, ffi.h:308,
+    /// which takes `const Substitution*` in its 3rd parameter). Mirrors
+    /// the shipped `Inventory::as_ptr` (inventory.rs:322-337) seam. The
+    /// pointer is BORROWED: it stays owned by this `Subst`, remains valid
+    /// until drop, and must never be freed by the caller.
+    //
+    // SIBLING-UNIT SEAM (added 2026-10-16 for migration unit 32 —
+    // rust/glean-core/src/rts/foreign/fact_set.rs): the shipped surface had
+    // no raw-pointer accessor and `rebase`'s input `subst` cannot be
+    // translated without one. Additive; no unsafe, no marker/trailer
+    // impact.
+    pub fn as_ptr(&self) -> *mut c_void {
+        self.ptr
+    }
+
     /// Adopt a raw `Substitution*` into the owned `Subst` handle — the door
     /// for sibling units whose own externs receive a `Substitution**`
     /// out-param: `glean_define_batch` (ffi.h:235; the consumer is
