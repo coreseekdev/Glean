@@ -53,6 +53,28 @@
   background dispatch (quota lesson), DEV-002 skeptic re-review in the
   first batch.
 
+## 2026-10-16 — Step 3 fix-round adjudications (units 28-31 + unit-18 addendum)
+
+- H1 (rustc-repro'd by the unit-30 review): callback-bearing traits that
+  merge `invoke(...)?` must state `E: From<FfiError>` at the TRAIT
+  declaration (impls cannot add it — E0276; omission is E0277). Bound
+  applied to CanLookup/CanDefine + the scoped helpers; recorded as an
+  operational note in HANDOFF.
+- Bound-vs-abort fork adjudicated INLINE (adjudication re-dispatch failed
+  ECONNRESET — DEV-001 now covers adjudication dispatches): bounds kept
+  because the withSnapshot/stacked paths sit under catch sites
+  (Batch.hs `logExceptions`, SendAndRebaseQueue `rebase`) where a wholesale
+  abort disposition would diverge from the source; `define_fact` keeps its
+  row-pinned `Result<Fid, InvalidRedefinition>` via a private merge enum
+  (DefineFactFailure: From<FfiError>), aborting the FFI arm just outside
+  the bracket.
+- Unit-18 addendum (found by a coordinator completeness survey, missed by
+  both unit-18 reviewers): the `withCanLookup` export was absent from the
+  shipped lookup.rs; restored in 3083c34. New review checklist item: tick
+  the source's export list against the target's `pub` items.
+- Marker-grep hygiene formalized: tally bullets avoid literal marker
+  spellings; exactly one canonical flag line per flagged item.
+
 ## 2026-10-07 — Queued amendments: coordinator-default rulings (user deferred decision — "context incomplete, continue"; all reviewable/reversible at any gate)
 
 Applied by the orchestrator under RULEBOOK v0.3's existing rules, no new policy invented:
