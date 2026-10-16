@@ -5,23 +5,30 @@ process). Read DECISIONS.md first, then this file.
 
 ## STATUS (supersedes the stale gate line below — 2026-10-16)
 
-**Step 3 (translation fan-out) IN FLIGHT: 17/386 units on disk + committed** on
-branch `migration/rust-port`, HEAD `ace571d`. Steps 0b/1/2 are COMPLETE and
-signed off (see DECISIONS.md's dated entries; RULEBOOK v0.3).
+**Step 3 (translation fan-out) IN FLIGHT: units 1-18, 21-23 and 28-31 on
+disk + committed (25 units)** on branch `migration/rust-port`, HEAD `3083c34`.
+Steps 0b/1/2 are COMPLETE and signed off (see DECISIONS.md's dated entries;
+RULEBOOK v0.3).
 
 Unit numbering follows DISPATCH order (not manifest lines). Shipped:
 1 hash.rs, 2 display.rs, 3 angle/types.rs, 4 schema/types.rs, 5 evolve.rs,
 6 resolve.rs, 7 Schema/Resolve.hs, 8 Glean/FFI.hs, 9 RTS/Builder.hs,
 10 RTS/Types.hs, 11 RTS/Term.hs, 12 Bytecode/Types.hs, 13 Bytecode/Supply.hs,
 14 RTS/Bytecode/Code.hs, 15 RTS/Foreign/Bytecode.hs, 16 RTS.hs,
-17 RTS/Set.hs.
+17 RTS/Set.hs, 18 RTS/Foreign/Lookup.hs (+ fix-round addendum in 3083c34),
+21 RTS/Foreign/Inventory.hs, 22 RTS/Foreign/Subst.hs, 23 Util/Vector.hs,
+28 RTS/Foreign/Define.hs, 29 RTS/Foreign/LookupCache.hs,
+30 RTS/Foreign/Stacked.hs, 31 RTS/Foreign/Stats.hs.
 
-Batch 2 (glean-core) remaining in manifest order: RTS/Foreign/Lookup.hs,
-RTS/Traverse.hs, RTS/Typecheck.hs, Foreign/Inventory.hs, Foreign/Subst.hs,
-Util/Vector.hs, then RTS/Foreign/{Define,LookupCache,Stacked,Stats,FactSet}.hsc,
-Bytecode/Supply.hs is shipped (13) — then the glean-typed crate starts
-(typed/Build.hs, Id.hs, Binary.hs). Queue = manifest rows with no target on
-disk; check `grep -v` of shipped paths against manifest.tsv.
+Blocked: 19 (RTS/Traverse.hs) + 20 (RTS/Typecheck.hs) — their module
+`Glean.RTS.Bytecode.Gen.Issue` is missing from the Haskell tree; semantics
+reconstructable from glean/rts/bytecode/subroutine.cpp if ever needed.
+
+Batch 2 (glean-core) remaining in manifest order: RTS/Foreign/FactSet.hsc
+(next, unit 32 — its deps Define/Stacked/Stats/Lookup are all shipped), then
+the glean-typed crate starts (typed/Build.hs, Id.hs, Binary.hs). Queue =
+manifest rows with no target on disk; check `grep -v` of shipped paths
+against manifest.tsv.
 
 Pipeline per unit: implementer → 2 adversarial reviewers (semantics A /
 obedience B, separate contexts, assume wrong, touch nothing) → fixer
@@ -34,12 +41,26 @@ Operational notes from 2026-10-15/16 sessions:
 - QUOTA is the live constraint (5h rolling subagent cap). Reviewer A for unit
   16 could not dispatch twice (ECONNRESET, then rate limit) and was performed
   INLINE by the coordinator against pinned ground truth (DEV-001 precedent);
-  log such substitutions in the commit message. A combined fixer for a
-  unit PAIR is acceptable (units 12+13 precedent).
+  same for the units-28/30/31 review-round adjudication (ECONNRESET; bounds
+  kept + merge enum chosen, rationale logged in 3083c34). Log such
+  substitutions in the commit message. A combined fixer (or implementer) for
+  a unit PAIR is acceptable (units 12+13 precedent; 30+31 batch).
 - Never trust "verified-by-sibling" or "grep-verified zero/max" claims;
   verify against pinned on-disk sources (GHC 9.4.7 at
   ~/glean-build/ghc-9.4.7-install/bin/ghc — used for `!!` panic-message and
   `deriving newtype Show` probes this batch).
+- EXPORT-LIST completeness: reviewers of unit 18 missed that `withCanLookup`
+  (a source export, 10+ call sites) was absent from the shipped lookup.rs;
+  the units-28-31 fix round caught it. When reviewing a leaf unit, tick off
+  the source's export list against the target's `pub` items, not just the
+  inventory row's prose.
+- Generic callback traits that merge `invoke(...)?` MUST state
+  `E: From<FfiError>` at the trait declaration — an impl cannot add it
+  (E0276) and omitting it is E0277 (rustc-repro'd, unit-30 review H1). When
+  a call site must keep a row-pinned concrete error type that has no such
+  impl, use a private merge enum + `From<FfiError>` and dispose of the FFI
+  arm just outside the bracket (define_fact / DefineFactFailure precedent,
+  define.rs:459-481).
 - QUEUED (needs its own review pass, shipped-file doc alignment):
   rts/builder.rs claims "allocation failures abort inside C++ and never cross
   the boundary" while crate::ffi + rts.rs + rts/set.rs correctly record
