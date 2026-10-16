@@ -5,8 +5,8 @@ process). Read DECISIONS.md first, then this file.
 
 ## STATUS (supersedes the stale gate line below — 2026-10-16)
 
-**Step 3 (translation fan-out) IN FLIGHT: units 1-18, 21-23 and 28-31 on
-disk + committed (25 units)** on branch `migration/rust-port`, HEAD `3083c34`.
+**Step 3 (translation fan-out) IN FLIGHT: units 1-18, 21-23 and 28-32 on
+disk + committed (26 units)** on branch `migration/rust-port`, HEAD `dfa9cd4`.
 Steps 0b/1/2 are COMPLETE and signed off (see DECISIONS.md's dated entries;
 RULEBOOK v0.3).
 
@@ -16,19 +16,19 @@ Unit numbering follows DISPATCH order (not manifest lines). Shipped:
 10 RTS/Types.hs, 11 RTS/Term.hs, 12 Bytecode/Types.hs, 13 Bytecode/Supply.hs,
 14 RTS/Bytecode/Code.hs, 15 RTS/Foreign/Bytecode.hs, 16 RTS.hs,
 17 RTS/Set.hs, 18 RTS/Foreign/Lookup.hs (+ fix-round addendum in 3083c34),
-21 RTS/Foreign/Inventory.hs, 22 RTS/Foreign/Subst.hs, 23 Util/Vector.hs,
-28 RTS/Foreign/Define.hs, 29 RTS/Foreign/LookupCache.hs,
-30 RTS/Foreign/Stacked.hs, 31 RTS/Foreign/Stats.hs.
+21 RTS/Foreign/Inventory.hs, 22 RTS/Foreign/Subst.hs (+ as_ptr seam),
+23 Util/Vector.hs, 28 RTS/Foreign/Define.hs, 29 RTS/Foreign/LookupCache.hs,
+30 RTS/Foreign/Stacked.hs, 31 RTS/Foreign/Stats.hs,
+32 RTS/Foreign/FactSet.hs.
 
 Blocked: 19 (RTS/Traverse.hs) + 20 (RTS/Typecheck.hs) — their module
 `Glean.RTS.Bytecode.Gen.Issue` is missing from the Haskell tree; semantics
 reconstructable from glean/rts/bytecode/subroutine.cpp if ever needed.
 
-Batch 2 (glean-core) remaining in manifest order: RTS/Foreign/FactSet.hsc
-(next, unit 32 — its deps Define/Stacked/Stats/Lookup are all shipped), then
-the glean-typed crate starts (typed/Build.hs, Id.hs, Binary.hs). Queue =
-manifest rows with no target on disk; check `grep -v` of shipped paths
-against manifest.tsv.
+Batch 2 (glean-core) remaining in manifest order: the glean-typed crate
+starts next (typed/Build.hs, Id.hs, Binary.hs — Build.hs's deps FactSet/
+Define are shipped). Queue = manifest rows with no target on disk; check
+`grep -v` of shipped paths against manifest.tsv.
 
 Pipeline per unit: implementer → 2 adversarial reviewers (semantics A /
 obedience B, separate contexts, assume wrong, touch nothing) → fixer
@@ -61,6 +61,21 @@ Operational notes from 2026-10-15/16 sessions:
   impl, use a private merge enum + `From<FfiError>` and dispose of the FFI
   arm just outside the bracket (define_fact / DefineFactFailure precedent,
   define.rs:459-481).
+- Mutable-handle Send/Sync (unit-32 review B-F1): a handle is only `Sync` if
+  `&self` cannot reach a mutation — trait impls count (FactSet's
+  `CanDefine::with_define` hands out the mutable define surface, so
+  `define_batch(&*facts, ...)` mutates through `&self`). The sibling
+  `Define` is !Send/!Sync for the same reason (define.rs:310-313); FactSet
+  now matches. When porting a mutable handle, audit every `&self` path
+  (including trait impls) before adding Send/Sync.
+- PERF(port) is mandated for slow-but-faithful copies (unit-32 review A-F3):
+  the crate's `unsafe_malloced_byte_string` copies where the source's
+  `unsafeMallocedByteString` was zero-copy — flagged at the use site.
+- Subagent block-reports can be stale: the unit-32 implementer reported
+  "blocked, no file written" yet the complete draft was on disk (found via
+  `git status`). Always check the working-tree state before acting on a
+  block report; land the missing seam inline (the unit-28 seam precedent)
+  and re-dispatch.
 - QUEUED (needs its own review pass, shipped-file doc alignment):
   rts/builder.rs claims "allocation failures abort inside C++ and never cross
   the boundary" while crate::ffi + rts.rs + rts/set.rs correctly record
