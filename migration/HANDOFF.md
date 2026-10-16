@@ -54,6 +54,10 @@ TODO(port)/BUG(port)/PERF(port)/SAFETY are load-bearing; the PORT STATUS
 trailer is terminal and must match the actual marker count.
 
 Operational notes from 2026-10-15/16 sessions:
+- UNATTENDED SESSIONS: scheduled runs follow migration/RUNBOOK.md (the
+  operational manual for a fresh coordinator with no conversation
+  context — orient, queue, pipeline, records, rails). Interactive
+  sessions use it too when picking up cold.
 - QUOTA is the live constraint (5h rolling subagent cap; this host also
   runs idle-time sessions where background agents are unavailable —
   dispatch foreground, 2 reviewers per message). Reviewer A for unit 16
