@@ -5,86 +5,95 @@ process). Read DECISIONS.md first, then this file.
 
 ## STATUS (supersedes the stale gate line below — 2026-10-16)
 
-**Step 3 (translation fan-out) IN FLIGHT: units 1-18, 21-23 and 28-32 on
-disk + committed (26 units)** on branch `migration/rust-port`, HEAD `dfa9cd4`.
-Steps 0b/1/2 are COMPLETE and signed off (see DECISIONS.md's dated entries;
-RULEBOOK v0.3).
+**Step 3 (translation fan-out) IN FLIGHT: 31 units on disk + committed**
+on branch `migration/rust-port`, HEAD `d54cd8a` (26 dispatch-order units
++ manifest-line units 5, 15, 16, 17, 33). Steps 0b/1/2 are
+COMPLETE and signed off (see DECISIONS.md's dated entries; RULEBOOK
+v0.3 + the §4 assumed-imports paragraph, transcribed 2026-10-16).
 
-Unit numbering follows DISPATCH order (not manifest lines). Shipped:
+**Numbering convention changed mid-batch**: commits since 1f9a2fa cite
+the manifest FILE LINE (1-indexed including the `source	target` header)
+as the unit number — "unit 33/386" = `sed -n '33p' migration/manifest.tsv`
+= Typed/Predicate.hs. Older commits used dispatch order; both records
+are in the git log.
+
+Shipped (dispatch-order names, then manifest-line units):
 1 hash.rs, 2 display.rs, 3 angle/types.rs, 4 schema/types.rs, 5 evolve.rs,
 6 resolve.rs, 7 Schema/Resolve.hs, 8 Glean/FFI.hs, 9 RTS/Builder.hs,
 10 RTS/Types.hs, 11 RTS/Term.hs, 12 Bytecode/Types.hs, 13 Bytecode/Supply.hs,
 14 RTS/Bytecode/Code.hs, 15 RTS/Foreign/Bytecode.hs, 16 RTS.hs,
-17 RTS/Set.hs, 18 RTS/Foreign/Lookup.hs (+ fix-round addendum in 3083c34),
-21 RTS/Foreign/Inventory.hs, 22 RTS/Foreign/Subst.hs (+ as_ptr seam),
-23 Util/Vector.hs, 28 RTS/Foreign/Define.hs, 29 RTS/Foreign/LookupCache.hs,
+17 RTS/Set.hs, 18 RTS/Foreign/Lookup.hs (+ addendum in 3083c34),
+21 RTS/Foreign/Inventory.hs, 22 RTS/Foreign/Subst.hs, 23 Util/Vector.hs,
+28 RTS/Foreign/Define.hs, 29 RTS/Foreign/LookupCache.hs,
 30 RTS/Foreign/Stacked.hs, 31 RTS/Foreign/Stats.hs,
-32 RTS/Foreign/FactSet.hs.
+32 RTS/Foreign/FactSet.rs; manifest-line units: 5 schema/util.rs (1f9a2fa),
+15 typed/build.rs (e4626cc), 16 typed/id.rs (4382ebe), 17 typed/binary.rs
+(ae1b1eb, completed from a dead-session draft), 33 typed/predicate.rs
+(d54cd8a).
 
-Blocked: 19 (RTS/Traverse.hs) + 20 (RTS/Typecheck.hs) — their module
-`Glean.RTS.Bytecode.Gen.Issue` is missing from the Haskell tree; semantics
-reconstructable from glean/rts/bytecode/subroutine.cpp if ever needed.
+Blocked: manifest lines 23-24 (RTS/Traverse.hs, RTS/Typecheck.hs) — their
+module `Glean.RTS.Bytecode.Gen.Issue` is missing from the Haskell tree;
+semantics reconstructable from glean/rts/bytecode/subroutine.cpp if ever
+needed.
 
-Batch 2 (glean-core) remaining in manifest order: the glean-typed crate
-starts next (typed/Build.hs, Id.hs, Binary.hs — Build.hs's deps FactSet/
-Define are shipped). Queue = manifest rows with no target on disk; check
-`grep -v` of shipped paths against manifest.tsv.
+Queue = manifest lines with no target on disk (file-line numbering):
+next is line 34 (Typed/BuildFact.hs — its deps Predicate/Binary/Id all
+shipped), then 35 Fact.hs, 36 Prim.hs, 37 Typed.hs (the glean-typed crate
+root — will wire `pub mod`s and needs once_cell in Cargo.toml), 38-40
+glean-util (Some/Service/ThriftService), 41+ backend-api. Check with:
+`tail -n +2 migration/manifest.tsv | awk -F'\t' '{print NR+1"\t"$2}' |
+while IFS=$'\t' read r t; do [ -f "$t" ] || echo "$r $t"; done`.
 
 Pipeline per unit: implementer → 2 adversarial reviewers (semantics A /
 obedience B, separate contexts, assume wrong, touch nothing) → fixer
-(confirmed findings only) → commit. RULEBOOK v0.3 is authoritative; §0 bans
-cargo build/check in-loop; markers TODO(port)/BUG(port)/PERF(port)/SAFETY are
-load-bearing; the PORT STATUS trailer is terminal and must match the actual
-marker count.
+(confirmed findings only; INLINE fixer is sanctioned when the round is
+purely mechanical) → commit. RULEBOOK v0.3 is authoritative; §0 bans
+cargo build/check in-loop (scratch rustc/GHC probes of ISOLATED snippets
+are the sanctioned pinned-toolchain evidence pattern); markers
+TODO(port)/BUG(port)/PERF(port)/SAFETY are load-bearing; the PORT STATUS
+trailer is terminal and must match the actual marker count.
 
 Operational notes from 2026-10-15/16 sessions:
-- QUOTA is the live constraint (5h rolling subagent cap). Reviewer A for unit
-  16 could not dispatch twice (ECONNRESET, then rate limit) and was performed
-  INLINE by the coordinator against pinned ground truth (DEV-001 precedent);
-  same for the units-28/30/31 review-round adjudication (ECONNRESET; bounds
-  kept + merge enum chosen, rationale logged in 3083c34). Log such
-  substitutions in the commit message. A combined fixer (or implementer) for
-  a unit PAIR is acceptable (units 12+13 precedent; 30+31 batch).
-- Never trust "verified-by-sibling" or "grep-verified zero/max" claims;
-  verify against pinned on-disk sources (GHC 9.4.7 at
-  ~/glean-build/ghc-9.4.7-install/bin/ghc — used for `!!` panic-message and
-  `deriving newtype Show` probes this batch).
-- EXPORT-LIST completeness: reviewers of unit 18 missed that `withCanLookup`
-  (a source export, 10+ call sites) was absent from the shipped lookup.rs;
-  the units-28-31 fix round caught it. When reviewing a leaf unit, tick off
-  the source's export list against the target's `pub` items, not just the
-  inventory row's prose.
+- QUOTA is the live constraint (5h rolling subagent cap; this host also
+  runs idle-time sessions where background agents are unavailable —
+  dispatch foreground, 2 reviewers per message). Reviewer A for unit 16
+  could not dispatch twice (ECONNRESET, then rate limit) and was performed
+  INLINE by the coordinator against pinned ground truth (DEV-001
+  precedent); same for the units-28/30/31 review-round adjudication.
+  Log such substitutions in the commit message.
+- Never trust "verified-by-sibling" or "grep-verified zero/max" claims —
+  this now binds REVIEWERS too: unit 33's reviewer-B proposed cite
+  "corrections" (glean.thrift off-by-ones) that were themselves wrong;
+  the fixer's grep-refutation stood after coordinator re-verification.
+- Assumed-import images must match the PINNED thrift compiler, never
+  intuition: unit 17's `Byte(pub u8)` was wrong — hsthrift GenUtils.hs:231
+  maps thrift byte → Int8 (set.rs:467-470 had already pinned it for the
+  same call sites). §4's assumed-imports paragraph now requires this.
+- EXPORT-LIST completeness cuts both ways (unit-18 lesson + unit 33):
+  tick the source's export list against the target's pub items AND check
+  ABSTRACTION — `Predicates` exported without `(..)` means the port's
+  field must be private, constructor reachable only through the module's
+  own functions.
 - Generic callback traits that merge `invoke(...)?` MUST state
-  `E: From<FfiError>` at the trait declaration — an impl cannot add it
-  (E0276) and omitting it is E0277 (rustc-repro'd, unit-30 review H1). When
-  a call site must keep a row-pinned concrete error type that has no such
-  impl, use a private merge enum + `From<FfiError>` and dispose of the FFI
-  arm just outside the bracket (define_fact / DefineFactFailure precedent,
-  define.rs:459-481).
-- Mutable-handle Send/Sync (unit-32 review B-F1): a handle is only `Sync` if
-  `&self` cannot reach a mutation — trait impls count (FactSet's
-  `CanDefine::with_define` hands out the mutable define surface, so
-  `define_batch(&*facts, ...)` mutates through `&self`). The sibling
-  `Define` is !Send/!Sync for the same reason (define.rs:310-313); FactSet
-  now matches. When porting a mutable handle, audit every `&self` path
-  (including trait impls) before adding Send/Sync.
-- PERF(port) is mandated for slow-but-faithful copies (unit-32 review A-F3):
-  the crate's `unsafe_malloced_byte_string` copies where the source's
-  `unsafeMallocedByteString` was zero-copy — flagged at the use site.
-- Subagent block-reports can be stale: the unit-32 implementer reported
-  "blocked, no file written" yet the complete draft was on disk (found via
-  `git status`). Always check the working-tree state before acting on a
-  block report; land the missing seam inline (the unit-28 seam precedent)
-  and re-dispatch.
-- QUEUED (needs its own review pass, shipped-file doc alignment):
-  rts/builder.rs claims "allocation failures abort inside C++ and never cross
-  the boundary" while crate::ffi + rts.rs + rts/set.rs correctly record
-  wrap.h's real behavior (every std::exception, bad_alloc included, crosses as
-  a returned message — wrap.h:21-32). Disposition (abort) is the same; the
-  builder.rs wording should be aligned.
-- Marker-grep hygiene: breakdown bullets that spell the marker names
-  (`TODO(port):` etc.) over-count on raw grep. Prefer prose that avoids the
-  literal spellings inside the tally block.
+  `E: From<FfiError>` at the trait declaration (define.rs:459-481
+  precedent for the merge-enum alternative).
+- Mutable-handle Send/Sync (unit-32 review B-F1): audit every `&self`
+  path (including trait impls) before adding Send/Sync.
+- PERF(port) is mandated for slow-but-faithful copies.
+- Subagent block-reports can be stale (unit-32): check the working tree
+  before acting; unit 17's draft from a dead session was found complete-
+  except-tuples on disk and finished by a completion round rather than
+  restarted.
+- DEV-006 (user-deferred): RULEBOOK §3's crate list (glean-storage/
+  glean-core only) vs the shipped raw-pop-consumer contract that
+  sanctions glean-typed's decoder units carrying unsafe (build.rs,
+  binary.rs). §3 amendment queued for the human; see DECISIONS 2026-10-16.
+- builder.rs's allocation-failure wording was aligned to the wrap.h
+  story (20c59d4): allocation failures CROSS as returned messages; the
+  abort is the Rust-side disposition per inventory row 61. QUEUED item
+  closed.
+- Marker-grep hygiene: breakdown bullets avoid the literal marker
+  spellings inside the tally block.
 - Handoff history: git log on branch migration/rust-port is the record of
   every unit's review findings + resolutions.
 
