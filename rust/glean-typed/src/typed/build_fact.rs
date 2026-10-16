@@ -31,7 +31,7 @@
 //     becomes exclusive-borrow plumbing, which is exactly what the row's
 //     Mutex<Facts> future (the Write/Async.rs port, inbound edge
 //     edges.tsv:1863) needs. No divergence, no INVENTORY-BUG-CANDIDATE.
-//     One FORWARD tension the row exposes is flagged as a TODO(port) at
+//     One FORWARD tension the row exposes is flagged as a port-todo at
 //     the `Facts` struct (the Send bound), not diverged from.
 //   No other row governs this unit; the source is the spec (RULE §0).
 //
