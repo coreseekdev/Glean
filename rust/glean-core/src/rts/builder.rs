@@ -51,9 +51,10 @@
 // verified against the C++ bodies at glean/rts/ffi.cpp:659-678: the only
 // exceptions those bodies can raise are allocation failures (`new Output`,
 // ffi::clone_bytes' malloc), and per the channel contract in ffi.rs those
-// abort inside C++ and never cross the boundary — any Err that does cross
-// is precondition-class, and this module aborts on it conservatively
-// anyway. The precondition-guarded symbols of the builder family (the
+// cross the boundary as returned messages (wrap.h:21-32 catches every
+// std::exception, bad_alloc included) — so every Err reaching this module
+// is allocation-class, and inventory row 61's ruling ("abort on OOM") is
+// applied to it via allocation_guard_abort. The precondition-guarded symbols of the builder family (the
 // push_value_* arity/type checks) live at sites owned by
 // rust/glean-core/src/rts.rs, not here.
 //
@@ -79,11 +80,11 @@
 //! wrapper, where the Haskell was already FFI; every block carries a SAFETY
 //! comment. Error-recovery classification per RULE §2 (error-recovery rule),
 //! aligned with ffi.rs's channel contract so the two units tell ONE story:
-//! allocation failures abort inside the C++ side and never cross this
-//! boundary (the C++ bodies at ffi.cpp:659-678 can only fail to allocate);
-//! any Err that does cross is precondition-class by construction, and this
-//! module aborts on it per inventory row 61's conservative ruling ("abort on
-//! OOM") — see allocation_guard_abort.
+//! allocation failures cross the boundary as returned messages (wrap.h:21-32
+//! catches every std::exception, bad_alloc included; the C++ bodies at
+//! ffi.cpp:659-678 can only fail to allocate, so a crossing Err is
+//! allocation-class by construction), and this module applies inventory row
+//! 61's ruling ("abort on OOM") to them — see allocation_guard_abort.
 
 use std::os::raw::c_void;
 use std::ptr;
@@ -203,10 +204,10 @@ impl Drop for Builder {
 /// Every FFI null return in the inventory records which kind:
 /// allocation-guard (abort) or precondition-guard (record + partial
 /// result)." Guard kind here, told as ONE story with ffi.rs's channel
-/// contract: allocation failures abort inside C++ and never cross the
-/// boundary (the C++ bodies at ffi.cpp:659-678 can only fail to allocate),
-/// so any Err reaching this helper is precondition-class — and inventory
-/// row 61 conservatively rules "abort on OOM (source dies via RTS OOM)"
+/// contract: allocation failures cross the boundary as returned messages
+/// (wrap.h:21-32; the C++ bodies at ffi.cpp:659-678 can only fail to
+/// allocate), so any Err reaching this helper is allocation-class — and
+/// inventory row 61 rules "abort on OOM (source dies via RTS OOM)"
 /// for this family, so the port aborts instead of returning a catchable
 /// error, mirroring an unrecoverable RTS death. The source emits no
 /// diagnostic before dying; we keep the C++ message on stderr because it is
@@ -243,9 +244,8 @@ pub fn new_builder() -> Builder {
     // closure; the returned pointer follows crate::ffi::invoke's contract
     // (null on success, else a malloc'd NUL-terminated message it frees).
     if let Err(e) = unsafe { invoke(|| sys::glean_new_builder(&mut out)) } {
-        // `new Output` can only fail on OOM (ffi.cpp:660) — which aborts
-        // inside C++ and never crosses; any Err here is precondition-class
-        // and aborts per row 61's conservative ruling.
+        // `new Output` can only fail on OOM (ffi.cpp:660) — which crosses
+        // as a wrap.h message; allocation-class, aborts per row 61.
         allocation_guard_abort(e);
     }
     debug_assert!(
@@ -287,8 +287,8 @@ pub fn finish_builder(builder: &Builder) -> Vec<u8> {
         unsafe { invoke(|| sys::glean_finish_builder(builder.as_ptr(), &mut data, &mut size)) }
     {
         // ffi::clone_bytes' malloc is the only failure (ffi.cpp:672) —
-        // which aborts inside C++ and never crosses; any Err here is
-        // precondition-class and aborts per row 61's conservative ruling.
+        // which crosses as a wrap.h message; allocation-class, aborts
+        // per row 61.
         allocation_guard_abort(e);
     }
     if data.is_null() {
@@ -353,10 +353,9 @@ pub fn reset_builder(builder: &mut Builder) {
     // contract.
     if let Err(e) = unsafe { invoke(|| sys::glean_reset_builder(builder.as_ptr())) } {
         // The body's move-assign cannot actually throw (ffi.cpp:676-678),
-        // so this path is unreachable in practice — allocation failures
-        // abort inside C++ and never cross; kept because the C ABI reserves
-        // the slot, and any Err that does cross is treated per row 61's
-        // conservative ruling.
+        // so this path is unreachable in practice; kept because the C ABI
+        // reserves the slot, and any Err that does cross (a wrap.h
+        // message) is treated per row 61's ruling.
         allocation_guard_abort(e);
     }
 }
