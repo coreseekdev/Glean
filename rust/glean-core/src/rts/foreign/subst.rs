@@ -279,13 +279,38 @@ impl Drop for Subst {
     fn drop(&mut self) {
         // SAFETY: `self.ptr` is non-null and originates from a successful
         // glean_new_subst / glean_subst_compose / glean_subst_deserialize
-        // (the only construction sites; the field is private and no other
-        // constructor exists), so it is a live handle the C++ side owns.
+        // call or the `from_raw` seam below (the construction sites; the
+        // field stays private and every door carries the same live-handle
+        // contract), so it is a live handle the C++ side owns.
         // `Subst` is neither Copy nor Clone, so this runs exactly once per
         // handle and cannot double-free. The body (ffi.cpp:401-403) is
         // ffi::free_, whose wrap_ swallows every exception (wrap.h:34-45) —
         // nothing can unwind across.
         unsafe { sys::glean_free_subst(self.ptr) };
+    }
+}
+
+impl Subst {
+    /// Adopt a raw `Substitution*` into the owned `Subst` handle — the door
+    /// for sibling units whose own externs receive a `Substitution**`
+    /// out-param: `glean_define_batch` (ffi.h:235; the consumer is
+    /// `crate::rts::foreign::define`, and this out-param is exactly why the
+    /// `pub mod sys` above is public) and, later, `glean_factset_rebase`'s
+    /// `Substitution** out_subst` (ffi.h:311, Foreign/FactSet.hs).
+    ///
+    // SIBLING-UNIT SEAM (added 2026-10-16 for migration unit 28 —
+    // rust/glean-core/src/rts/foreign/define.rs): the shipped surface had
+    // no constructor from a raw pointer and the field is private to this
+    // module, so define_batch could not adopt the C++ handle it receives.
+    // The other construction paths (new/compose/deserialize) are
+    // unaffected.
+    ///
+    /// SAFETY: `ptr` must be a live, uniquely-owned `Substitution*` from a
+    /// successful C ABI call (never null, never already adopted or freed
+    /// elsewhere). Ownership transfers to the returned handle: `Drop`
+    /// (glean_free_subst) will free `ptr` exactly once.
+    pub unsafe fn from_raw(ptr: *mut c_void) -> Subst {
+        Subst { ptr }
     }
 }
 
@@ -554,13 +579,15 @@ pub fn deserialize(first_id: Fid, ids: &[i64]) -> Result<Subst, FfiError> {
 //     gap — flagged here per the broad family interpretation (lookup.rs
 //     unit 18 raised the same class of flag for `glean_lookup_empty`).
 //     The ABI-TRUTH NOTE documents the details.
-// SAFETY count: 14 unsafe constructs, each with a SAFETY comment — the two
-// `unsafe impl Send/Sync for Subst` 2, `Drop` 1, `empty` 1 (invoke), compose
-// 1, serialize 2 (invoke + unsafe_malloced_vector), subst_offset 1, subst 1,
-// subst_vector 2 (invoke + unsafe_malloced_vector), subst_intervals 2 (invoke
-// + unsafe_malloced_vector), deserialize 1. Three further doc-level SAFETY
-// comments (17 `// SAFETY:` lines total) justify the safe `Subst { ptr }`
-// construction after each of the `empty`/compose/deserialize success paths.
-// (The `unsafe extern "C"` block is a declaration, not counted;
-// `unsafe_subst_intervals_and_release` carries no unsafe construct.)
+// SAFETY count: 15 unsafe constructs, each with a SAFETY comment — the two
+// `unsafe impl Send/Sync for Subst` 2, `Drop` 1, `from_raw` 1 (the sibling
+// seam added for the Define.hs unit — its SAFETY is the adoption contract),
+// `empty` 1 (invoke), compose 1, serialize 2 (invoke +
+// unsafe_malloced_vector), subst_offset 1, subst 1, subst_vector 2 (invoke +
+// unsafe_malloced_vector), subst_intervals 2 (invoke + unsafe_malloced_vector),
+// deserialize 1. Three further doc-level SAFETY comments (18 `// SAFETY:`
+// lines total) justify the safe `Subst { ptr }` construction after each of
+// the `empty`/compose/deserialize success paths. (The `unsafe extern "C"`
+// block is a declaration, not counted; `unsafe_subst_intervals_and_release`
+// carries no unsafe construct.)
 // PORT STATUS: confidence=high todos=1

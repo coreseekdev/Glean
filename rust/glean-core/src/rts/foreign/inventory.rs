@@ -309,8 +309,33 @@ pub struct Inventory {
 // `ForeignPtr`-backed `newtype Inventory` is unconditionally `Send + Sync`;
 // the raw-pointer port must match that capability — concurrent reads via
 // `glean_inventory_predicates` / `glean_inventory_serialize` only read.
+// SAFETY (Send): the handle is immutable after construction and every Rust
+// method borrows `&self`; moving it across threads cannot alias mutable
+// state.
 unsafe impl Send for Inventory {}
+// SAFETY (Sync): as Send above — the C++ API only reads through a shared
+// handle, and the source's newtype is unconditionally `Sync`; matching it
+// keeps the same capability (docs.rs-shape parity with the source).
 unsafe impl Sync for Inventory {}
+
+impl Inventory {
+    /// Raw `Inventory*` accessor — the marshalling seam sibling units need
+    /// to declare their own externs over the shared opaque handle (the
+    /// first consumer: `foreign/define.rs`'s `glean_define_batch`,
+    /// ffi.h:226, which takes `Inventory*`). Mirrors the shipped
+    /// `Builder::as_ptr` (builder.rs:186-188) / `Lookup::ptr`
+    /// (lookup.rs:77-79) seams. The pointer is BORROWED: it stays owned by
+    /// this `Inventory`, remains valid until drop, and must never be freed
+    /// by the caller.
+    //
+    // SIBLING-UNIT SEAM (added 2026-10-16 for migration unit 28 —
+    // rust/glean-core/src/rts/foreign/define.rs): the shipped surface had
+    // no raw-pointer accessor and `defineBatch` cannot be translated
+    // without one. Additive; no unsafe, no marker/trailer impact.
+    pub fn as_ptr(&self) -> *mut c_void {
+        self.ptr
+    }
+}
 
 // `destroy = glean_inventory_free` (Inventory.hs:44).
 impl Drop for Inventory {
@@ -659,12 +684,14 @@ impl Eq for Inventory {}
 //     locally, because RULEBOOK §1 (thrift row: "never hand-translated")
 //     and RULE §4 ("never re-declare a sibling's type") require it and the
 //     Haskell imported it from generated `Glean.Types` (Inventory.hs:36).
-// SAFETY marker count: 14 unsafe blocks, each carrying a `// SAFETY:`
-// comment — Drop 1, new 3 (two with_ptr + one invoke), predicates 5 (the
-// glean_inventory_predicates invoke, the array deref, the
+// SAFETY marker count: 16 unsafe constructs, each carrying a `// SAFETY:`
+// comment — 14 blocks: Drop 1, new 3 (two with_ptr + one invoke),
+// predicates 5 (the glean_inventory_predicates invoke, the array deref, the
 // glean_predicate_unpack invoke, from_utf8, and the using_malloced bracket),
 // serialize 2 (invoke + unsafe_malloced_byte_string), deserialize 1
-// (invoke), validate 1 (invoke), PartialEq 1 (invoke). Two further
-// `unsafe impl Send/Sync for Inventory` (each with its own SAFETY
-// justification: the C++ Inventory is immutable after construction).
+// (invoke), validate 1 (invoke), PartialEq 1 (invoke); plus the two
+// `unsafe impl Send/Sync for Inventory` (each with its own SAFETY comment:
+// the C++ Inventory is immutable after construction). Recounted in the
+// units 28–31 fix round (the pre-fix trailer said 14 and the impl pair
+// carried a justification, not the SAFETY form).
 // PORT STATUS: confidence=high todos=1

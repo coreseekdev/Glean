@@ -32,9 +32,17 @@
 //   Followed EXACTLY: CanLookup trait, LookupGuard (Drop = glean_lookup_free),
 //   lookup_fact returns Option, pid==0 -> None, bracket for empty/snapshot.
 //
+// INVENTORY-BUG-CANDIDATE row 69 (row text only): the row's symbol list
+// includes `glean_lookup_empty`, but ffi.h does not declare it — only
+// ffi.cpp defines it (ffi.cpp:317-319). The Haskell imports it directly via
+// `foreign import ccall` (Lookup.hs:87-88), so the port declares the extern
+// too (sys module below, with its ABI-TRUTH NOTE). This is a C++ header
+// omission, not a port divergence; flagged for the inventory owner.
+//
 // DEPENDENCY TRUTH (migration/depmap/edges.tsv, module-level):
-//   Inbound: the Haskell imports Glean.RTS.Types (Fid), Glean.FFI (invoke),
-//   Util.FFI (invoke). Outbound: this module is a leaf — no other Rust module
+//   Inbound: the Haskell imports Glean.RTS.Types (Fid), Glean.FFI
+//   (unsafeMallocedByteString), Util.FFI (invoke). Outbound: this module is
+//   a leaf — no other Rust module
 //   depends on it yet; future consumers will be in glean-db.
 //
 // SIBLING-UNIT CONTRACTS (RULE §4; DONE crates'/units' real APIs read,
@@ -46,6 +54,19 @@
 //   * crate::rts::types::Fid (the fact ID type)
 //   * Why `pub mod sys` is public — for sibling consumers declaring their own
 //     externs.
+//
+// UNIT-18 ADDENDUM (units 28–31 fix round, 2026-10-16):
+//   * `with_can_lookup` (Lookup.hs:47-49, exported at :12) was missing from
+//     the first draft; restored below (§4 completeness — every source export
+//     accounted for).
+//   * `CanLookup::with_lookup` (and the two scoped helpers) gained the
+//     `E: From<FfiError>` bound: the `invoke(...)?` sites need it, and the
+//     reviewer of units 30+31 proved with rustc repros that omitting it is a
+//     hard compile error (E0277), while an impl may not add it itself
+//     (E0276). The trait doc below carries the load-bearing statement.
+//   * The five invoke blocks this round's audit found without SAFETY
+//     comments got them, and the trailer's unsafe count was corrected
+//     (it said 8, the file has 10).
 
 //! Lookup — fact lookup handle for the Glean RTS.
 
@@ -90,16 +111,30 @@ impl Lookup {
 pub struct EmptyLookup;
 
 /// Class of things we can look up facts in.
+///
+/// `E: From<FfiError>` on the callback-bearing methods is load-bearing, not
+/// decorative: every implementation of this trait reaches the C++ vtable
+/// through `invoke(...)?`, whose error channel is `FfiError`; the `?` needs
+/// `E: From<FfiError>` to merge. Rust has no implicit bounds, so the bound
+/// is stated here (trait-level, so implementations cannot add it themselves
+/// — E0276). Confirmed by two independent reviews with rustc repros
+/// (migration fix round, units 28–31 batch).
 pub trait CanLookup {
     /// Call `f` with the raw pointer to the C++ `Lookup`.
-    fn with_lookup<T, E>(&self, f: impl FnOnce(*mut c_void) -> Result<T, E>) -> Result<T, E>;
+    fn with_lookup<T, E: From<FfiError>>(
+        &self,
+        f: impl FnOnce(*mut c_void) -> Result<T, E>,
+    ) -> Result<T, E>;
 
     /// Get the name of the lookup.
     fn lookup_name(&self) -> &str;
 }
 
 impl CanLookup for Lookup {
-    fn with_lookup<T, E>(&self, f: impl FnOnce(*mut c_void) -> Result<T, E>) -> Result<T, E> {
+    fn with_lookup<T, E: From<FfiError>>(
+        &self,
+        f: impl FnOnce(*mut c_void) -> Result<T, E>,
+    ) -> Result<T, E> {
         f(self.ptr)
     }
 
@@ -109,7 +144,10 @@ impl CanLookup for Lookup {
 }
 
 impl CanLookup for EmptyLookup {
-    fn with_lookup<T, E>(&self, f: impl FnOnce(*mut c_void) -> Result<T, E>) -> Result<T, E> {
+    fn with_lookup<T, E: From<FfiError>>(
+        &self,
+        f: impl FnOnce(*mut c_void) -> Result<T, E>,
+    ) -> Result<T, E> {
         with_empty_lookup(|lookup| f(lookup.ptr))
     }
 
@@ -135,11 +173,19 @@ impl Drop for LookupGuard {
 /// Call `f` with an empty lookup.
 ///
 /// Bracket: call `glean_lookup_empty`, wrap in `Lookup`, call `f`, then `glean_lookup_free`.
-pub fn with_empty_lookup<T, E>(f: impl FnOnce(&Lookup) -> Result<T, E>) -> Result<T, E> {
+/// The `E: From<FfiError>` bound is required by the `invoke(...)?` below (the
+/// same bound `CanLookup::with_lookup` states; see its note).
+pub fn with_empty_lookup<T, E: From<FfiError>>(
+    f: impl FnOnce(&Lookup) -> Result<T, E>,
+) -> Result<T, E> {
     let mut ptr: *mut c_void = ptr::null_mut();
 
     // If `invoke` fails, the `?` operator returns early before the guard is
     // created — no leak.
+    // SAFETY: `ptr` is an initialised stack out-param; `glean_lookup_empty`
+    // (body ffi.cpp:317-319) allocates the EmptyLookup and stores it in
+    // `*ptr` on success. `invoke` takes the extern call itself as its
+    // `call` closure and owns the error string's release.
     unsafe { invoke(|| sys::glean_lookup_empty(&mut ptr)) }?;
 
     let guard = LookupGuard(ptr);
@@ -150,7 +196,9 @@ pub fn with_empty_lookup<T, E>(f: impl FnOnce(&Lookup) -> Result<T, E>) -> Resul
 /// Call `f` with a snapshot lookup restricted to facts up to `boundary`.
 ///
 /// Bracket: call `glean_snapshot_new`, wrap in `Lookup`, call `f`, then `glean_lookup_free`.
-pub fn with_snapshot<T, E>(
+/// The `E: From<FfiError>` bound is required by the `invoke(...)?` below (the
+/// same bound `CanLookup::with_lookup` states; see its note).
+pub fn with_snapshot<T, E: From<FfiError>>(
     base: &impl CanLookup,
     boundary: Fid,
     f: impl FnOnce(&Lookup) -> Result<T, E>,
@@ -160,6 +208,11 @@ pub fn with_snapshot<T, E>(
 
         // If `invoke` fails, the `?` operator returns early before the guard is
         // created — no leak.
+        // SAFETY: `base_ptr` is the live `Lookup*` the enclosing
+        // `with_lookup` borrow guarantees for this closure; `ptr` is an
+        // initialised stack out-param; `glean_snapshot_new` (body
+        // ffi.cpp:154-159) allocates the Snapshot and stores it on success.
+        // `invoke` itself owns the error string's release.
         unsafe { invoke(|| sys::glean_snapshot_new(base_ptr, boundary.0, &mut ptr)) }?;
 
         let guard = LookupGuard(ptr);
@@ -168,10 +221,40 @@ pub fn with_snapshot<T, E>(
     })
 }
 
+/// `withCanLookup :: CanLookup lookup => lookup -> (Lookup -> IO a) -> IO a`
+/// (Lookup.hs:47-49): hand `f` a `Lookup` value built from the abstract
+/// lookup's pointer and name.
+///
+/// * withCanLookup lookup f =
+/// *   withLookup lookup $ \p -> f (Lookup p (lookupName lookup))
+///
+/// The `E: From<FfiError>` bound is transitive: this function has no invoke
+/// of its own, but delegates to `CanLookup::with_lookup`, whose signature
+/// carries the bound (see the trait doc above).
+///
+/// UNIT-18 ADDENDUM (units 28–31 fix round): this combinator is exported by
+/// the source (Lookup.hs:12) and used at Open.hs:172/:181/:201/:203/:361/
+/// :426, Batch.hs:190 and RenameBench.hs:30; the first draft omitted it.
+/// Restored here for §4 completeness (one source file → one target file,
+/// every export accounted for).
+pub fn with_can_lookup<T, E: From<FfiError>>(
+    lookup: &impl CanLookup,
+    f: impl FnOnce(&Lookup) -> Result<T, E>,
+) -> Result<T, E> {
+    lookup.with_lookup(|ptr| {
+        let lookup = Lookup::new(ptr, lookup.lookup_name());
+        f(&lookup)
+    })
+}
+
 /// Get the starting fact ID of the lookup.
 pub fn starting_id(lookup: &impl CanLookup) -> Result<Fid, FfiError> {
     lookup.with_lookup(|ptr| {
         let mut id: i64 = 0;
+        // SAFETY: `ptr` is the live `Lookup*` `with_lookup` guarantees for
+        // this closure; `id` is an initialised stack out-param;
+        // `glean_lookup_starting_id` (body ffi.cpp:321-323) writes it on
+        // success. `invoke` owns the error string's release.
         unsafe { invoke(|| sys::glean_lookup_starting_id(ptr, &mut id)) }?;
         Ok(Fid(id))
     })
@@ -181,6 +264,10 @@ pub fn starting_id(lookup: &impl CanLookup) -> Result<Fid, FfiError> {
 pub fn first_free_id(lookup: &impl CanLookup) -> Result<Fid, FfiError> {
     lookup.with_lookup(|ptr| {
         let mut id: i64 = 0;
+        // SAFETY: `ptr` is the live `Lookup*` `with_lookup` guarantees for
+        // this closure; `id` is an initialised stack out-param;
+        // `glean_lookup_first_free_id` (body ffi.cpp:325-327) writes it on
+        // success. `invoke` owns the error string's release.
         unsafe { invoke(|| sys::glean_lookup_first_free_id(ptr, &mut id)) }?;
         Ok(Fid(id))
     })
@@ -203,6 +290,12 @@ pub fn lookup_fact(
         let mut val_ptr: *mut c_void = ptr::null_mut();
         let mut val_size: usize = 0;
 
+        // SAFETY: `ptr` is the live `Lookup*` `with_lookup` guarantees for
+        // this closure; the four out-params are initialised stack locals;
+        // `glean_lookup_fact` (body ffi.cpp:329-353) fills them on success —
+        // on a found fact it mallocs the key/value buffers (transferred
+        // below), on a miss it leaves `type_ == 0`. `invoke` owns the error
+        // string's release.
         unsafe {
             invoke(|| {
                 sys::glean_lookup_fact(
@@ -278,18 +371,22 @@ pub mod sys {
     }
 }
 
-// Marker breakdown (closed set — 0 TODO(port), 0 BUG(port), 0
-// PERF(port), 1 INVENTORY-BUG-CANDIDATE):
-//   * 0 TODO(port): everything is clear from the source; the one
+// Marker breakdown (closed set — no open port TODOs, no source-defect
+// reproductions, no performance deferrals, 1 inventory-bug-candidate):
+//   * no open port TODOs: everything is clear from the source; the one
 //     open-looking question (glean_lookup_empty not in ffi.h) is resolved by
 //     the ABI truth (the symbol exists in ffi.cpp and the Haskell imports it
 //     directly).
-//   * 0 BUG(port): no source defects reproduced.
-//   * 0 PERF(port): no performance deferrals.
-//   * 1 INVENTORY-BUG-CANDIDATE: the glean_lookup_empty symbol is not declared
-//     in ffi.h (only in ffi.cpp). This is a C++ header omission, not a
-//     Rust-side issue. Flag it.
-// SAFETY count: 8 unsafe blocks, each with a SAFETY comment — Drop 1,
+//   * no source-defect reproductions: none.
+//   * no performance deferrals: none.
+//   * 1 inventory-bug-candidate: the glean_lookup_empty symbol is not
+//     declared in ffi.h (only in ffi.cpp). This is a C++ header omission, not
+//     a Rust-side issue. Flag it.
+// SAFETY count: 10 unsafe blocks, all covered by SAFETY comments — Drop 1,
 // with_empty_lookup 1, with_snapshot 1, starting_id 1, first_free_id 1,
-// lookup_fact 1 (invoke) + 2 (unsafe_malloced_byte_string calls).
+// lookup_fact 5 (the invoke, the two libc::free calls in the not-found
+// branch, and the two unsafe_malloced_byte_string transfers, which share
+// one comment). with_can_lookup adds none. Recounted in the units 28–31 fix
+// round; the pre-fix trailer claimed 8 and the five invoke sites lacked
+// their SAFETY comments.
 // PORT STATUS: confidence=high todos=0
