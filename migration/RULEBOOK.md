@@ -113,6 +113,17 @@ with the open question. UNKNOWN is an answer; a stalled batch is not.
   hand-written. The hand-written helpers that lived beside generated code
   (`glean/lib/Glean/Util/*`, `glean/github/{Facebook,ServiceData}`) are
   translation units in `glean-client`/`glean-fb303`.
+- Assumed-imports (B4, v0.3): when a unit's source imports generated code
+  with no manifest unit (`glean_thrift` types, `ThriftEnum`, the pinned
+  compiler's hs.newtype images), the port documents the assumed shape in an
+  in-file ASSUMED-IMPORT block — sketch plus thrift/compiler/pinned-evidence
+  cites — and imports it from the generated crate. Never fork a
+  hand-translation of generated code into a unit; never invent a second
+  owner of an already-sketched surface. A consumer extending an assumed
+  surface records the extension in its own block and cross-references the
+  first sketch (typed/build.rs → typed/binary.rs `from_thrift_enum`
+  precedent). Assumed images must match the PINNED compiler's mapping
+  (thrift byte → Int8, not u8 — hsthrift GenUtils.hs:231), not intuition.
 - Imports: `use crate::glean::…` within a crate; `use glean_<crate>::…`
   across crates. No glob re-exports across crates.
 - Tests: not translated (DECISIONS.md §4). Each crate's `tests/` holds

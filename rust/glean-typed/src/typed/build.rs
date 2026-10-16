@@ -111,8 +111,10 @@
 // Only the type `Fact` (a cache value) and `to_thrift_enum` (used by
 // `thrift_enum_d`) are consumed here; the class's other methods
 // (`fromThriftEnum`, `allThriftEnumValues`, `toThriftEnumEither`) have other
-// in-tree consumers (Binary.hs:107, DB.hs:92/:121, glass, lsp) and belong to
-// whatever unit ports the generated thrift surface. The hsthrift
+// in-tree consumers (Binary.hs:107, DB.hs:92/:121, glass, lsp).
+// typed/binary.rs is the consumer that extended this sketch with the
+// from-direction `from_thrift_enum` (Binary.hs:107); the remaining methods
+// belong to whatever unit ports the generated thrift surface. The hsthrift
 // `toThriftEnum` is PARTIAL (`errorWithoutStackTrace` on out-of-range, e.g.
 // "Thrift.Protocol.ThriftEnum.Bool.toThriftEnum: bad argument",
 // Thrift/Protocol.hs:56-59); the Rust impl must panic with the same per-type

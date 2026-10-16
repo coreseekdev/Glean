@@ -92,3 +92,35 @@ Applied by the orchestrator under RULEBOOK v0.3's existing rules, no new policy 
    superseded by RULEBOOK §1 FFI row (A2: raw extern "C" for flat ABI);
    rows annotated in-place, no code changes required (all four units
    already shipped extern-C).
+
+## 2026-10-16 — Unit 17 (typed/binary.rs) adjudications
+
+- Byte image ruling (reviewer A MAJOR, CONFIRMED): the thrift `byte` →
+  `Int8` image is pinned by the hsthrift compiler itself
+  (hsthrift/compiler/Thrift/Compiler/GenUtils.hs:231 `genType I8 =
+  qualType "Int" "Int8"`) and by shipped set.rs:467-470/:576-578 for
+  exactly the Typed/Binary.hs:198 sites. binary.rs's assumed `Byte(pub
+  u8)` corrected to `pub i8` (decode `n as i8`, build `self.0 as u8`,
+  set-insert sign-extends per the set.rs contract). Assumed-import images
+  must be pinned to the compiler's mapping, not intuited — folded into
+  RULEBOOK §4's assumed-imports paragraph.
+- Reviewer false-finding refuted by the fixer (B-2, glean.thrift
+  off-by-ones): the ORIGINAL cites were exact (`typedef binary Value` at
+  :144, `struct Fact {` at :147); the reviewer's proposed numbers were
+  the wrong ones. Lesson: the "never trust grep-verified claims" rule
+  binds reviewers too — a reviewer's own line-number claims get verified
+  before they're applied.
+- RULEBOOK §4 assumed-imports paragraph finally transcribed (the
+  2026-10-07 coordinator-default ruling item 2 recorded it as applied but
+  the §4 body never received the text; executed now at the batch
+  boundary — transcription of approved B4, no new policy).
+- DEV-006 (user-deferred, reviewable at any gate): RULEBOOK §3's letter
+  allows unsafe only in glean-storage/glean-core, but the shipped
+  raw-pop-consumer contract (rts.rs:123-138) + build.rs's RULE §3
+  CRATE-SCOPE paragraph sanction glean-typed's Decoder-consuming units to
+  carry unsafe FFI wrappers (the Haskell there was already FFI — §3's
+  intent clause). binary.rs follows the build.rs precedent with 18/18
+  SAFETY notes. Default ruling: keep the in-file documented exception;
+  §3's crate-list amendment stays QUEUED for the human (extend the list
+  to name glean-typed's decoder units, or pre-build safe pop wrappers in
+  glean-core at Step-4 consolidation).
