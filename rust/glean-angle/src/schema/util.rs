@@ -6,12 +6,27 @@
 // INVENTORY (RULE §5): no row in any migration/inventory*.tsv names this
 // unit (grep "Schema/Util"/"Util.hs" across inventory.tsv and the five
 // per-area sweeps: zero rows). The module is pure construction / parsing /
-// rendering over the sibling AST — no gap construct (no FFI, no STM, no
-// lazy IO, no orphan Binary) — so there is no target_translation to follow
+// rendering over the sibling AST — no inventory-rowed gap construct (no
+// FFI, no STM, no orphan Binary) — so there is no target_translation to follow
 // and no INVENTORY-BUG-CANDIDATE. The one kit-external import
 // (Util.Text.textToInt from hsthrift common/util, an fbcode-style shim
 // outside the 383-unit manifest, like Compat.Prettyprinter in display.rs)
 // has a fully-pinned source: transcribed below as `text_to_int`.
+//
+// DEPENDENCY TRUTH (the source's whole import list, Util.hs:27-33):
+//   - Glean.Angle.Types — the SHIPPED sibling unit 3
+//     (rust/glean-angle/src/angle/types.rs): Type_, FieldDef_, Name,
+//     SourceRef, PredicateId, TypeId, TUPLE_FIELD, and the glean_thrift
+//     re-exports PredicateRef/TypeRef/Version. Only `use`d here, never
+//     re-declared.
+//   - Util.Text (hsthrift common/util) — kit-external shim, owns no
+//     manifest unit; its textToInt is transcribed below as the private
+//     `text_to_int` (source pinned — see INVENTORY above).
+//   - TextShow — external; its `showt` rendering is the crate's Display
+//     stand-in (RULE §2 deriving-Show row): showt on the thrift Version
+//     (i32) is signed decimal, i.e. i32's Display, used in show_ref.
+//   - Data.Text (GHC boot lib) — breakOnEnd/init/split transcribe to
+//     std str ops inline (rfind / pop / split); no separate unit.
 //
 // SIBLING CONTRACTS (RULE §4 assumed-imports; in-crate sibling per §0/§4 ownership): crate::angle::types owns Type_,
 // FieldDef_, Name, SourceRef, PredicateId, TypeId, TUPLE_FIELD and the
@@ -29,7 +44,7 @@
 //     (prefix up to AND INCLUDING the last separator), and with no '.' in
 //     the input the pair is ("", whole) — `breakOnEnd "." "123"` =
 //     ("","123"), which is what makes the source's `Text.init` partial
-//     (see the BUG(port) at parse_ref).
+//     (see the defect marker at parse_ref).
 //   - Data.Text.init on empty errors "Data.Text.init: empty input".
 //   - Util.Text.textToInt (hsthrift common/util/Util/Text.hs:294-313):
 //     empty fails; optional leading '-' then ASCII digits only ('+',
@@ -143,13 +158,22 @@ pub fn tuple_schema<ST, P, T>(tys: Vec<Type_<ST, P, T>>) -> Type_<ST, P, T> {
 /// integer") is discarded: `parseRef`, this unit's only consumer, uses
 /// just the Right/Left discriminator, and the message is never surfaced
 /// anywhere in the source tree. RULE §1 (strings row): `Text` → `&str`.
+// TODO(port): this transcription is private to this unit because
+// Util.Text (hsthrift common/util) is kit-external and owns no manifest
+// unit — but e.g. glass (Glass/Search/LSIF.hs, Glass/Search/Haskell.hs),
+// shell (Shell.hs) and the CLI (GleanCLI/Derive.hs) call textToInt too,
+// all in OTHER crates; if those units land, hoist this to a shared
+// module (crate-local `util` or a glean-util surface) instead of
+// private copies — same shape as display.rs's prettyprinter-ownership
+// flag; deciding the home is a Step-4 wiring question.
 fn text_to_int(txt: &str) -> Result<i64, ()> {
     let (negate, digits) = match txt.chars().next() {
         // len == 0 -> err
         None => return Err(()),
         // leading '-' with len > 1: negate <$> go 0 (off+1). The guard
-        // uses byte length; outcome-equivalent to the source's UTF-16
-        // length, because the only strings that parse are pure ASCII
+        // uses byte length; outcome-equivalent to the source's byte length
+        // (text-2.0.2 stores UTF-8 bytes), because the only strings that
+        // parse are pure ASCII
         // digits (any non-digit tail is Err either way).
         Some('-') if txt.len() > 1 => (true, &txt[1..]),
         // any other lead char parses from offset 0 and fails in the
@@ -304,9 +328,9 @@ pub type NameSpaces = Vec<Name>;
 /// (strings row): `&str` in, owned pieces out.
 pub fn split_dot(x: &str) -> (NameSpaces, Name) {
     // Text.split ('.' ==) x always yields at least one piece (even ""
-    // yields [""]), so the source's `[] -> ([], "")` case is unreachable
-    // and RULE §2's partial-functions row dead arm (Text.split always yields >=1 piece); not a §2 partial function: the pop default
-    // below is the dead branch's value.
+    // yields [""]), so the source's `[] -> ([], "")` arm is unreachable —
+    // not a §2 partial function; the `pop` default below is that dead
+    // branch's value.
     let mut pieces: Vec<&str> = x.split('.').collect();
     let last = pieces.pop().unwrap_or("");
     // case reverse pieces of x : ys -> (reverse ys, x)
@@ -317,25 +341,32 @@ pub fn split_dot(x: &str) -> (NameSpaces, Name) {
 }
 
 // ---------------------------------------------------------------------------
-// Marker breakdown (RULE §6: reviewers check the trailer against this)
+// Marker breakdown (closed set — RULE §6: reviewers check the trailer
+// against this; prose only, so a raw grep for the marker names counts
+// exactly the real sites)
 // ---------------------------------------------------------------------------
 //
-// Open TODO(port) markers: 2
-//   1. text_to_int ownership: Util.Text (hsthrift common/util) is
-//      kit-external and owns no manifest unit, so its textToInt lives here
-//      as a private transcription — but glass (Glass/Search/LSIF.hs,
+// Open port-question markers (todo kind): 2
+//   1. parse_ref: the empty-name input panics eagerly here while the
+//      Haskell throws only when the name field is forced (lazy);
+//      amortizing the check per-access would require reshaping the
+//      sibling-owned SourceRef, so the divergence is flagged at the
+//      site instead.
+//   2. text_to_int ownership: the transcription is private to this unit
+//      because Util.Text (hsthrift common/util) is kit-external and owns
+//      no manifest unit — but glass (Glass/Search/LSIF.hs,
 //      Glass/Search/Haskell.hs), shell (Shell.hs) and the CLI
-//      (GleanCLI/Derive.hs) call textToInt too, all in OTHER crates.
-// TODO(port): if those units need text_to_int, hoist this transcription to
-// a shared module (crate-local `util` or a glean-util surface) instead of
-// three private copies; deciding the home is a Step-4 wiring question,
-// same shape as display.rs's prettyprinter-ownership TODO.
-//
-// BUG(port) markers: 1 (parse_ref's Text.init-on-empty, reproduced
-// bug-for-bug with the source's exact panic message — a defect marker,
-// not a todo). No PERF/SAFETY markers: nothing perf-critical beyond the
-// obvious Vec/String allocations the whole first pass shares, and no
-// unsafe code.
+//      (GleanCLI/Derive.hs) call textToInt too, all in OTHER crates; if
+//      those units land, hoisting to a shared module (crate-local
+//      `util` or a glean-util surface) instead of private copies is a
+//      Step-4 wiring question, same shape as display.rs's
+//      prettyprinter-ownership flag.
+// Defect markers (bug kind): 1 — parse_ref's Text.init-on-empty,
+// reproduced bug-for-bug with the source's exact panic message (a
+// defect marker, not a todo).
+// No perf or unsafe markers: nothing perf-critical beyond the obvious
+// Vec/String allocations the whole first pass shares, and no unsafe
+// code in this pure unit.
 //
 // Coverage: every export of the Haskell module has a Rust counterpart —
 // unit, lowerBool, lowerMaybe, lowerEnum, boolFields, maybeFields,
@@ -349,4 +380,7 @@ pub fn split_dot(x: &str) -> (NameSpaces, Name) {
 // MODULE-WIRING: lib.rs / schema/mod.rs scaffolding is deliberately NOT a
 // manifest unit; owned by the Step-4 survey build (do not create ad-hoc
 // here) — same note as the sibling types.rs.
+//
+// SAFETY count: 0 unsafe constructs (pure safe Rust — no FFI, no unsafe
+// blocks in this unit).
 // PORT STATUS: confidence=high todos=2
