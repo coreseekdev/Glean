@@ -5,8 +5,8 @@ process). Read DECISIONS.md first, then this file.
 
 ## STATUS (supersedes the stale gate line below — 2026-10-17)
 
-**Step 3 (translation fan-out) IN FLIGHT: 35 units on disk + committed**
-on branch `migration/rust-port`, HEAD `82b4437` (26 dispatch-order units
+**Step 3 (translation fan-out) IN FLIGHT: 36 units on disk + committed**
+on branch `migration/rust-port`, HEAD `4bdf95a` (26 dispatch-order units
 + manifest-line units 5, 15, 16, 17, 33, 34, 35, 36, 37). Steps 0b/1/2 are
 COMPLETE and signed off (see DECISIONS.md's dated entries; RULEBOOK
 v0.3 + the §4 assumed-imports paragraph, transcribed 2026-10-16).
@@ -33,6 +33,11 @@ Shipped (dispatch-order names, then manifest-line units):
 buildBatch; the insertWith NEW++OLD order was probe-fixed in review),
 35 typed/fact.rs (e879d8a, decodeFact/decodeRef; decode_as_fact
 override contract verified against Gen/Haskell.hs:327-328),
+38 util/some.rs (4bdf95a — ZERO-ITEM decision record per row 136 + glean-util crate scaffolding
+  Cargo.toml/lib.rs/util.rs, retroactively wiring util/vector.rs; review corrected 3 false record
+  claims incl. IsSrcSpan=production-typechecker NOT tests, and reopened the consumer survey as
+  a tracked TODO: Catalog.Store/Backup.Backend/Site x7/S3BucketApi added; S3 = second open-site
+  candidate owed its dyn ruling by the S3 unit),
 36 typed/prim.rs (ab55ecb, fromNat/toNat — Nat<->u64 two's-complement
 wraps, probe-verified), 37 typed.rs crate-root facade (82b4437, + the
 crate's lib.rs/Cargo.toml per the siblings' MODULE-WIRING ownership:
