@@ -13,6 +13,20 @@
 // (migration/manifest.tsv line 42, crate glean-util). RULE §4: one source
 // file -> one target file; the manifest path is authoritative.
 //
+// AMENDMENT (2026-10-18, at unit 43 — coordinator-adjudicated, the
+// unit-18-addendum precedent for post-ship surface repairs): the first
+// draft shipped `retry_channel_exceptions(r: RetryPolicy, ...)` with
+// `on_error: Box<dyn FnMut(...)>`. That pairing is unusable by the
+// function's own named heaviest consumer (row 43's Backend/Retry.hs —
+// 21 `retryChannelExceptions policy` sites reusing ONE policy across
+// `&self` methods, which a consuming signature + FnMut-through-& cannot
+// express). Amended to `r: &RetryPolicy` + `Box<dyn Fn(...)>`: the
+// source's by-value pass IS a shared immutable record, `Fn` is the
+// faithful image of its shared callback, and the original survey (the
+// ONLY onError value in the tree is capture-free logRetry) still holds —
+// nothing needs mutable callback state. Behavior is unchanged (same
+// loop, same orderings, same texts); only the sharing shape moved.
+//
 // Export surface (the source export list, :13-17, is exactly
 // `RetryPolicy(..)`, `defaultRetryPolicy`, `retryChannelExceptions`;
 // logRetry (:47-52) and retryDuration (:71-75) are internal):
@@ -191,7 +205,8 @@ use glean_thrift::{ChannelException, ThriftError};
 /// are Seconds fields,
 /// NOT Int); `retryJitter :: Double` -> `f64` ("fraction of delay", :31);
 /// `onError :: ChannelException -> Int -> Int -> Maybe Double -> IO ()` ->
-/// `Box<dyn FnMut(&ChannelException, i64, i64, Option<f64>)>` — the
+/// `Box<dyn Fn(&ChannelException, i64, i64, Option<f64>)>` (AMENDED from
+/// the first draft's FnMut at unit 43 — see below) — the
 /// argument order is the source's (:32, called at :63/:67). `Option<f64>`
 /// per the sibling's Maybe-Double image (thrift_service.rs:72-74,
 /// decision (a)).
@@ -201,19 +216,26 @@ use glean_thrift::{ChannelException, ThriftError};
 /// exactly this type (:38-45) — a generic parameter would infect the whole
 /// surface; and the callback set is genuinely open (any `IO ()` closure —
 /// RULE §2's GADT row permits `Box<dyn Trait>` only where genuinely open,
-/// which a function field is). `FnMut` rather than `Fn`: an `IO ()`
-/// closure may capture mutable state (IORef); `log_retry` is a plain `Fn`
-/// and every `Fn` implements `FnMut`, so the default satisfies the bound.
+/// which a function field is). `Fn` rather than `FnMut` (AMENDED at unit
+/// 43, coordinator-adjudicated — see the header note): the record is
+/// immutable shared data in the source, and the wrapper consumer (row 43,
+/// Backend/Retry.hs) reuses ONE policy across 21 `&self` call sites — a
+/// `FnMut` boxed callback cannot be invoked through `&RetryPolicy`, so
+/// the by-value/FnMut pairing shipped in the first draft made the
+/// function unusable by its named heaviest consumer. The survey that
+/// justified the original choice still holds: the ONLY `onError` value in
+/// the tree is the capture-free top-level `logRetry` (grep over glean/ +
+/// glass/: no site constructs `RetryPolicy` from scratch and no record
+/// update touches `onError` — the sole construction site is
+/// Write/Options.hs:66, which changes `maxRetries` only), so nothing
+/// needs mutable callback state; `Fn` is the faithful image of the
+/// source's shared immutable callback.
 /// The callback takes `&ChannelException` (Rust borrow plumbing, as the
 /// sibling's `&Service` receivers); the exhaustion path still carries the
 /// ORIGINAL value out via the return (see the loop). The object type
 /// keeps the default `+ 'static` bound, and that is unobservable against
-/// the source: the ONLY `onError` value in the tree is the capture-free
-/// top-level `logRetry` (grep over glean/ + glass/: no site constructs
-/// `RetryPolicy` from scratch and no record update touches `onError` —
-/// the sole construction site is Write/Options.hs:66, which changes
-/// `maxRetries` only), so no Haskell closure ever captures a callback
-/// environment that a `'static` bound would have to own.
+/// the source: no Haskell closure ever captures a callback environment
+/// that a `'static` bound would have to own.
 pub struct RetryPolicy {
     /// Give up after this many failed attempts (:28). The loop makes
     /// exactly `maxRetries + 1` attempts (the source's log denominator,
@@ -228,7 +250,7 @@ pub struct RetryPolicy {
     /// Invoked on every failure (:32): the exception, the attempt number
     /// (1-based), `max_retries`, and `Some(delay)` when a retry follows /
     /// `None` when this failure is final.
-    pub on_error: Box<dyn FnMut(&ChannelException, i64, i64, Option<f64>)>,
+    pub on_error: Box<dyn Fn(&ChannelException, i64, i64, Option<f64>)>,
 }
 
 /// Sized to survive a write-server restart (host move + multi-GB database
@@ -323,19 +345,19 @@ fn log_warning(msg: impl FnOnce() -> String) {
 /// `|| action.clone().run(env)` and clones once per attempt at ITS call
 /// site — the same clone-once discipline that contract already pins.
 pub fn retry_channel_exceptions<A>(
-    r: RetryPolicy,
+    r: &RetryPolicy,
     mut act: impl FnMut() -> Result<A, ThriftError>,
 ) -> Result<A, ThriftError> {
-    // `r@RetryPolicy{..}` (:55): the whole record AND its fields. The
-    // destructure moves the boxed callback out; `act` stays a disjoint
-    // local, so both are callable inside the loop.
-    let RetryPolicy {
-        max_retries,
-        min_retry_delay,
-        max_retry_delay,
-        retry_jitter,
-        mut on_error,
-    } = r;
+    // AMENDED at unit 43 (coordinator-adjudicated, see the header note):
+    // `r` is borrowed, not consumed — the source's by-value pass is a
+    // shared immutable pointer in Haskell, and the heaviest consumer
+    // (row 43's Backend/Retry.hs) reuses ONE policy across 21 `&self`
+    // call sites, which a consuming signature cannot express. `act`
+    // stays an owned FnMut local: the ACTION is re-run per attempt (the
+    // source re-executes `IO a`), unlike the policy which is only read.
+    //
+    // `r@RetryPolicy{..}` (:55): the record and its fields — read
+    // through the borrow (the fields are immutable for the whole loop).
 
     // `go 1` (:55): n is the 1-based attempt number.
     let mut n: i64 = 1;
@@ -350,26 +372,26 @@ pub fn retry_channel_exceptions<A>(
         match act() {
             Ok(x) => return Ok(x),
             Err(ThriftError::Channel(ex)) => {
-                if n > max_retries {
+                if n > r.max_retries {
                     // Exhausted (:62-64): onError with NO delay, THEN
                     // rethrow. The source's `throwIO ex` rethrows the
                     // ORIGINAL exception object; under the typed-enum
                     // rule the rethrow IS this Err return, carrying the
                     // original ChannelException value — deliberate, not a
                     // divergence.
-                    on_error(&ex, n, max_retries, None);
+                    (r.on_error)(&ex, n, r.max_retries, None);
                     return Err(ThriftError::Channel(ex));
                 } else {
                     // Retry (:65-69) — ORDER IS SEMANTIC: compute the
                     // delay FIRST, then onError with Some(delay), then
                     // sleep, then the next attempt.
                     let delay = retry_duration(
-                        min_retry_delay,
-                        max_retry_delay,
-                        retry_jitter,
+                        r.min_retry_delay,
+                        r.max_retry_delay,
+                        r.retry_jitter,
                         n,
                     );
-                    on_error(&ex, n, max_retries, Some(delay));
+                    (r.on_error)(&ex, n, r.max_retries, Some(delay));
                     // `sleep delay` (:68); Seconds = f64 ->
                     // Duration::from_secs_f64.
                     std::thread::sleep(Duration::from_secs_f64(delay));
