@@ -23,25 +23,28 @@ edition = "2021"
 #
 # Anticipated (NOT added now — each lands with its owning unit):
 # glean-thrift — the generated crate (RULE §1 A10) for the thrift images
-# behind `Glean.Service.Types` / `Glean.Types`, imported by the later
-# units glean/util/Glean/Util/ThriftService.hs and
-# glean/github/Glean/Init.hsc (grep "^import Glean.Service.Types\|^import
-# Glean.Types" over the crate's manifest units). Never hand-translated.
-# (glean/util/Glean/Util/Service.hs has since landed as src/util/service.rs
-# with its `glean_thrift` image ASSUMED per RULE §4 B4: it adds no
-# [dependencies] entry, and the dep now lands with ThriftService/Init or
-# the Step-4 workspace scaffold.)
+# behind `Glean.Service.Types` / `Glean.Types`. Never hand-translated.
+# Its two in-crate legs have landed as ASSUMED imports (RULE §4 B4),
+# neither adding a [dependencies] entry: the generated-types leg with
+# src/util/service.rs (Service.hs:20-21 imports `Glean.Service.Types`;
+# ShardManager.hs:22 imports `Glean.Types` qualified), the runtime leg
+# (`Thrift.Api`, `Util.EventBase`) with src/util/thrift_service.rs (row
+# 40, this crate). Remaining in-crate consumers land with their units,
+# e.g. glean/util/Glean/Impl/ThriftService.hs (row 166, imports
+# Glean.Util.Service/ThriftService + Thrift.Channel.HTTP /
+# Thrift.Protocol.Id on the OSS branch) and ThriftSource.hs (row 81,
+# Thrift.Protocol / Thrift.Protocol.JSON). The dep itself lands with the
+# Step-4 workspace scaffold.
 #
 # No [dev-dependencies]: tests are not translated (RULE §4 tests row;
 # each crate's tests/ holds re-expressed cases at Step 4). No features
 # anywhere.
 #
 # Marker breakdown (closed set — zero of every class): no port todos
-# (the anticipated-dependency deferral above names its owners — the
-# ThriftService/Init units and the Step-4 workspace scaffold —
-# in prose, per the glean-typed Cargo.toml precedent), no source-defect
-# reproductions (no Haskell source), no performance deferrals (no
-# code), no inventory divergence (no row can govern a file with no
-# Haskell counterpart).
+# (the anticipated-dependency deferral above names its owner — the Step-4
+# workspace scaffold — in prose, per the glean-typed Cargo.toml
+# precedent), no source-defect reproductions (no Haskell
+# source), no performance deferrals (no code), no inventory divergence
+# (no row can govern a file with no Haskell counterpart).
 #
 # PORT STATUS: confidence=medium todos=0
