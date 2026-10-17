@@ -1,228 +1,336 @@
 # Glean → Rust migration handoff
 
-**Kit**: Claude Code Migration Kit (`~/.claude/skills/code-migration/`, six-step
-process). Read DECISIONS.md first, then this file.
+**Audience**: a successor model/session (or human) taking over this migration.
+No conversation context is required — everything is on disk. This file is the
+entry point.
 
-## STATUS (supersedes the stale gate line below — 2026-10-17)
+**Read order**: `migration/DECISIONS.md` (scope, gate sign-offs, adjudications)
+→ **this file** (status + how to work) → `migration/RULEBOOK.md` (whole; the
+constitution) → `migration/RUNBOOK.md` (unattended/scheduled-session manual) →
+`migration/SUPERVISOR.md` (idle-queue automation spec). The git log on branch
+`migration/rust-port` is the per-unit record of review findings + fixes.
 
-**Step 3 (translation fan-out) IN FLIGHT: 36 units on disk + committed**
-on branch `migration/rust-port`, HEAD `4bdf95a` (26 dispatch-order units
-+ manifest-line units 5, 15, 16, 17, 33, 34, 35, 36, 37). Steps 0b/1/2 are
-COMPLETE and signed off (see DECISIONS.md's dated entries; RULEBOOK
-v0.3 + the §4 assumed-imports paragraph, transcribed 2026-10-16).
+## 1. Mission
 
-**Numbering convention changed mid-batch**: commits since 1f9a2fa cite
-the manifest FILE LINE (1-indexed including the `source	target` header)
-as the unit number — "unit 33/386" = `sed -n '33p' migration/manifest.tsv`
-= Typed/Predicate.hs. Older commits used dispatch order; both records
-are in the git log.
+Migrate Glean's Haskell code to Rust **file by file**, following
+`migration/manifest.tsv` (386 units, one source file → one target file per
+RULE §4 naming), in manifest order, skipping blocked rows. All Haskell is in
+scope (including the hie-indexer); **C/C++ is NOT translated** — it stays
+behind the FFI boundary. No dynamic features. Step 3 ships file-level drafts;
+crate compilation is Step 4; parity testing is Step 6 (judge).
 
-Shipped (dispatch-order names, then manifest-line units):
-1 hash.rs, 2 display.rs, 3 angle/types.rs, 4 schema/types.rs, 5 evolve.rs,
-6 resolve.rs, 7 Schema/Resolve.hs, 8 Glean/FFI.hs, 9 RTS/Builder.hs,
-10 RTS/Types.hs, 11 RTS/Term.hs, 12 Bytecode/Types.hs, 13 Bytecode/Supply.hs,
-14 RTS/Bytecode/Code.hs, 15 RTS/Foreign/Bytecode.hs, 16 RTS.hs,
-17 RTS/Set.hs, 18 RTS/Foreign/Lookup.hs (+ addendum in 3083c34),
-21 RTS/Foreign/Inventory.hs, 22 RTS/Foreign/Subst.hs, 23 Util/Vector.hs,
-28 RTS/Foreign/Define.hs, 29 RTS/Foreign/LookupCache.hs,
-30 RTS/Foreign/Stacked.hs, 31 RTS/Foreign/Stats.hs,
-32 RTS/Foreign/FactSet.rs; manifest-line units: 5 schema/util.rs (1f9a2fa),
-15 typed/build.rs (e4626cc), 16 typed/id.rs (4382ebe), 17 typed/binary.rs
-(ae1b1eb, completed from a dead-session draft), 33 typed/predicate.rs
-(d54cd8a), 34 typed/build_fact.rs (367f952, NewFact/Facts/FactsM/
-buildBatch; the insertWith NEW++OLD order was probe-fixed in review),
-35 typed/fact.rs (e879d8a, decodeFact/decodeRef; decode_as_fact
-override contract verified against Gen/Haskell.hs:327-328),
-38 util/some.rs (4bdf95a — ZERO-ITEM decision record per row 136 + glean-util crate scaffolding
-  Cargo.toml/lib.rs/util.rs, retroactively wiring util/vector.rs; review corrected 3 false record
-  claims incl. IsSrcSpan=production-typechecker NOT tests, and reopened the consumer survey as
-  a tracked TODO: Catalog.Store/Backup.Backend/Site x7/S3BucketApi added; S3 = second open-site
-  candidate owed its dyn ruling by the S3 unit),
-36 typed/prim.rs (ab55ecb, fromNat/toNat — Nat<->u64 two's-complement
-wraps, probe-verified), 37 typed.rs crate-root facade (82b4437, + the
-crate's lib.rs/Cargo.toml per the siblings' MODULE-WIRING ownership:
-seven pub mods + 45-name NAMED-re-export mirror of the curated export
-lists, no globs; deps exactly glean-{core,angle,thrift} path +
-once_cell + thiserror). The glean-typed crate is now fully wired.
+Kit: Claude Code Migration Kit, six steps. **Steps 0 (feasibility), 0b
+(judge), 1 (depmap + RULEBOOK + inventory + allium spec) and 2 (stress-test)
+are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
+in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
+(RULEBOOK §0); it is the batch-boundary referee.
 
-Blocked: manifest lines 23-24 (RTS/Traverse.hs, RTS/Typecheck.hs) — their
-module `Glean.RTS.Bytecode.Gen.Issue` is missing from the Haskell tree;
-semantics reconstructable from glean/rts/bytecode/subroutine.cpp if ever
-needed.
+## 2. STATUS — 2026-10-17 (HEAD `9251205`, after unit 38)
 
-Queue = manifest lines with no target on disk (file-line numbering):
-next is line 38 (Util/Some.hs — the glean-util crate's first files;
-38-40 = Some/Service/ThriftService, which will need that crate's
-lib.rs/Cargo.toml wiring the same way unit 37 did for glean-typed),
-then 41+ backend-api. Check with:
-`tail -n +2 migration/manifest.tsv | awk -F'\t' '{print NR+1"\t"$2}' |
-while IFS=$'\t' read r t; do [ -f "$t" ] || echo "$r $t"; done`.
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `9251205`, 54 commits,
+  working tree clean.
+- Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
+  in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
+  Push protocol: the user pushes the fork after batch commits on request.
+- **Step 3 counters: 36 unit-commits / 35 distinct target files shipped;
+  351 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+  the early 352-line draft `551a3c8` + the completed 386-line rewrite
+  `1f9a2fa` — the only double.)
+- Steps 0/0b/1/2 records: see DECISIONS.md's dated entries and §7 below.
+- RULEBOOK v0.3 + the §4 assumed-imports paragraph are transcribed and
+  current (2026-10-16/17).
+- Open policy item: **DEV-006** (queued for the human) — RULEBOOK §3's
+  crate-list letter allows `unsafe` only in glean-core; the shipped
+  raw-pop-consumer contract (`rts.rs:123-138`) + build.rs/binary.rs RULE §3
+  CRATE-SCOPE paragraphs sanction glean-typed's decoder units carrying FFI
+  `unsafe` (18/18 SAFETY notes in binary.rs). Default ruling: keep the
+  in-file documented exception; amend §3's list or pre-build safe pop
+  wrappers in glean-core at Step 4.
 
-Pipeline per unit: implementer → 2 adversarial reviewers (semantics A /
-obedience B, separate contexts, assume wrong, touch nothing) → fixer
-(confirmed findings only; INLINE fixer is sanctioned when the round is
-purely mechanical) → commit. RULEBOOK v0.3 is authoritative; §0 bans
-cargo build/check in-loop (scratch rustc/GHC probes of ISOLATED snippets
-are the sanctioned pinned-toolchain evidence pattern); markers
-TODO(port)/BUG(port)/PERF(port)/SAFETY are load-bearing; the PORT STATUS
-trailer is terminal and must match the actual marker count.
+### 2.1 Numbering convention (read this before trusting "unit N")
 
-Operational notes from 2026-10-15/16 sessions:
-- UNATTENDED SESSIONS: idle-time tasks execute units following
-  migration/RUNBOOK.md; a scheduled SUPERVISOR automation replenishes
-  the idle queue (spec: migration/SUPERVISOR.md — create it from a
-  FRESH chat; sessions belonging to scheduled/idle tasks cannot create
-  automations, and idle runs must never self-replicate). The old
-  worker-mode cron (automation-c6386d8d) is PAUSED with runCount 0.
-- QUOTA is the live constraint (5h rolling subagent cap; this host also
-  runs idle-time sessions where background agents are unavailable —
-  dispatch foreground, 2 reviewers per message). Reviewer A for unit 16
-  could not dispatch twice (ECONNRESET, then rate limit) and was performed
-  INLINE by the coordinator against pinned ground truth (DEV-001
-  precedent); same for the units-28/30/31 review-round adjudication.
-  Log such substitutions in the commit message.
-- Never trust "verified-by-sibling" or "grep-verified zero/max" claims —
-  this now binds REVIEWERS too: unit 33's reviewer-B proposed cite
-  "corrections" (glean.thrift off-by-ones) that were themselves wrong;
-  the fixer's grep-refutation stood after coordinator re-verification.
-  Unit 35 recurred it: a reviewer's Binary.hs:235-236 "off-by-one" was
-  refuted by the coordinator's sed — the cite was exact.
-- Coordinator BRIEFS must not assert library semantics (unit 34,
-  2026-10-17): the brief's parenthetical claimed Data.HashMap's
-  insertWith combines as old++new; the truth is f NEW OLD (fresh value
-  PREPENDED) — reviewer A's pinned-GHC probe caught it and the
-  coordinator re-probed independently (unordered-containers-0.2.20 from
-  the baseline cabal store) before applying. Briefs pin APIs and cites;
-  a semantics claim needs a probe or a library cite. (Unit 35's brief
-  also mis-stated thrift `Fact` field 2 as `Byte` — the implementer's
-  correction to `Value` stood.)
-- The supervisor automation edits migration/SUPERVISOR.md in-flight
-  (its own queue bookkeeping; mtimes of other migration/ files can be
-  touched with no content change). It is NOT a rival unit session:
-  verify the edit's accuracy (CronList), commit it verbatim at records
-  time, and expect the Edit tool's staleness check to fire on files it
-  touched — re-read and continue.
-- Assumed-import images must match the PINNED thrift compiler, never
-  intuition: unit 17's `Byte(pub u8)` was wrong — hsthrift GenUtils.hs:231
-  maps thrift byte → Int8 (set.rs:467-470 had already pinned it for the
-  same call sites). §4's assumed-imports paragraph now requires this.
-- EXPORT-LIST completeness cuts both ways (unit-18 lesson + unit 33):
-  tick the source's export list against the target's pub items AND check
-  ABSTRACTION — `Predicates` exported without `(..)` means the port's
-  field must be private, constructor reachable only through the module's
-  own functions.
-- Generic callback traits that merge `invoke(...)?` MUST state
-  `E: From<FfiError>` at the trait declaration (define.rs:459-481
-  precedent for the merge-enum alternative).
-- Mutable-handle Send/Sync (unit-32 review B-F1): audit every `&self`
-  path (including trait impls) before adding Send/Sync.
-- PERF(port) is mandated for slow-but-faithful copies.
-- Subagent block-reports can be stale (unit-32): check the working tree
-  before acting; unit 17's draft from a dead session was found complete-
-  except-tuples on disk and finished by a completion round rather than
-  restarted.
-- Execution-window expiry (2026-10-17, twice in the unit-36/37 idle
-  session): the run pauses mid-flight and continues in a fresh window.
-  Drafts persist on disk untouched; on resume, re-verify git status/HEAD
-  first, re-dispatch the cancelled agents whole (a cancelled agent has
-  produced NO report — never cite one), and continue from the todo list.
-- DEV-006 (user-deferred): RULEBOOK §3's crate list (glean-storage/
-  glean-core only) vs the shipped raw-pop-consumer contract that
-  sanctions glean-typed's decoder units carrying unsafe (build.rs,
-  binary.rs). §3 amendment queued for the human; see DECISIONS 2026-10-16.
-- builder.rs's allocation-failure wording was aligned to the wrap.h
-  story (20c59d4): allocation failures CROSS as returned messages; the
-  abort is the Rust-side disposition per inventory row 61. QUEUED item
-  closed.
-- Marker-grep hygiene: breakdown bullets avoid the literal marker
-  spellings inside the tally block.
-- Handoff history: git log on branch migration/rust-port is the record of
-  every unit's review findings + resolutions.
+Commits since the 2026-10-16 batch cite the **manifest FILE LINE**
+(1-indexed *including* the `source<TAB>target` header) as the unit number:
+`unit 39/386` = `sed -n '39p' migration/manifest.tsv` = Service.hs. The
+earliest batch (`bf7b43a`…`dfa9cd4`, messages "unit 1..32") used **dispatch
+order**; that numbering coincides with manifest lines only through unit 11
+and then diverges (e.g. dispatch-16 = `rts.rs` = manifest line 13; dispatch-12
+= `bytecode/types.rs` = manifest line 20). Trust §4's file-centric inventory,
+not old commit numbers. Going forward: manifest file lines only.
 
-**Kit**: Claude Code Migration Kit (`~/.claude/skills/code-migration/`, six-step
-process). **Gate status: Step 0b (judge) COMPLETE, awaiting human sign-off to
-start Step 1.** Read DECISIONS.md first, then this file.
+### 2.2 Crate dashboard (shipped / manifest rows)
 
-## Where everything lives
+| crate | shipped | remaining | notes |
+|---|---|---|---|
+| glean-angle | 7 | 0 | COMPLETE (hash, display, angle/types, schema/{util,types,evolve,resolve}) |
+| glean-core | 17 | 12 | FFI/RTS/bytecode layer done; remaining rows 23/24 blocked, 51/57/94/101/109/113/114/139/278/279 |
+| glean-bytecode | 1 | 5 | types.rs only; sys_calls/decode/generate/{instruction,cpp,haskell} remain |
+| glean-typed | 8 | 1 | crate fully wired (lib.rs + Cargo.toml); remaining row 44 query/angle.rs |
+| glean-util | 2 | 26 | some.rs + vector.rs + scaffolding; next units here |
+| glean-db | 0 | 90 | not started |
+| glean-glass | 0 | 88 | not started |
+| glean-client | 0 | 27 | not started |
+| glean-cli | 0 | 26 | not started |
+| glean-schema | 0 | 9 | not started |
+| glean-server | 0 | 7 | not started |
+| glean-fb303 | 0 | 5 | not started |
+| indexers (clang 10, lsif 9, hack 7, haskell 4, angle 4, scip 2, api 2, + 11 singleton crates) | 0 | 49 | not started |
+| glean-lsp / glean-storage / glean-registry | 0 | 3 / 2 / 1 | not started |
+
+### 2.3 Blocked
+
+Manifest rows 23–24 (`glean/rts/Glean/RTS/Traverse.hs`,
+`RTS/Typecheck.hs`): their module `Glean.RTS.Bytecode.Gen.Issue` is missing
+from the Haskell tree. Semantics are reconstructable from
+`glean/rts/bytecode/subroutine.cpp` if ever needed. Skip these rows; do not
+attempt them unless the Issue module appears.
+
+### 2.4 Next units and the queue
+
+Next: **row 39** `glean/util/Glean/Util/Service.hs` → `rust/glean-util/src/util/service.rs`
+(61 ln; brief in §4.2), then **row 40** ThriftService.hs, then the queue
+interleaves glean-db (rows 41, 43, 45…) with glean-util rows 42, 63, 68–69.
+Working style: 1–2 units per session, then a records-refresh commit.
+
+Recompute the queue any time (manifest file-line numbers):
+
+```sh
+tail -n +2 migration/manifest.tsv | awk -F'\t' '{print NR+1"\t"$2}' |
+while IFS=$'\t' read r t; do [ -f "$t" ] || echo "$r $t"; done
+```
+
+State check at session start: `git branch --show-current` (must be
+`migration/rust-port`), `git status --short` (clean), `git log --oneline -5`.
+
+## 3. How to work a unit
+
+### 3.1 Pipeline (per unit)
+
+1. **Implementer** — translate the one source file to the one target file.
+   Header block: ported-from, manifest row, INVENTORY citation(s), dependency
+   truth, assumed-imports (pinned to the real compiler/format), sibling-unit
+   contracts (real APIs read, never re-declared). Terminal `PORT STATUS`
+   trailer: `confidence=… todos=N`, matching actual markers.
+2. **Two adversarial reviewers** (separate contexts, assume the port is
+   wrong, touch nothing): **A = semantics** (against the pinned source +
+   sibling APIs), **B = obedience** (RULEBOOK §2/§3/§4, markers, trailer,
+   export lists, abstraction). Reviewers verify against pinned on-disk
+   sources, never "verified-by-sibling".
+3. **Fixer** — applies CONFIRMED findings only (re-verify each; reviewers can
+   be wrong — see §5). Fully mechanical rounds may be fixed INLINE by the
+   coordinator.
+4. **Commit** — `migration: Step 3 unit N/386 — <target path> (+ reviews,
+   inline fix round)`; the body summarizes findings/resolutions. Records
+   refreshes are separate commits (`… records refresh — …`).
+
+### 3.2 Dispatch and the fallback (DEV-001/002/003, execution windows)
+
+- Dispatch implementer and reviewers as subagents, **foreground**, at most
+  2 per message (5h rolling quota is the binding constraint; some hosts have
+  no background agents). Prefer stopping early over rushing review.
+- **DEV-001**: when a dispatch fails (quota, ECONNRESET, endpoint outage,
+  execution-window expiry), the coordinator performs that role INLINE against
+  pinned on-disk sources and logs the substitution in the commit message.
+  Adjudication dispatches are covered too.
+- **Window expiry**: an interrupted run resumes in a fresh window. Drafts
+  persist on disk untouched; on resume re-verify git status/HEAD first;
+  re-dispatch cancelled agents WHOLE (a cancelled agent produced NO report —
+  never cite one). **Always check the working tree before trusting a failure
+  report** — dead-session drafts have been found complete on disk twice
+  (units 5, 17).
+- **DEV-002**: skeptical re-review of the first batch's ships. **DEV-003**:
+  depmap low-link fix (script history; no action pending).
+
+### 3.3 RULEBOOK essentials that bite
+
+- **§0**: never run `cargo build`/`cargo check` in the transcript loop.
+  Scratch `rustc --edition 2021 --crate-type lib --emit=metadata <isolated>.rs`
+  probes of isolated snippets and GHC probes ARE the sanctioned
+  pinned-toolchain evidence pattern.
+- Markers `TODO(port):` / `BUG(port):` / `PERF(port):` / `// SAFETY:` are
+  load-bearing. Exactly ONE canonical flag line per flagged item; the tally
+  block must match the actual count; tally bullets avoid the literal marker
+  spellings. Inventory-row divergence gets an INVENTORY-BUG-CANDIDATE flag.
+- **§4 export lists cut both ways**: tick the source's export list against
+  the target's `pub` items AND check abstraction (a `Foo` exported without
+  `(..)` means fields private, constructor reachable only via module fns).
+- **§4 assumed imports must be pinned to the real compiler/toolchain**, never
+  intuited (thrift `byte` → `Int8`, not `u8` — hsthrift GenUtils.hs:231).
+- **§1 thrift row (A10)**: thrift types are generated by build.rs into the
+  pinned `glean_thrift` crate; never hand-translate generated code. File-level
+  drafts import it as an assumed import.
+- Callback-bearing traits that merge `invoke(...)?` must state
+  `E: From<FfiError>` at the TRAIT declaration (E0276/E0277 precedent).
+  Boxed closure trait objects propagate `'static` (unit 15): use reusable
+  `Arc<dyn for<'a> Fn(&mut DecoderEnv<'a>) -> Result<A, DecodeError>>` with
+  `'static` bounds on every type param.
+- Mutable-handle `Send`/`Sync`: audit every `&self` path (including trait
+  impls) before adding. `PERF(port)` is mandated for slow-but-faithful
+  copies. Release≡drop semantics must be documented for FFI handles.
+- `glean-typed`/`glean-util` scaffolding exists; glean-angle/core/bytecode
+  crate scaffolding (Cargo.toml/lib.rs) is owned by Step 4's workspace
+  scaffold ("no crate in rust/ compiles yet"; third-party versions pinned at
+  Step 4). New glean-util units append their own `pub mod` line to
+  `rust/glean-util/src/util.rs`.
+
+### 3.4 Records discipline
+
+After each batch: a `records refresh` commit covering `migration/cost-log.tsv`
+(new row: step, timestamp, wall clock, tokens, subagents, model),
+this file's STATUS block, and any supervisor bookkeeping. The supervisor
+automation edits `migration/SUPERVISOR.md` in-flight — verify the edit
+(CronList), commit it verbatim at records time, and expect the Edit tool's
+staleness check to fire on files it touched (re-read and continue).
+
+## 4. Shipped inventory (authoritative — from the git log)
+
+### 4.1 Shipped units
+
+**glean-angle — 7/7 COMPLETE**
+- `angle/hash.rs` — `bf7b43a` (dispatch 1; hash linchpin)
+- `display.rs` — `5fdf8ec` (dispatch 2)
+- `angle/types.rs` — `ac935a1` (dispatch 3; + cross-unit fix `7179c3e`)
+- `schema/util.rs` — `551a3c8` draft + `1f9a2fa` completed (manifest line 5; 386 ln)
+- `schema/types.rs` — `0ed4aa1` (dispatch 5)
+- `schema/evolve.rs` — `669d6c5` (dispatch 6)
+- `schema/resolve.rs` — `0159681` (dispatch 7; batch 1 complete)
+
+**glean-core — 17/29**
+- `ffi.rs` + `rts/builder.rs` — `fcbca85` (dispatch 8–9); builder allocation
+  wording aligned `20c59d4`
+- `rts/types.rs` — `6abba13` (dispatch 10)
+- `rts/term.rs` — `7179c3e` (dispatch 11)
+- `rts/bytecode/supply.rs` + `glean-bytecode/types.rs` — `d8d37d9` (dispatch 12–13)
+- `rts/bytecode/code.rs` — `c42f29a` (dispatch 14)
+- `rts/foreign/bytecode.rs` — `5784ca8` (dispatch 15)
+- `rts.rs` — `4911a6e` (dispatch 16)
+- `rts/set.rs` — `ace571d` (dispatch 17)
+- `rts/foreign/lookup.rs` — `466f7be` (dispatch 18) + addendum `3083c34`
+- `rts/foreign/inventory.rs` + `rts/foreign/subst.rs` — `7f6c2ca` (dispatch 21–22)
+- `rts/foreign/define.rs`, `lookup_cache.rs`, `stacked.rs`, `stats.rs` — `3083c34` (dispatch 28–31)
+- `rts/foreign/fact_set.rs` — `dfa9cd4` (dispatch 32; `Subst::as_ptr` seam)
+
+**glean-bytecode — 1/6**: `bytecode/types.rs` (`d8d37d9`).
+
+**glean-typed — 8/9, crate wired**
+- `typed/build.rs` — `e4626cc` (line 15; reusable `Arc<dyn Fn>` decoder)
+- `typed/id.rs` — `4382ebe` (line 16; PidOf/IdOf)
+- `typed/binary.rs` — `ae1b1eb` (line 17; completed from a dead-session draft)
+- `typed/predicate.rs` — `d54cd8a` (line 33)
+- `typed/build_fact.rs` — `367f952` (line 34; insertWith NEW++OLD order probe-fixed)
+- `typed/fact.rs` — `e879d8a` (line 35; decode_as_fact override verified vs Gen/Haskell.hs:327-328)
+- `typed/prim.rs` — `ab55ceb` (line 36; fromNat/toNat Nat↔u64 two's-complement wraps, probe-verified)
+- `typed.rs` crate-root facade + `lib.rs` + `Cargo.toml` — `82b4437` (line 37; NAMED re-exports, no globs)
+
+**glean-util — 2/28, scaffolding shipped**
+- `util/vector.rs` — `7f6c2ca` (dispatch 23)
+- `util/some.rs` — `4bdf95a` (line 38; ZERO-ITEM decision record + `Cargo.toml`/`lib.rs`/`util.rs` scaffolding, retro-wiring vector.rs; review corrected 3 false record claims and reopened the consumer survey as a tracked TODO — Catalog.Store/Backup.Backend/Site x7/S3BucketApi)
+
+### 4.2 Immediate next-unit brief (row 39 — service.rs)
+
+`glean/util/Glean/Util/Service.hs` (61 ln) → `rust/glean-util/src/util/service.rs`.
+Exports: `Service(Tier, HostPort, Uri)`, `serviceToString`, `serviceTier`,
+`HostName`, `PortNumber`. Contents: pattern synonyms over the thrift union
+`Service` from `glean/config/service.thrift` (namespace hs `Glean` →
+`Glean.Service.Types`; union members `tier: string`, `hostPort: HostPort{host,
+port: i32}`, `uri: string`; `(hs.nonempty)`); an orphan `IsString` instance
+(fromString heuristic: trailing `:port` + `reads` → HostPort; `parseURI`
+success → Uri; else Tier); `serviceToString`/`serviceTier` with
+partial-function wildcards ("pattern synonyms :("). Open decisions:
+(a) the `glean_thrift` assumed-import image of the union — pin it per RULE §1
+A10; (b) `Network.URI.parseURI` (network-uri) has NO migration record yet —
+choose and document a stand-in per RULE §1's stand-in procedure. Remember
+`pub mod service;` in `src/util.rs`. (Row 40 ThriftService.hs follows: it is
+the generic service-client machinery over the same thrift module.)
+
+## 5. Operational lessons (behavior-changing; carried forward)
+
+1. **Never trust memory, briefs, or sibling claims over the pinned source.**
+   Verify cites with `sed`/`grep` before repeating them. This binds REVIEWERS
+   too: unit 33's reviewer proposed thrift "corrections" that were wrong; the
+   fixer's refutation stood. A reviewer's own line-number claims get verified
+   before application.
+2. **Briefs pin APIs and cites; a semantics claim needs a probe or a library
+   cite.** (Unit 34: `insertWith` combines f NEW OLD — the brief's
+   old++new was wrong; pinned-GHC probe caught it. Unit 35: `Fact` field 2 is
+   `Value`, not `Byte`.)
+3. **Assumed-import images must match the pinned compiler** (Byte→Int8 above).
+4. **Export-list completeness cuts both ways** (unit 18 addendum: a missing
+   `withCanLookup` restored at `3083c34`; abstraction checks per §3.3).
+5. **Stale reports happen**: subagents have reported "blocked" with complete
+   drafts on disk, and block-reports can predate the fixer. Check the tree;
+   re-verify before restarting work.
+6. **Mutable-handle Send/Sync audit** (unit 32: `unsafe impl Send/Sync` was
+   correctly removed for FactSet — define_batch mutates through `&self`).
+7. **PERF(port) for slow-but-faithful copies**; document release≡drop for
+   handles; keep raw-pop unsafe behind documented contracts.
+8. **Marker-grep hygiene**: one canonical flag line per item; tallies match
+   reality; avoid literal marker spellings inside the tally block.
+9. **Cost/quota**: prefer 1–2 well-reviewed units per session; dispatch
+   foreground; stagger fan-outs (2 at a time); records-refresh commits keep
+   the budget visible.
+
+## 6. Infrastructure and environment
 
 | Artifact | Path |
 |---|---|
-| Scope decisions + gate sign-offs | `migration/DECISIONS.md` |
-| Feasibility report (Step 0) | delivered in session 2026-10-04; verdict "migrate now", cost band 1–3×10⁸ tokens, 4–7 weeks |
+| Scope, gates, adjudications | `migration/DECISIONS.md` |
+| Constitution | `migration/RULEBOOK.md` (v0.3) |
+| Unattended-session manual | `migration/RUNBOOK.md` |
+| Idle-queue scheduler spec | `migration/SUPERVISOR.md` |
 | Cost log | `migration/cost-log.tsv` |
-| Judge harness | `migration/judge/{judge.py,README.md,impls.sh,mock-glean.py}` |
-| Judge cases | `migration/judge/cases/` (6 cases: 1 upstream golden + 5 frozen) |
-| Build tree (toolchain + built Haskell binary) | `~/glean-build/` (see below) |
-| Build log with all stage timings | `~/glean-build/build-baseline.log` |
+| Unit manifest (386) | `migration/manifest.tsv` |
+| Inventories (main + ffi/protocol/sites/stm/codeflow) | `migration/inventory*.tsv` |
+| Depmap (script + edges/crates/cycles/order) | `migration/depmap/`, `migration/scripts/` |
+| Allium spec corpus (7 surfaces) | `migration/spec/*.allium` |
+| Judge (Step 6 referee) | `migration/judge/{judge.py,README.md,impls.sh,mock-glean.py,cases/}` |
+| Stress-test reports (Step 2) | `migration/stress-test/` |
 
-## Judge validation record (Step 0b evidence)
+- **Toolchains**: GHC 9.4.7 at `~/glean-build/ghc-9.4.7-install/bin/ghc`
+  (semantics probes); rustc for scratch snippet probes (no cargo in-loop);
+  `allium check` gates spec edits.
+- **Build tree**: `~/glean-build/` (separate copy — NEVER build Haskell in
+  the surveyed repo). Old binary:
+  `~/glean-build/Glean/dist-newstyle/build/x86_64-linux/ghc-9.4.7/glean-0.2.0.1/x/glean/build/glean/glean`
+  (needs `LD_LIBRARY_PATH=$HOME/.hsthrift/lib` and
+  `--schema ~/glean-build/Glean/glean/schema/source`).
+- **Rust tree**: `rust/{glean-angle,glean-bytecode,glean-core,glean-typed,glean-util}`;
+  `Cargo.toml` exists for glean-typed + glean-util only (Step 4 owns the rest);
+  `rust/glean-angle/tests/hash.rs` is the first re-expressed test (tests are
+  not translated 1:1; RULE §4).
+- **Automation**: idle-queue supervisor automation
+  `automation-a60b5841-7b60-43c2-9cc6-47a58c624c40` (spec: SUPERVISOR.md);
+  old worker automation deleted. Unattended runs follow RUNBOOK.md.
 
-- **Old-code validation**: `validate-old` 6/6 — the real Haskell binary
-  reproduces the upstream golden (`glean-write-1/main.out`) through the judge
-  pipeline, and 5 frozen goldens were recorded from its output and eyeballed.
-- **Mutation selftest**: 5/5 CAUGHT on raw CLI output, with the expected
-  sensitivity boundaries (reverse-lines blind through gensort — covered by
-  the unsorted-order case; phantom-field blind through extract — by design;
-  zero-fact cases have nothing to mutate).
-- **Determinism**: independent re-run (fresh DBs) reproduces all frozen
-  goldens 6/6.
-- **Reviews**: protocol-face adversarial review confirmed 10 findings
-  (1 CRITICAL + 6 MAJOR + 3 MINOR) — all fixed in judge.py. Transforms face
-  reviewed inline (normord sort-key bug + transform-arg typing fixed).
-  Residual task: re-run transforms adversarial review via subagent when the
-  5h quota resets (was 2026-10-05 02:49) — nice-to-have, not gate-blocking
-  given mock + real-binary + mutation validation.
+## 7. History: gates, judge, build baseline
 
-## Build baseline (measured, this box: 20 cores / 91 GB / Ubuntu 26.04)
+- **Step 0b judge validation**: old-code `validate-old` 6/6 (real binary
+  reproduces the upstream golden); mutation selftest 5/5 CAUGHT with expected
+  sensitivity boundaries; determinism 6/6; adversarial review fixed 10
+  findings. (Residual nice-to-have: transforms re-review — not gate-blocking.)
+- **Step 3 fan-out** authorized 2026-10-07 ("continue 1 2 3"): serial
+  background dispatch cargo-culted then amended for quota (foreground, 2 at a
+  time); DEV-002 skeptic re-review in batch 1.
+- **Build baseline** (measured, 20 cores / 91 GB / Ubuntu 26.04): cold path
+  ≈ 62 min machine time — GHC bindist ~6, getdeps fmt/fast_float/folly ~18,
+  pcre 8.39 self-build ~3, codegen ~2, `cabal build all` ~34 (58 pkgs; 65
+  test-suites; excludes glean-clang + thrift-tests). Script
+  `~/glean-build/attempt6.sh` (idempotent, resumable); fixes (Boost 1.90 /
+  folly-clib flags / remove system libfmt-dev / `--schema` at runtime) are
+  recorded there and in the build log `~/glean-build/build-baseline.log`.
 
-Reproducible cold-path ≈ **62 min machine time**, excluding network
-yak-shaving (this host blocks github.com/raw.githubusercontent/hackage
-intermittently — every workaround below is recorded so the path is replayable):
+## 8. Gotchas
 
-| Stage | Time |
-|---|---|
-| GHC 9.4.7 bindist (fedora33, direct from downloads.haskell.org) | ~6 min |
-| getdeps fmt/fast_float/folly (~/.hsthrift) | ~18 min |
-| pcre 8.39 self-build (pcre1 removed from Ubuntu 26.04; source from archive.ubuntu.com pool) | ~3 min |
-| thrift/bytecode/schema codegen (make thrift, gen-bytecode, gen-schema, thrift-schema-hs) | ~2 min |
-| `cabal build all` (58 pkgs, 50 glean libs, C++ RTS, 17 exes, 65 test-suites; excludes glean-clang + thrift-tests per scope) | ~34 min |
-
-Scripts: `~/glean-build/attempt6.sh` (idempotent, resumable). Old binary:
-`~/glean-build/Glean/dist-newstyle/build/x86_64-linux/ghc-9.4.7/glean-0.2.0.1/x/glean/build/glean/glean`
-(needs `LD_LIBRARY_PATH=$HOME/.hsthrift/lib` and `--schema
-~/glean-build/Glean/glean/schema/source` — data-files are not installed in
-build-tree form; the Rust CLI must do better, see judge/README.md).
-
-Key build fixes (all in attempt6.sh / cabal.project of the build copy):
-system Boost 1.90 lets folly skip its FetchContent boost download;
-`make setup-folly-0` + `package folly-clib flags: -bundled-folly` so the
-empty folly-clib still carries `pkgconfig-depends: libfolly`; remove system
-libfmt-dev (double fmt major-version conflict); `--schema` flag at runtime.
-
-## Next steps (in order)
-
-1. **Human sign-off on the judge** (this gate) — read `migration/judge/README.md`,
-   run the three commands in `migration/judge/impls.sh` if desired.
-2. **Step 1** (`prompts/01` + `02`): depmap (write `depmap_haskell.py` — parse
-   module headers, file + cargo-crate granularity), RULEBOOK.md draft,
-   inventory.tsv, allium spec corpus (`migration/spec/*.allium`, 7 behavioral
-   surfaces; `allium check` gates every edit; `allium plan` obligations bind
-   to goldens or dual-impl parity tests).
-3. Steps 2–6 per the kit. Step 4 dissolves into Step 3 (cargo check is a
-   cheap referee) at the settings gate.
-4. In Step 6 the judge's `parity` mode is the referee; `--impl-new` is the
-   Rust CLI. The 1,945-pair upstream golden corpus is the full-corpus burndown
-   target (the seed cases are its smoke subset).
-
-## Non-obvious gotchas for any future session
-
-- The surveyed repo `/home/nzinfo/src.parser/Glean` is PRISTINE (read-only
-  surveys + migration/ artifacts only). The BUILD tree is the separate copy
-  `~/glean-build/Glean` — never build in the surveyed repo.
-- `.query` files are YAML: `query`, `recursive` (default true), `max_results`,
-  `transform: [name, arg, ...]`. The CLI cannot express `recursive: false`,
-  `derive`, or `no_base64_binary` — judge skips those; Rust CLI must add them
-  (port requirements in judge.py docstring).
+- The surveyed repo `Glean/` is where migration artifacts + `rust/` drafts
+  live (branch `migration/rust-port`); the Haskell BUILD copy is
+  `~/glean-build/Glean` — never build Haskell in the surveyed repo.
+- `.query` files are YAML: `query`, `recursive` (default true),
+  `max_results`, `transform: [name, arg, ...]`. The CLI cannot express
+  `recursive: false`, `derive`, or `no_base64_binary`; the Rust CLI must add
+  them (requirements in `migration/judge/judge.py` docstring).
 - `src.File`'s key is a bare Text: patterns are `src.File "foo"`, NOT
-  `src.File { key = "foo" }` (that's a type error).
-- Subagent dispatch hits a 5h rolling quota; stagger fan-outs (2 at a time).
+  `src.File { key = "foo" }` (type error).
+- Reviews run against PINNED on-disk sources; absolute paths under
+  `/home/nzinfo/src.parser` are blocked for tooling — use repo-relative paths.
+- Subagent dispatch hits a 5h rolling quota; on endpoint outage/rate limits,
+  DEV-001 inline execution applies (log it in the commit message).
