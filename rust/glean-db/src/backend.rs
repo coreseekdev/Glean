@@ -18,11 +18,12 @@
 //! glean/backend-local/Glean/Backend/Local.hs -> `local`, row 147;
 //! glean/backend-local/Glean/Backend/Logging.hs -> `logging`, row 148).
 
+pub mod retry;
 pub mod types;
 
-// Coverage: one `pub mod` line wiring the only backend file shipped so
-// far (backend/types.rs) and nothing else — no re-exports (each
-// submodule is its own facade).
+// Coverage: two `pub mod` lines wiring the backend files shipped so far
+// (backend/retry.rs, row 43, before types.rs alphabetically) and nothing
+// else — no re-exports (each submodule is its own facade).
 //
 // Marker breakdown (closed set — zero of every class): no port todos
 // (the wiring is complete for the shipped file; the future lines above
