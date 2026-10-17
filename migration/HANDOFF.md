@@ -25,25 +25,27 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-18 (HEAD `3063cc5`, after unit 42)
+## 2. STATUS — 2026-10-18 (HEAD `63fd4fb`, after unit 43)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `3063cc5`, 63 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `63fd4fb`, 67 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
   Push protocol: the user pushes the fork after batch commits on request —
-  local has since advanced 9 commits to `3063cc5` (HANDOFF rewrite `80ed78a`,
+  local has since advanced 11 commits to `63fd4fb` (HANDOFF rewrite `80ed78a`,
   unit 39 `db51448`, records refresh `f9491e2`, unit 40 `495ffac`, records
   refresh `df7255a`, hash.rs repair `9354cbb`, unit 41 `1aed2f6`, records
-  refresh `00d279f`, unit 42 `3063cc5`; the next records refresh makes 10);
-  sync the fork at the next batch gate.
-- **Step 3 counters: 40 unit-commits / 39 distinct target files shipped;
-  347 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+  refresh `00d279f`, unit 42 `3063cc5`, records refresh `1867a35`,
+  retry-surface amendment `42117fc`, unit 43 `63fd4fb`; the next records
+  refresh makes 12); sync the fork at the next batch gate.
+- **Step 3 counters: 41 unit-commits / 40 distinct target files shipped;
+  346 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
-  `1f9a2fa` — the only double. The `9354cbb` fix is a non-unit commit:
-  a dead session's mechanical repair of unit 3's hash.rs — the derive
-  attribute was attached to the Hash impl (invalid Rust); the struct move
-  was verified a pure +5/-5 relocation and committed separately.)
+  `1f9a2fa` — the only double. Two non-unit fix commits: `9354cbb`
+  (dead session's hash.rs derive-attachment repair) and `42117fc` (the
+  unit-42 retry-surface amendment — `&RetryPolicy` + `Box<dyn Fn>`,
+  coordinator ruling in DECISIONS.md 2026-10-18, forced by unit 43's
+  21-site shared-policy consumer).)
 - Steps 0/0b/1/2 records: see DECISIONS.md's dated entries and §7 below.
 - RULEBOOK v0.3 + the §4 assumed-imports paragraph are transcribed and
   current (2026-10-16/17).
@@ -75,7 +77,7 @@ not old commit numbers. Going forward: manifest file lines only.
 | glean-bytecode | 1 | 5 | types.rs only; sys_calls/decode/generate/{instruction,cpp,haskell} remain |
 | glean-typed | 8 | 1 | crate fully wired (lib.rs + Cargo.toml); remaining row 44 query/angle.rs |
 | glean-util | 5 | 23 | service.rs + thrift_service.rs + some.rs + vector.rs + retry_channel_exception.rs + scaffolding |
-| glean-db | 1 | 89 | row 41 + scaffolding shipped; crate wired per §4.2 (no [dependencies] yet) |
+| glean-db | 2 | 88 | rows 41+43 + scaffolding; crate wired per §4.2 (no [dependencies] yet) |
 | glean-glass | 0 | 88 | not started |
 | glean-client | 0 | 27 | not started |
 | glean-cli | 0 | 26 | not started |
@@ -95,14 +97,12 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 43** `glean/backend-api/Glean/Backend/Retry.hs` (159 ln) →
-`rust/glean-db/src/backend/retry.rs` — 21 `retryChannelExceptions policy`
-wrap sites over backend operations (cited by unit 42's SIBLING-UNIT
-CONTRACTS; supplies its own RetryPolicy values), then 44
-`glean-typed/src/query/angle.rs` (the LAST glean-typed row), 45
-`glean-db/src/query/thrift/internal.rs`. Brief 43 fresh from the source
-+ inventory (the §4.2 brief was consumed by unit 41; unit 42 shipped
-from a fresh coordinator brief).
+Next: **row 44** `glean/typed/Glean/Typed/Query/Angle.hs` →
+`rust/glean-typed/src/query/angle.rs` (the LAST glean-typed row — will
+need `pub mod query;`-level wiring in typed.rs/lib.rs per the unit-37
+precedent if the manifest path demands the directory), then 45
+`glean-db/src/query/thrift/internal.rs`. Brief fresh from the source +
+inventory.
 Working style: 1–2 units per session, then a records-refresh commit.
 
 Recompute the queue any time (manifest file-line numbers):

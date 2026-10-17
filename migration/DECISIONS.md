@@ -124,3 +124,28 @@ Applied by the orchestrator under RULEBOOK v0.3's existing rules, no new policy 
   §3's crate-list amendment stays QUEUED for the human (extend the list
   to name glean-typed's decoder units, or pre-build safe pop wrappers in
   glean-core at Step-4 consolidation).
+
+## 2026-10-18 — Unit-42 surface amendment (coordinator ruling at unit 43)
+
+- **retry_channel_exceptions signature amended post-ship (42117fc)**:
+  `r: RetryPolicy` (by value) + `on_error: Box<dyn FnMut(...)>` ->
+  `r: &RetryPolicy` + `Box<dyn Fn(...)>. The first draft's pairing was
+  unusable by the function's own named heaviest consumer — row 43's
+  Backend/Retry.hs reuses ONE policy across 21 `&self` call sites,
+  inexpressible with a consuming signature and FnMut-through-&.
+  Behavior unchanged (same loop/orderings/texts; probe-verified).
+  Sanctioned under the unit-18-addendum precedent (post-ship surface
+  repair at the consumer's discovery point). LESSON: when a unit ships
+  a function whose contract cites future consumers, the reviewer should
+  simulate the pinned consumer's call shape — unit 42's reviews never
+  tried a second call with the same policy.
+- **FnMut -> Fn for the on_error field**: the original survey (sole
+  onError value = capture-free logRetry) still holds; Fn is the
+  faithful image of the source's shared immutable callback. If a future
+  unit introduces a stateful onError, that is a new survey fact and
+  reopens the choice — flag, do not silently Box<FnMut> again.
+- **SomeBackend<R> prose correction (types.rs:760-763)**: the Box note's
+  "wrappers hold SomeBackend<R> BY VALUE" is stale prose superseded by
+  the code on both sides (wrapper holds plain R; enum boxes the
+  wrapper). retry.rs's header carries the SUPERSEDES note; reword the
+  prose at the next touch of that comment.
