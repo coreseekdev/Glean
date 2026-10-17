@@ -13,12 +13,13 @@
 //! scaffolding (src/util/some.rs, manifest line 38). Later units append
 //! their own `pub mod` lines here.
 
+pub mod service;
 pub mod some;
 pub mod vector;
 
-// Coverage: two `pub mod` lines wiring every glean-util file shipped so
-// far (util/some.rs, util/vector.rs) and nothing else — no re-exports
-// (each submodule is its own facade).
+// Coverage: three `pub mod` lines wiring every glean-util file shipped
+// so far (util/service.rs, util/some.rs, util/vector.rs) and nothing
+// else — no re-exports (each submodule is its own facade).
 //
 // Marker breakdown (closed set — zero of every class): no port todos
 // (wiring is complete for all shipped files), no source-defect
@@ -26,4 +27,4 @@ pub mod vector;
 // code), no inventory divergence (no inventory row can govern a file
 // with no Haskell counterpart).
 //
-// PORT STATUS: confidence=medium todos=1
+// PORT STATUS: confidence=medium todos=0
