@@ -1,0 +1,43 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
+# Crate manifest for `glean-util` — RUST-ONLY SCAFFOLDING, no Haskell
+# counterpart. Owned by this crate's first shipped unit
+# (rust/glean-util/src/util/some.rs, migration/manifest.tsv line 38)
+# following the glean-typed precedent (rust/glean-typed/Cargo.toml,
+# commit 82b4437). No crate in rust/ compiles yet (the migration ships
+# file-level drafts); the workspace scaffold that pins third-party
+# versions lands at Step 4.
+
+[package]
+name = "glean-util"
+edition = "2021"
+
+[dependencies]
+# None. glean-util is the lowest hand-written crate in the partition
+# (migration/depmap/crates.txt: 28 units; its own leaf units import
+# nothing in-repo — e.g. Glean/Util/Some.hs has zero imports).
+#
+# Anticipated (NOT added now — each lands with its owning unit):
+# glean-thrift — the generated crate (RULE §1 A10) for the thrift images
+# behind `Glean.Service.Types` / `Glean.Types`, imported by the later
+# units glean/util/Glean/Util/{Service,ThriftService}.hs and
+# glean/github/Glean/Init.hsc (grep "^import Glean.Service.Types\|^import
+# Glean.Types" over the crate's manifest units). Never hand-translated.
+#
+# No [dev-dependencies]: tests are not translated (RULE §4 tests row;
+# each crate's tests/ holds re-expressed cases at Step 4). No features
+# anywhere.
+#
+# Marker breakdown (closed set — zero of every class): no port todos
+# (the anticipated-dependency deferral above names its owners — the
+# Service/ThriftService/Init units and the Step-4 workspace scaffold —
+# in prose, per the glean-typed Cargo.toml precedent), no source-defect
+# reproductions (no Haskell source), no performance deferrals (no
+# code), no inventory divergence (no row can govern a file with no
+# Haskell counterpart).
+#
+# PORT STATUS: confidence=medium todos=1
