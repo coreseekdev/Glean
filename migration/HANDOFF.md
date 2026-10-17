@@ -31,9 +31,11 @@ in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
-  Push protocol: the user pushes the fork after batch commits on request.
-- **Step 3 counters: 36 unit-commits / 35 distinct target files shipped;
-  351 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+  Push protocol: the user pushes the fork after batch commits on request —
+  local has since advanced to `db51448` (HANDOFF rewrite + unit 39 + records
+  refresh); sync the fork at the next batch gate.
+- **Step 3 counters: 37 unit-commits / 36 distinct target files shipped;
+  350 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
   `1f9a2fa` — the only double.)
 - Steps 0/0b/1/2 records: see DECISIONS.md's dated entries and §7 below.
@@ -66,7 +68,7 @@ not old commit numbers. Going forward: manifest file lines only.
 | glean-core | 17 | 12 | FFI/RTS/bytecode layer done; remaining rows 23/24 blocked, 51/57/94/101/109/113/114/139/278/279 |
 | glean-bytecode | 1 | 5 | types.rs only; sys_calls/decode/generate/{instruction,cpp,haskell} remain |
 | glean-typed | 8 | 1 | crate fully wired (lib.rs + Cargo.toml); remaining row 44 query/angle.rs |
-| glean-util | 2 | 26 | some.rs + vector.rs + scaffolding; next units here |
+| glean-util | 3 | 25 | service.rs + some.rs + vector.rs + scaffolding; next units here |
 | glean-db | 0 | 90 | not started |
 | glean-glass | 0 | 88 | not started |
 | glean-client | 0 | 27 | not started |
@@ -87,8 +89,8 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 39** `glean/util/Glean/Util/Service.hs` → `rust/glean-util/src/util/service.rs`
-(61 ln; brief in §4.2), then **row 40** ThriftService.hs, then the queue
+Next: **row 40** `glean/util/Glean/Util/ThriftService.hs` →
+`rust/glean-util/src/util/thrift_service.rs` (brief in §4.2), then the queue
 interleaves glean-db (rows 41, 43, 45…) with glean-util rows 42, 63, 68–69.
 Working style: 1–2 units per session, then a records-refresh commit.
 
@@ -225,23 +227,30 @@ staleness check to fire on files it touched (re-read and continue).
 **glean-util — 2/28, scaffolding shipped**
 - `util/vector.rs` — `7f6c2ca` (dispatch 23)
 - `util/some.rs` — `4bdf95a` (line 38; ZERO-ITEM decision record + `Cargo.toml`/`lib.rs`/`util.rs` scaffolding, retro-wiring vector.rs; review corrected 3 false record claims and reopened the consumer survey as a tracked TODO — Catalog.Store/Backup.Backend/Site x7/S3BucketApi)
+- `util/service.rs` — `db51448` (line 39; the thrift `Service` union surface + `service_from_string` (stack-safe `reads @Int32` transcription) + the module-owned network-uri 2.6.4.2 `parseURI` stand-in (rows 40/166 consumers); 2 reviews + fix round; coordinator re-verified deep nesting vs the pinned GHC reference at N=2M)
 
-### 4.2 Immediate next-unit brief (row 39 — service.rs)
+### 4.2 Immediate next-unit brief (row 40 — thrift_service.rs)
 
-`glean/util/Glean/Util/Service.hs` (61 ln) → `rust/glean-util/src/util/service.rs`.
-Exports: `Service(Tier, HostPort, Uri)`, `serviceToString`, `serviceTier`,
-`HostName`, `PortNumber`. Contents: pattern synonyms over the thrift union
-`Service` from `glean/config/service.thrift` (namespace hs `Glean` →
-`Glean.Service.Types`; union members `tier: string`, `hostPort: HostPort{host,
-port: i32}`, `uri: string`; `(hs.nonempty)`); an orphan `IsString` instance
-(fromString heuristic: trailing `:port` + `reads` → HostPort; `parseURI`
-success → Uri; else Tier); `serviceToString`/`serviceTier` with
-partial-function wildcards ("pattern synonyms :("). Open decisions:
-(a) the `glean_thrift` assumed-import image of the union — pin it per RULE §1
-A10; (b) `Network.URI.parseURI` (network-uri) has NO migration record yet —
-choose and document a stand-in per RULE §1's stand-in procedure. Remember
-`pub mod service;` in `src/util.rs`. (Row 40 ThriftService.hs follows: it is
-the generic service-client machinery over the same thrift module.)
+`glean/util/Glean/Util/ThriftService.hs` (57 ln) →
+`rust/glean-util/src/util/thrift_service.rs`. Exports:
+`ThriftServiceOptions(..)` (`processingTimeout`/`queueTimeout :: Maybe Double`,
+seconds; a `Default` instance whose `def` is all-`def`), `IsThriftService(..)`
+(the class: `mkThriftService :: Service -> ThriftServiceOptions -> Maybe (t s)`
+— Nothing = unsupported; `thriftServiceWithDbShard :: t s -> Maybe DbShard ->
+t s`; `thriftServiceWithClientId :: t s -> Maybe Text -> t s` with a default
+no-op implementation; `runThrift :: EventBaseDataplane -> t s -> Thrift s a ->
+IO a`; `getSelection :: EventBaseDataplane -> t s -> Int ->
+IO [(HostName,PortNumber)]`), `thriftService` (mk with `def`),
+`DbShard = Text` (a number-as-text), `runThriftInefficiently`
+(`withEventBaseDataplane` per call). Imported surfaces with NO manifest unit:
+`Thrift.Api` (`Thrift s a` monad) and `Util.EventBase` (`EventBaseDataplane`,
+`withEventBaseDataplane`) — both defined in the hsthrift dependency
+(`~/glean-build/Glean/hsthrift/lib/Thrift/Api.hs`,
+`hsthrift/common/util/Util/EventBase.hs`), so the unit must locate/own their
+Rust images exactly the way service.rs owned parseURI (RULE §1
+stand-in/generation rows; one owner, no forks). `Glean.Util.Service` (row 39,
+shipped) and `Data.Default` (`def` → the crate's own Default-style pattern;
+document the mapping) are the other deps.
 
 ## 5. Operational lessons (behavior-changing; carried forward)
 
@@ -249,7 +258,9 @@ the generic service-client machinery over the same thrift module.)
    Verify cites with `sed`/`grep` before repeating them. This binds REVIEWERS
    too: unit 33's reviewer proposed thrift "corrections" that were wrong; the
    fixer's refutation stood. A reviewer's own line-number claims get verified
-   before application.
+   before application. Reviewer PROSE can also slip where their raw harness
+   evidence is right (unit 39: a report line said `Tier` for an input its own
+   harness logged as `Uri`) — re-derive decisive claims from the raw evidence.
 2. **Briefs pin APIs and cites; a semantics claim needs a probe or a library
    cite.** (Unit 34: `insertWith` combines f NEW OLD — the brief's
    old++new was wrong; pinned-GHC probe caught it. Unit 35: `Fact` field 2 is
