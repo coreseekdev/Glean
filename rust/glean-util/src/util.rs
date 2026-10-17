@@ -13,15 +13,16 @@
 //! scaffolding (src/util/some.rs, manifest line 38). Later units append
 //! their own `pub mod` lines here.
 
+pub mod retry_channel_exception;
 pub mod service;
 pub mod some;
 pub mod thrift_service;
 pub mod vector;
 
-// Coverage: four `pub mod` lines wiring every glean-util file shipped
-// so far (util/service.rs, util/some.rs, util/thrift_service.rs,
-// util/vector.rs) and nothing else — no re-exports (each submodule is
-// its own facade).
+// Coverage: five `pub mod` lines wiring every glean-util file shipped
+// so far (util/retry_channel_exception.rs, util/service.rs,
+// util/some.rs, util/thrift_service.rs, util/vector.rs) and nothing
+// else — no re-exports (each submodule is its own facade).
 //
 // Marker breakdown (closed set — zero of every class): no port todos
 // (wiring is complete for all shipped files), no source-defect
