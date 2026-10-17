@@ -5,9 +5,9 @@ process). Read DECISIONS.md first, then this file.
 
 ## STATUS (supersedes the stale gate line below — 2026-10-17)
 
-**Step 3 (translation fan-out) IN FLIGHT: 33 units on disk + committed**
-on branch `migration/rust-port`, HEAD `e879d8a` (26 dispatch-order units
-+ manifest-line units 5, 15, 16, 17, 33, 34, 35). Steps 0b/1/2 are
+**Step 3 (translation fan-out) IN FLIGHT: 35 units on disk + committed**
+on branch `migration/rust-port`, HEAD `82b4437` (26 dispatch-order units
++ manifest-line units 5, 15, 16, 17, 33, 34, 35, 36, 37). Steps 0b/1/2 are
 COMPLETE and signed off (see DECISIONS.md's dated entries; RULEBOOK
 v0.3 + the §4 assumed-imports paragraph, transcribed 2026-10-16).
 
@@ -32,7 +32,13 @@ Shipped (dispatch-order names, then manifest-line units):
 (d54cd8a), 34 typed/build_fact.rs (367f952, NewFact/Facts/FactsM/
 buildBatch; the insertWith NEW++OLD order was probe-fixed in review),
 35 typed/fact.rs (e879d8a, decodeFact/decodeRef; decode_as_fact
-override contract verified against Gen/Haskell.hs:327-328).
+override contract verified against Gen/Haskell.hs:327-328),
+36 typed/prim.rs (ab55ecb, fromNat/toNat — Nat<->u64 two's-complement
+wraps, probe-verified), 37 typed.rs crate-root facade (82b4437, + the
+crate's lib.rs/Cargo.toml per the siblings' MODULE-WIRING ownership:
+seven pub mods + 45-name NAMED-re-export mirror of the curated export
+lists, no globs; deps exactly glean-{core,angle,thrift} path +
+once_cell + thiserror). The glean-typed crate is now fully wired.
 
 Blocked: manifest lines 23-24 (RTS/Traverse.hs, RTS/Typecheck.hs) — their
 module `Glean.RTS.Bytecode.Gen.Issue` is missing from the Haskell tree;
@@ -40,10 +46,10 @@ semantics reconstructable from glean/rts/bytecode/subroutine.cpp if ever
 needed.
 
 Queue = manifest lines with no target on disk (file-line numbering):
-next is line 36 (Typed/Prim.hs — deps all shipped), then 37 Typed.hs
-(the glean-typed crate root — will wire `pub mod`s and needs once_cell
-in Cargo.toml), 38-40 glean-util (Some/Service/ThriftService), 41+
-backend-api. Check with:
+next is line 38 (Util/Some.hs — the glean-util crate's first files;
+38-40 = Some/Service/ThriftService, which will need that crate's
+lib.rs/Cargo.toml wiring the same way unit 37 did for glean-typed),
+then 41+ backend-api. Check with:
 `tail -n +2 migration/manifest.tsv | awk -F'\t' '{print NR+1"\t"$2}' |
 while IFS=$'\t' read r t; do [ -f "$t" ] || echo "$r $t"; done`.
 
@@ -110,6 +116,11 @@ Operational notes from 2026-10-15/16 sessions:
   before acting; unit 17's draft from a dead session was found complete-
   except-tuples on disk and finished by a completion round rather than
   restarted.
+- Execution-window expiry (2026-10-17, twice in the unit-36/37 idle
+  session): the run pauses mid-flight and continues in a fresh window.
+  Drafts persist on disk untouched; on resume, re-verify git status/HEAD
+  first, re-dispatch the cancelled agents whole (a cancelled agent has
+  produced NO report — never cite one), and continue from the todo list.
 - DEV-006 (user-deferred): RULEBOOK §3's crate list (glean-storage/
   glean-core only) vs the shipped raw-pop-consumer contract that
   sanctions glean-typed's decoder units carrying unsafe (build.rs,
