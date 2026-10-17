@@ -1,0 +1,65 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
+# Crate manifest for `glean-typed` — RUST-ONLY SCAFFOLDING, no Haskell
+# counterpart. Owned by the crate-root unit (rust/glean-typed/src/typed.rs,
+# migration/manifest.tsv line 37 — cf. id.rs:113-115's and
+# build.rs:148-152's MODULE-WIRING notes, which defer here). No crate in
+# rust/ has a Cargo.toml yet (the migration ships file-level drafts that
+# need not compile), so this is the honest final-form manifest; the
+# workspace scaffold that pins the third-party versions lands at Step 4.
+
+[package]
+name = "glean-typed"
+edition = "2021"
+
+[dependencies]
+# Sibling crates: their file-level drafts are shipped; their Cargo.toml
+# scaffolding lands at their own crate-root units (the same class of unit
+# as this one).
+#
+# glean-core — consumers: binary.rs:151-160 (ffi, rts::{builder, set, sys,
+# types}), build.rs:160-161 (ffi, rts::sys), build_fact.rs:247-251 (ffi,
+# rts::{builder, foreign::define, foreign::fact_set, types}), id.rs:124
+# (rts::types::{Fid, Pid}), predicate.rs:216 (rts::types::invalid_pid).
+glean-core = { path = "../glean-core" }
+
+# glean-angle — consumers: binary.rs:149-150 (angle::types,
+# schema::util), id.rs:119 (display::{Display, DisplayOpts, Doc}),
+# predicate.rs:214-215 (angle::types, schema::util).
+glean-angle = { path = "../glean-angle" }
+
+# Generated thrift types (RULE §1 A10): never hand-translated; produced by
+# that crate's own build.rs from if/*.thrift. Its crate scaffolding lands
+# at its own crate-root unit. Consumers: binary.rs:168/171 ({Byte, Nat},
+# ThriftEnum), build.rs:163 ({Fact, ThriftEnum}), build_fact.rs:252
+# ({Batch, FactDependencies}), fact.rs:245 (Fact), predicate.rs:217
+# ({PredicateRef, SchemaInfo}), prim.rs:96 (Nat).
+glean-thrift = { path = "../glean-thrift" }
+
+# RULE §1 whitelist. Consumer: predicate.rs:212 (`use
+# once_cell::sync::Lazy` — the predicateIndex CAF image, RULE §2's
+# NOINLINE-CAF row). Plain major line; the exact version is pinned when
+# the workspace scaffold lands (Step 4).
+once_cell = "1"
+
+# RULE §1 whitelist. Consumers: build.rs:342/364 and build_fact.rs:286/759
+# (`#[derive(Debug, thiserror::Error)]` on DecodingException/DecodeError
+# and NewFactError/BuildFactsError).
+thiserror = "1"
+
+# No [dev-dependencies]: tests are not translated (RULE §4 tests row;
+# each crate's tests/ holds re-expressed cases at Step 4). No features
+# anywhere.
+#
+# Marker breakdown (closed set — zero of every class): no port todos (the
+# version-pin deferral above names its owner — the Step-4 workspace
+# scaffold — in prose, per the siblings' MODULE-WIRING-note precedent), no
+# source-defect reproductions (no Haskell source), no performance
+# deferrals, no inventory divergence (no row can govern a file with no
+# Haskell counterpart).
+#
+# PORT STATUS: confidence=high todos=0
