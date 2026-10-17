@@ -25,17 +25,18 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-17 (HEAD `9251205`, after unit 38)
+## 2. STATUS — 2026-10-17 (HEAD `495ffac`, after unit 40)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `9251205`, 54 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `495ffac`, 58 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
   Push protocol: the user pushes the fork after batch commits on request —
-  local has since advanced to `db51448` (HANDOFF rewrite + unit 39 + records
-  refresh); sync the fork at the next batch gate.
-- **Step 3 counters: 37 unit-commits / 36 distinct target files shipped;
-  350 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+  local has since advanced 4 commits to `495ffac` (HANDOFF rewrite `80ed78a`,
+  unit 39 `db51448`, records refresh `f9491e2`, unit 40 `495ffac`); sync the
+  fork at the next batch gate.
+- **Step 3 counters: 38 unit-commits / 37 distinct target files shipped;
+  349 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
   `1f9a2fa` — the only double.)
 - Steps 0/0b/1/2 records: see DECISIONS.md's dated entries and §7 below.
@@ -68,7 +69,7 @@ not old commit numbers. Going forward: manifest file lines only.
 | glean-core | 17 | 12 | FFI/RTS/bytecode layer done; remaining rows 23/24 blocked, 51/57/94/101/109/113/114/139/278/279 |
 | glean-bytecode | 1 | 5 | types.rs only; sys_calls/decode/generate/{instruction,cpp,haskell} remain |
 | glean-typed | 8 | 1 | crate fully wired (lib.rs + Cargo.toml); remaining row 44 query/angle.rs |
-| glean-util | 3 | 25 | service.rs + some.rs + vector.rs + scaffolding; next units here |
+| glean-util | 4 | 24 | service.rs + thrift_service.rs + some.rs + vector.rs + scaffolding |
 | glean-db | 0 | 90 | not started |
 | glean-glass | 0 | 88 | not started |
 | glean-client | 0 | 27 | not started |
@@ -89,9 +90,10 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 40** `glean/util/Glean/Util/ThriftService.hs` →
-`rust/glean-util/src/util/thrift_service.rs` (brief in §4.2), then the queue
-interleaves glean-db (rows 41, 43, 45…) with glean-util rows 42, 63, 68–69.
+Next: **row 41** `glean/backend-api/Glean/Backend/Types.hs` →
+`rust/glean-db/src/backend/types.rs` (glean-db's FIRST unit — the crate is
+not yet scaffolded; brief in §4.2), then the queue interleaves glean-db
+(rows 43, 45…) with glean-util rows 42, 63, 68–69.
 Working style: 1–2 units per session, then a records-refresh commit.
 
 Recompute the queue any time (manifest file-line numbers):
@@ -224,33 +226,42 @@ staleness check to fire on files it touched (re-read and continue).
 - `typed/prim.rs` — `ab55ceb` (line 36; fromNat/toNat Nat↔u64 two's-complement wraps, probe-verified)
 - `typed.rs` crate-root facade + `lib.rs` + `Cargo.toml` — `82b4437` (line 37; NAMED re-exports, no globs)
 
-**glean-util — 2/28, scaffolding shipped**
+**glean-util — 4/28, scaffolding shipped**
 - `util/vector.rs` — `7f6c2ca` (dispatch 23)
 - `util/some.rs` — `4bdf95a` (line 38; ZERO-ITEM decision record + `Cargo.toml`/`lib.rs`/`util.rs` scaffolding, retro-wiring vector.rs; review corrected 3 false record claims and reopened the consumer survey as a tracked TODO — Catalog.Store/Backup.Backend/Site x7/S3BucketApi)
 - `util/service.rs` — `db51448` (line 39; the thrift `Service` union surface + `service_from_string` (stack-safe `reads @Int32` transcription) + the module-owned network-uri 2.6.4.2 `parseURI` stand-in (rows 40/166 consumers); 2 reviews + fix round; coordinator re-verified deep nesting vs the pinned GHC reference at N=2M)
+- `util/thrift_service.rs` — `495ffac` (line 40; `ThriftServiceOptions` + std `Default` (`def` = all-`None`, GHC-probed), `DbShard`, `IsThriftService<S>: Clone` (5 methods; hand-written `Clone` impl so derived bounds cannot leak `S: Clone`; phantom tag — the all-`S` blanket-impl form is E0282-uninferable, per-tag impls work), `thrift_service` (`Nothing` arm = source's `mkThriftService _ _`), `run_thrift_inefficiently`; TWO first-in-tree ASSUMED-IMPORT sketches: the `glean_thrift` runtime (`ThriftAction` rank-2 `run<P: Protocol, C: ClientChannel<S>>` image of `forall p c`; `ThriftEnv`/`Counter` field-for-field per `Monad.hsc`; `ThriftError` union; CONTRACT: actions are SINGLE-USE) plus the `Util.EventBase` kit contract (opaque handle; infallible init; CONSUMING destroy; no kit `Drop`) with this file owning the `pub with_event_base_dataplane` bracket (parse_uri precedent; destroy-exactly-once incl. panic/nested); zero `unsafe` in-file, §3-letter kit situation flagged in-block (DEV-006 class); 2 reviews (A: deliverable compiled VERBATIM against an independent kit stub; B: PASS W/ MINOR) + fix round (evidence persisted under `/tmp/opencode/ts-probe/`). CARRY-FORWARD: units 166/167 add `+ Clone` on action reuse (E0382-reproduced, `Remote.withShard` fallback); the kit must pin stored-handle ownership before Remote/Glass/CLI/Sharding land — not `Clone`)
 
-### 4.2 Immediate next-unit brief (row 40 — thrift_service.rs)
+### 4.2 Immediate next-unit brief (row 41 — glean-db backend/types.rs)
 
-`glean/util/Glean/Util/ThriftService.hs` (57 ln) →
-`rust/glean-util/src/util/thrift_service.rs`. Exports:
-`ThriftServiceOptions(..)` (`processingTimeout`/`queueTimeout :: Maybe Double`,
-seconds; a `Default` instance whose `def` is all-`def`), `IsThriftService(..)`
-(the class: `mkThriftService :: Service -> ThriftServiceOptions -> Maybe (t s)`
-— Nothing = unsupported; `thriftServiceWithDbShard :: t s -> Maybe DbShard ->
-t s`; `thriftServiceWithClientId :: t s -> Maybe Text -> t s` with a default
-no-op implementation; `runThrift :: EventBaseDataplane -> t s -> Thrift s a ->
-IO a`; `getSelection :: EventBaseDataplane -> t s -> Int ->
-IO [(HostName,PortNumber)]`), `thriftService` (mk with `def`),
-`DbShard = Text` (a number-as-text), `runThriftInefficiently`
-(`withEventBaseDataplane` per call). Imported surfaces with NO manifest unit:
-`Thrift.Api` (`Thrift s a` monad) and `Util.EventBase` (`EventBaseDataplane`,
-`withEventBaseDataplane`) — both defined in the hsthrift dependency
-(`~/glean-build/Glean/hsthrift/lib/Thrift/Api.hs`,
-`hsthrift/common/util/Util/EventBase.hs`), so the unit must locate/own their
-Rust images exactly the way service.rs owned parseURI (RULE §1
-stand-in/generation rows; one owner, no forks). `Glean.Util.Service` (row 39,
-shipped) and `Data.Default` (`def` → the crate's own Default-style pattern;
-document the mapping) are the other deps.
+`glean/backend-api/Glean/Backend/Types.hs` (482 ln) →
+`rust/glean-db/src/backend/types.rs` — the FIRST glean-db unit (90 manifest
+rows; `rust/glean-db/` does not exist yet — expect to scaffold
+`Cargo.toml`/`src/lib.rs`/`src/backend.rs` per the glean-util/glean-angle
+precedent; check `migration/depmap/edges.tsv` for the crate's dep set and add
+NO `[dependencies]` entries — ASSUMED-IMPORT discipline). Exports: `Backend(..)`
+(the class: `loadPredicates`/`loadPredicatesForSchema`/`databases`/
+`localDatabases`/`create`/`finish`/`fillDatabase`/`finalize`/
+`completePredicates`/`untilDone` + the Haxl seams `initGlobalState` and
+friends), `StackedDbOpts(..)`, `LogDerivationResult`, `Query(..)`,
+`GleanGet(..)`/`GleanQuery(..)` (type-indexed requests with Eq/Hashable/
+DataSource instances), `GleanFetcher`/`GleanQueryer`, `Haxl.State(..)`/
+`QueryResult(..)`/`AppendList(..)`/`fromAppendList`, `dbShard`/`dbShardWord`.
+GOVERNING inventory rows (cite in-unit): codeflow.tsv:22 (`dbShardWord` =
+GHC-fingerprint MD5, low word `>> 1`, comment "if this ever changes the test
+in hs/tests/TestShard.hs will detect it"; REUSE the shipped shared module
+`glean_angle::angle::hash::fingerprint_data`, `rust/glean-angle/src/angle/
+hash.rs:230`), protocol.tsv:17 (type-indexed Eq/Hashable + the TWO batchers
+of `initGlobalState`; streaming continuation stays outside dedupe),
+protocol.tsv:23 (:223 `Some Backend` pass-through — one adapter layer),
+protocol.tsv:28 (:189-190 `LogResult` pair), sites.tsv:435/436 (fingerprint),
+537-540 (haxl seams). The Haxl seams are the RULE §1:69 "one genuine
+redesign" (explicit request-batching); no Rust engine is shipped for them
+yet — the haxl data sources are their own glean-db rows (146/153) and
+`client/Haxl.hs` → `glean-client/src/haxl.rs` (row 154); design the minimal
+seam per the inventory rows, extend-never-fork, UNKNOWN rule where the
+redesign is not yet pinned. THEN: row 42
+(`util/retry_channel_exception.rs`) — a small glean-util unit.
 
 ## 5. Operational lessons (behavior-changing; carried forward)
 
@@ -280,6 +291,16 @@ document the mapping) are the other deps.
 9. **Cost/quota**: prefer 1–2 well-reviewed units per session; dispatch
    foreground; stagger fan-outs (2 at a time); records-refresh commits keep
    the budget visible.
+10. **Kit sketches' CONTRACT lines and probe artifacts are deliverables.**
+    A first-consumer assumed-import sketch must spell its downstream
+    obligations: unit 40's thrift actions are SINGLE-USE (`run(self)`) →
+    units 166/167 add `+ Clone` at reuse sites (E0382-reproduced at
+    `Remote.withShard`'s default fallback path), and the event-base kit must
+    pin STORED-handle ownership before Remote/Glass/CLI/Sharding land (not
+    `Clone` — that double-destroys). Carry both into §4.1 and the consumer's
+    brief. And every probe a comment cites must exist on disk (review B-6
+    killed a dangling "record in the port log" pointer): persist transcripts
+    under `/tmp/opencode/ts-probe/` and cite the path.
 
 ## 6. Infrastructure and environment
 
