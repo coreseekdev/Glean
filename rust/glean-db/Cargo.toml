@@ -1,0 +1,59 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
+# Crate manifest for `glean-db` — RUST-ONLY SCAFFOLDING, no Haskell
+# counterpart. Owned by this crate's first shipped unit
+# (rust/glean-db/src/backend/types.rs, migration/manifest.tsv line 41)
+# following the glean-util precedent (rust/glean-util/Cargo.toml). No
+# crate in rust/ compiles yet (the migration ships file-level drafts);
+# the workspace scaffold that pins third-party versions lands at Step 4.
+
+[package]
+name = "glean-db"
+edition = "2021"
+
+[dependencies]
+# None added now — the entries below are the anticipated in-repo edges,
+# each landing with its owning unit at the Step-4 workspace scaffold
+# (the glean-util Cargo.toml disposition; NOT added as `path = …` entries
+# yet, because the sibling crates' own Cargo.toml scaffolding is not all
+# in place):
+#
+# * glean-thrift — the generated crate (RULE §1 A10), never
+#   hand-translated; backs every `thrift::…` image in backend/types.rs
+#   (its ASSUMED-IMPORT block lists the pinned IDL members). The
+#   `import Glean.Types` (Types.hs:71/:74) rides the generated-crate
+#   edge: generated modules carry NO depmap rows (grep of
+#   depmap/edges.tsv for Backend/Types.hs -> Glean.Types: zero; row 19
+#   is the Backend/Types.hs -> Util/Some.hs edge) — that absence is
+#   precisely why Glean.Types is an assumed import (RULE §4 B4).
+# * glean-typed — shipped (commit 82b4437); backend/types.rs imports
+#   `IdOf`/`Type`/`Predicates`/`SchemaPredicates`/`make_predicates`.
+#   Outbound edge: depmap/edges.tsv:18.
+# * glean-util — shipped; `DbShard` (thrift_service.rs:433) and the
+#   `Glean.Util.Some` decision record this crate's `SomeBackend` cites.
+#   Outbound edges: depmap/edges.tsv:19-20 (Some.hs, ThriftService.hs).
+# * glean-angle — NEW EDGE (not in the Haskell depmap: Backend/Types.hs
+#   imports GHC.Fingerprint directly, Types.hs:63): backend/types.rs
+#   routes `db_shard_word` through the SHARED fingerprint module
+#   (angle/hash.rs `fingerprint_data`/`Fingerprint`), as inventory.tsv:10
+#   mandates ("reuse the SAME dedicated MD5 fingerprint module as
+#   Hash.hs (one shared module, byte-exact)"). The edge is
+#   fingerprint-only: glean-db must not acquire a general glean-angle
+#   dependency without a row.
+#
+# No [dev-dependencies]: tests are not translated (RULE §4 tests row;
+# each crate's tests/ holds re-expressed cases at Step 4). No features
+# anywhere.
+#
+# Marker breakdown (closed set — zero of every class): no port todos
+# (the anticipated-dependency deferral above names its owner — the
+# Step-4 workspace scaffold — in prose, per the glean-util Cargo.toml
+# precedent), no source-defect reproductions (no Haskell source), no
+# performance deferrals (no code), no inventory divergence (no row can
+# govern a file with no Haskell counterpart).
+#
+# PORT STATUS: confidence=medium todos=0
