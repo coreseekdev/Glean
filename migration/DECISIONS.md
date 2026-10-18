@@ -149,3 +149,33 @@ Applied by the orchestrator under RULEBOOK v0.3's existing rules, no new policy 
   the code on both sides (wrapper holds plain R; enum boxes the
   wrapper). retry.rs's header carries the SUPERSEDES note; reword the
   prose at the next touch of that comment.
+
+## 2026-10-18 — Log-seam convention after units 45/46; Step-4 spelling checks (records carry)
+
+- **Util.Log seam** (RULEBOOK §1 logging row A10; no manifest unit for
+  Util.Log): two conventions accumulated in the tree —
+  * unit 43 (`retry_channel_exception.rs:311-324`): a private stand-in fn
+    + a TODO naming the future `glean_util::log` owner;
+  * units 45/46 (`query/thrift/internal.rs:190-213` first sketch;
+    `write/send_batch.rs` extensions): the FINAL call site against the
+    pinned lazy-thunk shape, imported directly (`use
+    glean_util::log::vlog;` / `::log_info;`), no stand-in, no port todo.
+  Coordinator-default ruling recorded at the records refresh (reviewable/
+  reversible at any gate): the units-45/46 direct final-call-site form is
+  the convention going forward — drafts don't compile until Step 4
+  anyway, and a stand-in is dead code; unit 43's stand-in remains that
+  file's to delete when the log module lands (its TODO already says so).
+  Future Util.Log consumers: pin the signature from internal.rs's block,
+  extend it in-file for new functions, import directly.
+- **Step-4 spelling checks** (failure mode is a compile error, never
+  silent — the RULE §4 B4 fallback): `glean_thrift` must confirm
+  `QuerySyntax::ANGLE` (unit 45) and `EnqueueBatchWaitPolicy::None/
+  Remember` (unit 46) value names; and unit 46's `unreachable!` arms for
+  the `(hs.nonempty)` `SendResponse`/`FinishResponse` unions assume an
+  unset union is not constructible from the wire — revisit against the
+  generated crate if it can be.
+- **types.rs:255-258 doc staleness**: the sibling-contract sentence
+  "These paths do not exist in the tree yet" is stale for
+  `crate::backend::retry` (shipped unit 43); types.rs was frozen for
+  byte-identity during unit 46, reword at its next touch (also carried
+  in HANDOFF §2).
