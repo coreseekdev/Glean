@@ -22,7 +22,7 @@
 //! precedent (rust/glean-util/src/lib.rs, rust/glean-typed/src/lib.rs,
 //! commit 82b4437): the earliest unit of a crate owns its crate
 //! scaffolding. Later units append their own `pub mod` lines here as
-//! they land (`database`, `haxl`, `query`, `write`, `logger`, and the
+//! they land (`database`, `haxl`, `write`, `logger`, and the
 //! github stragglers' paths).
 //!
 //! Forward-reference note: `backend/types.rs` names three same-crate
@@ -38,16 +38,30 @@
 
 pub mod backend;
 
-// Coverage: one `pub mod` and nothing else — no lib-level re-exports (a
-// `pub use` here would fork the namespace the siblings'
-// `crate::backend::…` paths already presume; each submodule is its own
-// facade, RULE §4 "no glob re-exports").
+// The Query/ area wiring: the source modules Glean.Query.Thrift.hs
+// (migration/manifest.tsv line 47, src/query/thrift.rs) and
+// Glean.Query.Thrift/Internal.hs (line 45, src/query/thrift/internal.rs)
+// are SIBLINGS of the Glean.Backend.* area in Haskell, so their `pub mod`
+// hangs off the crate root here — after `pub mod backend;` — not inside
+// crate::backend (RULE §4: the module header decides the path; the
+// siblings are not Backend children). The directory module file is
+// src/query.rs (Rust-only scaffolding — Haskell has no `Glean.Query` root
+// module); this unit appends `pub mod query;` for row 45's file, and row
+// 47 appends `pub mod thrift;` inside src/query.rs when it lands (that
+// contract is recorded there in prose).
+pub mod query;
+
+// Coverage: two `pub mod`s (backend, query) and nothing else — no
+// lib-level re-exports (a `pub use` here would fork the namespace the
+// siblings' `crate::backend::…` / `crate::query::…` paths already
+// presume; each submodule is its own facade, RULE §4 "no glob
+// re-exports").
 //
 // Marker breakdown (closed set — zero of every class): no port todos
-// (the crate-root wiring is complete for the one shipped file; the
-// forward module lines above name their owning units in prose), no
-// source-defect reproductions (no Haskell source), no performance
-// deferrals (no code), no inventory divergence (no inventory row can
-// govern a file with no Haskell counterpart).
+// (the crate-root wiring is complete through this unit's append; the one
+// remaining query-area line is row 47's and is named in prose here and in
+// src/query.rs), no source-defect reproductions (no Haskell source), no
+// performance deferrals (no code), no inventory divergence (no inventory
+// row can govern a file with no Haskell counterpart).
 //
 // PORT STATUS: confidence=medium todos=0
