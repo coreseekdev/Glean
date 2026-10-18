@@ -35,8 +35,7 @@ in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
   local has since advanced 25 commits to `9874c48` (`git rev-list --count
   9251205..HEAD`; the last four: unit 47 `3e2be5a`, records refresh
   `9d5ee17`, unit 48 `67cf160`, unit 49 `9874c48`; this records refresh
-  makes 26, and the HANDOFF successor-refresh commit that follows makes
-  27); sync the fork at the next batch gate.
+  (`8bd66db`) makes 26); sync the fork at the next batch gate.
 - **Step 3 counters: 47 unit-commits / 46 distinct target files shipped;
   340 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
