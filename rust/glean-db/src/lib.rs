@@ -36,6 +36,17 @@
 //! Rust-only module owed by row 146
 //! (src/haxl/data_source/glean/common.rs) — see the Haxl seam block in
 //! backend/types.rs for the contract that module must satisfy.
+//!
+//! A THIRD kind, added by row 48: `crate::internal::types`
+//! (`{Completeness, Meta, StorageName, …}`, named by src/database/meta.rs)
+//! is GENERATED code — the gen-hs2 image of glean/if/internal.thrift — so
+//! it is neither a manifest unit nor a Rust-only module owed by a row: it
+//! is the assumed-import home DECISIONS.md (2026-10-05) pinned to glean-db
+//! (generated-thrift adjacent), owed to Step 4's build.rs. No inventory row
+//! backs that pin (grep-verified), and the generated module has a
+//! cross-crate consumer (glean-schema's SchemaIndex/SchemaInstance), so
+//! src/database/meta.rs's one TODO carries both caveats; whichever home
+//! wins, only the import path changes.
 
 pub mod backend;
 
@@ -66,17 +77,39 @@ pub mod query;
 // contract is recorded there in prose).
 pub mod write;
 
-// Coverage: three `pub mod`s (backend, query, write) and nothing else — no
-// lib-level re-exports (a `pub use` here would fork the namespace the
-// siblings' `crate::backend::…` / `crate::query::…` / `crate::write::…`
-// paths already presume; each submodule is its own facade, RULE §4 "no glob
+// The Database/ area wiring: the source modules Glean.Database.Meta.hs
+// (migration/manifest.tsv line 48, src/database/meta.rs) and
+// Glean.Database.Catalog/Filter.hs (line 49, src/database/catalog/
+// filter.rs) are SIBLINGS of the Glean.Backend.* area in Haskell, so
+// their `pub mod` hangs off the crate root here — after `pub mod
+// write;` — not inside crate::backend (RULE §4: the module header
+// decides the path; the siblings are not Backend children). The
+// directory module file is src/database.rs (Rust-only scaffolding —
+// Haskell has no `Glean.Database` root module; glean/db/Glean/ contains
+// only Database/, Logger/, Logger.hs, Query/, Write/); this unit appends
+// `pub mod database;` for row 48's file, which src/database.rs declares
+// as `pub mod meta;` (a direct child, wired now), and row 49 appends
+// `pub mod catalog;` inside src/database.rs and declares
+// `pub mod filter;` in src/database/catalog.rs when it lands (that
+// contract is recorded in src/database.rs's prose, which row 49's unit
+// consumes).
+pub mod database;
+
+// Coverage: four `pub mod`s (backend, query, write, database) and nothing
+// else — no lib-level re-exports (a `pub use` here would fork the
+// namespace the siblings' `crate::backend::…` / `crate::query::…` /
+// `crate::write::…` / `crate::database::…` paths already presume; each
+// submodule is its own facade, RULE §4 "no glob
 // re-exports").
 //
 // Marker breakdown (closed set — zero of every class): no port todos
 // (the crate-root wiring is complete — row 47's `pub mod thrift;` inside
-// src/query.rs has since SHIPPED; the one remaining area line is row
-// 115's `pub mod json;` inside src/write.rs, named in prose here and in
-// that file), no source-defect reproductions (no Haskell
+// src/query.rs has since SHIPPED; the two remaining CONTRACTED area lines
+// so far are row 115's `pub mod json;` inside src/write.rs and row 49's
+// `pub mod catalog;` inside src/database.rs, both named in prose here and
+// in their files; the `haxl`/`logger`/github-straggler lines named in the
+// doc header above remain for their own units), no source-defect
+// reproductions (no Haskell
 // source), no performance deferrals (no code), no inventory divergence (no
 // inventory row can govern a file with no Haskell counterpart).
 //
