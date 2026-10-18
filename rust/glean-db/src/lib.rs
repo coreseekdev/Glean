@@ -22,17 +22,18 @@
 //! precedent (rust/glean-util/src/lib.rs, rust/glean-typed/src/lib.rs,
 //! commit 82b4437): the earliest unit of a crate owns its crate
 //! scaffolding. Later units append their own `pub mod` lines here as
-//! they land (`database`, `haxl`, `write`, `logger`, and the
+//! they land (`database`, `haxl`, `logger`, and the
 //! github stragglers' paths).
 //!
-//! Forward-reference note: `backend/types.rs` names three same-crate
-//! paths that no unit has shipped yet — `crate::database::types::Env`
-//! (row 104), `crate::backend::retry` / `crate::backend::logging`
-//! (rows 43 / 148), and `crate::haxl::engine::{GleanGetFetcher,
-//! GleanQueryFetcher}` (row 146). The first three are ordinary
-//! future-unit paths; `crate::haxl::engine` is special: the Haxl
-//! framework core is an EXTERNAL Haskell package with no manifest row,
-//! so its Rust image is a Rust-only module owed by row 146
+//! Forward-reference note: `backend/types.rs` names same-crate paths
+//! whose owners are later units — `crate::database::types::Env` (row
+//! 104) and `crate::backend::logging` (row 148) are still forward
+//! references, while `crate::backend::retry` (row 43) has since shipped
+//! (src/backend/retry.rs, wired in src/backend.rs) — plus
+//! `crate::haxl::engine::{GleanGetFetcher, GleanQueryFetcher}` (row
+//! 146), which is special: the Haxl framework core is an EXTERNAL
+//! Haskell package with no manifest row, so its Rust image is a
+//! Rust-only module owed by row 146
 //! (src/haxl/data_source/glean/common.rs) — see the Haxl seam block in
 //! backend/types.rs for the contract that module must satisfy.
 
@@ -51,17 +52,32 @@ pub mod backend;
 // contract is recorded there in prose).
 pub mod query;
 
-// Coverage: two `pub mod`s (backend, query) and nothing else — no
+// The Write/ area wiring: the source modules Glean.Write.SendBatch.hs
+// (migration/manifest.tsv line 46, src/write/send_batch.rs) and
+// Glean.Write.JSON.hs (line 115, src/write/json.rs) are SIBLINGS of the
+// Glean.Backend.* area in Haskell, so their `pub mod` hangs off the crate
+// root here — after `pub mod query;` — not inside crate::backend (RULE §4:
+// the module header decides the path; the siblings are not Backend
+// children). The directory module file is src/write.rs (Rust-only
+// scaffolding — Haskell has no `Glean.Write` root module); this unit
+// appends `pub mod write;` for row 46's file, which src/write.rs declares
+// as `pub mod send_batch;` (a direct child, wired now), and row 115
+// appends `pub mod json;` inside src/write.rs when it lands (that
+// contract is recorded there in prose).
+pub mod write;
+
+// Coverage: three `pub mod`s (backend, query, write) and nothing else — no
 // lib-level re-exports (a `pub use` here would fork the namespace the
-// siblings' `crate::backend::…` / `crate::query::…` paths already
-// presume; each submodule is its own facade, RULE §4 "no glob
+// siblings' `crate::backend::…` / `crate::query::…` / `crate::write::…`
+// paths already presume; each submodule is its own facade, RULE §4 "no glob
 // re-exports").
 //
 // Marker breakdown (closed set — zero of every class): no port todos
-// (the crate-root wiring is complete through this unit's append; the one
-// remaining query-area line is row 47's and is named in prose here and in
-// src/query.rs), no source-defect reproductions (no Haskell source), no
-// performance deferrals (no code), no inventory divergence (no inventory
-// row can govern a file with no Haskell counterpart).
+// (the crate-root wiring is complete through this unit's append; the two
+// remaining area lines are row 47's `pub mod thrift;` inside src/query.rs
+// and row 115's `pub mod json;` inside src/write.rs, both named in prose
+// here and in those files), no source-defect reproductions (no Haskell
+// source), no performance deferrals (no code), no inventory divergence (no
+// inventory row can govern a file with no Haskell counterpart).
 //
 // PORT STATUS: confidence=medium todos=0
