@@ -25,27 +25,24 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-18 (HEAD `63fd4fb`, after unit 43)
+## 2. STATUS — 2026-10-18 (HEAD `8314b35`, after unit 44)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `63fd4fb`, 67 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `8314b35`, 70 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
   Push protocol: the user pushes the fork after batch commits on request —
-  local has since advanced 11 commits to `63fd4fb` (HANDOFF rewrite `80ed78a`,
-  unit 39 `db51448`, records refresh `f9491e2`, unit 40 `495ffac`, records
-  refresh `df7255a`, hash.rs repair `9354cbb`, unit 41 `1aed2f6`, records
-  refresh `00d279f`, unit 42 `3063cc5`, records refresh `1867a35`,
-  retry-surface amendment `42117fc`, unit 43 `63fd4fb`; the next records
-  refresh makes 12); sync the fork at the next batch gate.
-- **Step 3 counters: 41 unit-commits / 40 distinct target files shipped;
-  346 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+  local has since advanced 14 commits to `8314b35` (…unit 43 `63fd4fb`,
+  records refresh `45e2c0f`, E0072 repair `41905c2`, unit 44 `8314b35`;
+  the next records refresh makes 15); sync the fork at the next batch gate.
+- **Step 3 counters: 42 unit-commits / 41 distinct target files shipped;
+  345 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
-  `1f9a2fa` — the only double. Two non-unit fix commits: `9354cbb`
-  (dead session's hash.rs derive-attachment repair) and `42117fc` (the
+  `1f9a2fa` — the only double. Three non-unit fix commits: `9354cbb`
+  (dead session's hash.rs derive-attachment repair), `42117fc` (the
   unit-42 retry-surface amendment — `&RetryPolicy` + `Box<dyn Fn>`,
-  coordinator ruling in DECISIONS.md 2026-10-18, forced by unit 43's
-  21-site shared-policy consumer).)
+  DECISIONS.md 2026-10-18), `41905c2` (the unit-3 AST's ArrayPrefix
+  E0072 repair — `Box<NonEmpty<…>>`, discovered at unit 44's review).
 - Steps 0/0b/1/2 records: see DECISIONS.md's dated entries and §7 below.
 - RULEBOOK v0.3 + the §4 assumed-imports paragraph are transcribed and
   current (2026-10-16/17).
@@ -75,7 +72,7 @@ not old commit numbers. Going forward: manifest file lines only.
 | glean-angle | 7 | 0 | COMPLETE (hash, display, angle/types, schema/{util,types,evolve,resolve}) |
 | glean-core | 17 | 12 | FFI/RTS/bytecode layer done; remaining rows 23/24 blocked, 51/57/94/101/109/113/114/139/278/279 |
 | glean-bytecode | 1 | 5 | types.rs only; sys_calls/decode/generate/{instruction,cpp,haskell} remain |
-| glean-typed | 8 | 1 | crate fully wired (lib.rs + Cargo.toml); remaining row 44 query/angle.rs |
+| glean-typed | 9 | 0 | COMPLETE (lib.rs + Cargo.toml + query-module wiring at lib.rs per the source-shape rule; Angle DSL = unit 44) |
 | glean-util | 5 | 23 | service.rs + thrift_service.rs + some.rs + vector.rs + retry_channel_exception.rs + scaffolding |
 | glean-db | 2 | 88 | rows 41+43 + scaffolding; crate wired per §4.2 (no [dependencies] yet) |
 | glean-glass | 0 | 88 | not started |
@@ -97,12 +94,13 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 44** `glean/typed/Glean/Typed/Query/Angle.hs` →
-`rust/glean-typed/src/query/angle.rs` (the LAST glean-typed row — will
-need `pub mod query;`-level wiring in typed.rs/lib.rs per the unit-37
-precedent if the manifest path demands the directory), then 45
-`glean-db/src/query/thrift/internal.rs`. Brief fresh from the source +
-inventory.
+Next: **row 45** `glean/db/Glean/Query/Thrift/Internal.hs` →
+`rust/glean-db/src/query/thrift/internal.rs`, then 46
+`glean-db/src/write/send_batch.rs`. Brief fresh from the source +
+inventory. (Unit 44 set the module-path precedent: source-shaped wiring
+via lib.rs — `Glean.Query.Angle` → `crate::query::angle`; row 45's
+`Glean.Query.Thrift.Internal` should follow the same shape in
+glean-db's lib.rs.)
 Working style: 1–2 units per session, then a records-refresh commit.
 
 Recompute the queue any time (manifest file-line numbers):
