@@ -20,9 +20,22 @@
 
 pub mod typed;
 
-// Coverage: one `pub mod` and nothing else — no lib-level re-exports (a
-// `pub use` here would fork the namespace the siblings' `crate::typed::…`
-// paths already presume; the facade is `crate::typed`'s alone).
+// The Query/ area wiring: the source module `Glean.Query.Angle`
+// (glean/typed/Glean/Query/Angle.hs, migration/manifest.tsv line 44,
+// src/query/angle.rs) is a SIBLING of Glean.Typed in Haskell, so its
+// `pub mod` hangs off the crate root here — after `pub mod typed;` — not
+// inside crate::typed (RULE §4: the module header decides the path; the
+// sibling is not a child of the facade). The directory module file is
+// src/query.rs (Rust-only scaffolding — Haskell has no `Glean.Query`
+// root module); later Glean.Query.* units append their `pub mod` lines
+// there.
+pub mod query;
+
+// Coverage: two `pub mod`s (typed, query) and nothing else — no
+// lib-level re-exports (a `pub use` here would fork the namespace the
+// siblings' `crate::typed::…` paths already presume; the facade is
+// `crate::typed`'s alone, and crate::query::angle re-exports its own
+// surface).
 //
 // Marker breakdown (closed set — zero of every class): no port todos (the
 // crate-root wiring is complete with this file), no source-defect
