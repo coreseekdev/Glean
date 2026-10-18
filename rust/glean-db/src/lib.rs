@@ -88,11 +88,10 @@ pub mod write;
 // Haskell has no `Glean.Database` root module; glean/db/Glean/ contains
 // only Database/, Logger/, Logger.hs, Query/, Write/); this unit appends
 // `pub mod database;` for row 48's file, which src/database.rs declares
-// as `pub mod meta;` (a direct child, wired now), and row 49 appends
-// `pub mod catalog;` inside src/database.rs and declares
-// `pub mod filter;` in src/database/catalog.rs when it lands (that
-// contract is recorded in src/database.rs's prose, which row 49's unit
-// consumes).
+// as `pub mod meta;` (a direct child, wired now); row 49 has since
+// appended `pub mod catalog;` inside src/database.rs and declares
+// `pub mod filter;` in src/database/catalog.rs (that contract was
+// recorded in src/database.rs's prose and is now CONSUMED).
 pub mod database;
 
 // Coverage: four `pub mod`s (backend, query, write, database) and nothing
@@ -104,12 +103,12 @@ pub mod database;
 //
 // Marker breakdown (closed set — zero of every class): no port todos
 // (the crate-root wiring is complete — row 47's `pub mod thrift;` inside
-// src/query.rs has since SHIPPED; the two remaining CONTRACTED area lines
-// so far are row 115's `pub mod json;` inside src/write.rs and row 49's
-// `pub mod catalog;` inside src/database.rs, both named in prose here and
-// in their files; the `haxl`/`logger`/github-straggler lines named in the
-// doc header above remain for their own units), no source-defect
-// reproductions (no Haskell
+// src/query.rs has since SHIPPED, and row 49's `pub mod catalog;` inside
+// src/database.rs has since SHIPPED; the one remaining CONTRACTED area
+// line so far is row 115's `pub mod json;` inside src/write.rs, named in
+// prose here and in its file; the `haxl`/`logger`/github-straggler lines
+// named in the doc header above remain for their own units), no
+// source-defect reproductions (no Haskell
 // source), no performance deferrals (no code), no inventory divergence (no
 // inventory row can govern a file with no Haskell counterpart).
 //
