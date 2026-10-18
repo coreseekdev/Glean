@@ -25,19 +25,20 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-18 (HEAD `9874c48`, after unit 49)
+## 2. STATUS — 2026-10-19 (HEAD `0461423`, after unit 50)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `9874c48`, 79 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `0461423`, 82 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
   Push protocol: the user pushes the fork after batch commits on request —
-  local has since advanced 25 commits to `9874c48` (`git rev-list --count
-  9251205..HEAD`; the last four: unit 47 `3e2be5a`, records refresh
-  `9d5ee17`, unit 48 `67cf160`, unit 49 `9874c48`; this records refresh
-  (`8bd66db`) makes 26); sync the fork at the next batch gate.
-- **Step 3 counters: 47 unit-commits / 46 distinct target files shipped;
-  340 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+  local has since advanced 28 commits to `0461423` (`git rev-list --count
+  9251205..HEAD`; the last five: unit 48 `67cf160`, unit 49 `9874c48`,
+  records refresh `8bd66db`, HANDOFF note `676c92c`, unit 50 `0461423`;
+  this records refresh makes 29, and the HANDOFF successor-refresh commit
+  that follows makes 30); sync the fork at the next batch gate.
+- **Step 3 counters: 48 unit-commits / 47 distinct target files shipped;
+  339 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
   `1f9a2fa` — the only double. Three non-unit fix commits: `9354cbb`
   (dead session's hash.rs derive-attachment repair), `42117fc` (the
@@ -82,6 +83,12 @@ in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
   Data.Hashable/HAMT order is not reproduced); audit the order-sensitive
   consumers (Backup.hs:123/:132/:137 head selections; Catalog.hs:427-430
   listMostRecent) at their units / Step 6.
+- Open unit-50 carry-forwards: `database/catalog/store.rs` records (a) the
+  single closed-enum owner for `Some Catalog.Store` (row 54 adds it, row
+  85 imports it), (b) row 53's DBError should extend `StoreError` with a
+  typed arm, and (c) the `Files.get` double-join source defect
+  (Files.hs:90/:94 reads `.../meta/meta`) is to be reproduced bug-for-bug
+  at row 64.
 - Open policy item: **DEV-006** (queued for the human) — RULEBOOK §3's
   crate-list letter allows `unsafe` only in glean-core; the shipped
   raw-pop-consumer contract (`rts.rs:123-138`) + build.rs/binary.rs RULE §3
@@ -110,7 +117,7 @@ not old commit numbers. Going forward: manifest file lines only.
 | glean-bytecode | 1 | 5 | types.rs only; sys_calls/decode/generate/{instruction,cpp,haskell} remain |
 | glean-typed | 9 | 0 | COMPLETE (lib.rs + Cargo.toml + query-module wiring at lib.rs per the source-shape rule; Angle DSL = unit 44) |
 | glean-util | 5 | 23 | service.rs + thrift_service.rs + some.rs + vector.rs + retry_channel_exception.rs + scaffolding |
-| glean-db | 7 | 83 | rows 41/43/45/46/47/48/49 + scaffolding (lib.rs + backend/ + query/ + write/ + database/); crate wired per §4.2 (no [dependencies] yet) |
+| glean-db | 8 | 82 | rows 41/43/45/46/47/48/49/50 + scaffolding (lib.rs + backend/ + query/ + write/ + database/); crate wired per §4.2 (no [dependencies] yet) |
 | glean-glass | 0 | 88 | not started |
 | glean-client | 0 | 27 | not started |
 | glean-cli | 0 | 26 | not started |
@@ -130,11 +137,12 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 50** `glean/db/Glean/Database/Catalog/Store.hs` →
-`rust/glean-db/src/database/catalog/store.rs` (a direct child of the
-catalog directory module: row 49 shipped src/database/catalog.rs with
-`pub mod filter;`, so row 50 appends `pub mod store;` there). Brief
-fresh from the source + inventory; §4.2 has the orientation.
+Next: **row 51** `glean/hs/Glean/Repo/Text.hs` →
+`rust/glean-core/src/repo/text.rs` (a NEW `repo/` area in glean-core:
+create src/repo.rs declaring `pub mod text;`; glean-core has no crate-root
+lib.rs/Cargo.toml — Step 4 owns that scaffold per §2, so `pub mod repo;`
+is a Step-4 contract, not this unit's line). Brief fresh from the source
++ inventory; §4.2 has the orientation.
 Working style: 1–2 units per session, then a records-refresh commit.
 
 Recompute the queue any time (manifest file-line numbers):
@@ -252,6 +260,15 @@ State check at session start: `git branch --show-current` (must be
   `glean_util::time_sec` (`Time` + `to_utc_time` consumed; wider surface
   owed). Never hand-write generated code; document assumed shapes in-file
   (RULE §4 B4) with the Step-4 compile-error fallback.
+- **Class with IO methods + a shared existential** (row 50): a Haskell
+  class whose methods are `a -> … IO` becomes a `&self` trait with
+  `Result<_, <Area>Error>` (area-local enum, constructor-shaped
+  `Display`/`Error` — the RunQueryError precedent; never rename another
+  owner's error type). When one existential value flows across consumers
+  (`Some Catalog.Store` -> `Catalog.open` -> `catLocal`), use ONE closed
+  enum owned by the trait's module (the SomeBackend placement), added by
+  the first consumer with forward references — never one enum per use
+  site.
 
 ### 3.4 Records discipline
 
@@ -310,7 +327,7 @@ staleness check to fire on files it touched (re-read and continue).
 - `util/thrift_service.rs` — `495ffac` (line 40; `ThriftServiceOptions` + std `Default` (`def` = all-`None`, GHC-probed), `DbShard`, `IsThriftService<S>: Clone` (5 methods; hand-written `Clone` impl so derived bounds cannot leak `S: Clone`; phantom tag — the all-`S` blanket-impl form is E0282-uninferable, per-tag impls work), `thrift_service` (`Nothing` arm = source's `mkThriftService _ _`), `run_thrift_inefficiently`; TWO first-in-tree ASSUMED-IMPORT sketches: the `glean_thrift` runtime (`ThriftAction` rank-2 `run<P: Protocol, C: ClientChannel<S>>` image of `forall p c`; `ThriftEnv`/`Counter` field-for-field per `Monad.hsc`; `ThriftError` union; CONTRACT: actions are SINGLE-USE) plus the `Util.EventBase` kit contract (opaque handle; infallible init; CONSUMING destroy; no kit `Drop`) with this file owning the `pub with_event_base_dataplane` bracket (parse_uri precedent; destroy-exactly-once incl. panic/nested); zero `unsafe` in-file, §3-letter kit situation flagged in-block (DEV-006 class); 2 reviews (A: deliverable compiled VERBATIM against an independent kit stub; B: PASS W/ MINOR) + fix round (evidence persisted under `/tmp/opencode/ts-probe/`). CARRY-FORWARD: units 166/167 add `+ Clone` on action reuse (E0382-reproduced, `Remote.withShard` fallback); the kit must pin stored-handle ownership before Remote/Glass/CLI/Sharding land — not `Clone`)
 - `util/retry_channel_exception.rs` — `3063cc5` (line 42; `RetryPolicy` + `retry_channel_exceptions`; surface amended post-ship at `42117fc` (`&RetryPolicy` + `Box<dyn Fn>` — DECISIONS.md 2026-10-18); carries the private `log_warning` stand-in + TODO, which this refresh's log-seam ruling scopes to that file's own deletion — see §2)
 
-**glean-db — 7/90, crate wired**
+**glean-db — 8/90, crate wired**
 - `backend/types.rs` — `1aed2f6` (line 41; the `Backend` class + `BackendError` + `until_done`; shipped with lib.rs/backend.rs/Cargo.toml scaffolding + the first `glean_thrift` assumed-import sketch; 2 reviews + 15 inline cite/contract fixes)
 - `backend/retry.rs` — `63fd4fb` (line 43; RetryWrites/RetryReads wrappers + the lossless `ThriftError::Service` round-trip bridge; reviews + inline fix round; supplies the carrier encoding unit 46's BatchAlreadyProcessed downcast consumes)
 - `query/thrift/internal.rs` — `b0f22b9` (line 45; decode_results/display/combinators/stats helpers; shipped `pub mod query;` + src/query.rs recording row 47's contract; 2 reviews + inline doc fixes)
@@ -318,43 +335,44 @@ staleness check to fire on files it touched (re-read and continue).
 - `query/thrift.rs` — `3e2be5a` (line 47; the query facade (19/19 exports) + the area link — src/query.rs declares `pub mod thrift;`, the file declares `pub mod internal;`; the migration's FIRST `Async.concurrently` port: std::thread::scope pipelining + the B2 let-drain marker, both-fail preferring the processing error (site-documented); reviewer A compiled and ran the REAL facade against a mock backend; 2 reviews + fix round)
 - `database/meta.rs` — `67cf160` (line 48; the DB metadata layer (21/21 exports) + the database-area wiring (`pub mod database;` + src/database.rs declaring `pub mod meta;`); the generated-module dispositions (crate::internal::types per DECISIONS vs the glean-schema cross-crate tension, thrift::DBVersion per A10) and the first `glean_util::time_sec` seam sketch; the Meta-JSON ground-truth oracle captured for the serde obligation; reviewer A reproduced the rounding/ACL/Database mappings byte-exactly against the real generated Haskell packages; 2 reviews + fix round incl. the Meta(..) re-export)
 - `database/catalog/filter.rs` — `9874c48` (line 49; the catalog filter DSL (23/23 exports); `Value` -> a fn pointer with bound-free manual `Copy`/`Clone`, `Filter` -> `Arc<dyn Fn(Vec<Item>) -> (A, Vec<Item>)>` with `map`/`and_then`/`pure`/`ap`; `groupF` carries the one TODO for cross-group HashMap order (Backup.hs:123/:132/:137 and Catalog.hs:427-430 audit); `sortF` uses `sort_by_cached_key` + `std::cmp::Reverse`; wiring: `pub mod catalog;` in database.rs + the new catalog.rs declaring `pub mod filter;`; reviewer A/B dispatch hit 429 twice, both reviews performed INLINE per DEV-001; inline fix round)
+- `database/catalog/store.rs` — `0461423` (line 50; the `Store` class (1/1 source export) -> `pub trait Store` with five `&self` methods; `IO` -> `Result<_, StoreError>` (`Io`/`Other`, constructor-shaped `Display` + `Error`, RunQueryError precedent); `Repo`/`Meta` by reference, `list` returns an owned HashMap (one PERF marker for the deep clone); ONE closed enum for the `Some Catalog.Store` / `forall local. Store local => Catalog` sites, owned by this module and added by row 54; wiring: `pub mod store;` appended in catalog.rs; 2 reviews (A: PARTIAL, B: PASS WITH MINOR) + fix round incl. the catchAll correction and the Files `get` double-join carry-forward)
 
-### 4.2 Immediate next-unit orientation (row 50 — NEXT UP)
+### 4.2 Immediate next-unit orientation (row 51 — NEXT UP)
 
-**Row 50**: `glean/db/Glean/Database/Catalog/Store.hs` (37 lines) ->
-`rust/glean-db/src/database/catalog/store.rs`. Orientation only — brief
-it FRESH from the source + inventory per §3.1. Essentials:
-- **Wiring**: src/database/catalog.rs already exists (row 49) and declares
-  `pub mod filter;`; row 50 appends `pub mod store;` there (a direct
-  child; the catalog.rs header's dual-role note is row 54's). No new
-  directory module and no change to src/database.rs.
-- **Shape**: the `Store a` class (:19-37), export `Store(..)` (:10-11) —
-  five methods, all `a -> ... IO`: `list :: a -> IO (HashMap Repo Meta)`
-  (:21), `create :: a -> Repo -> Meta -> IO Bool` (:25),
-  `delete :: a -> Repo -> IO Bool` (:29), `put :: a -> Repo -> Meta ->
-  IO Bool` (:33), `get :: a -> Repo -> IO (Maybe Meta)` (:37). Imports
-  `Data.HashMap.Strict` (:13), `Glean.Database.Meta (Meta)` (:15),
-  `Glean.Types (Repo)` (:16). No pragmas or deriving clauses.
-- **Fidelity traps to probe in the brief**: the class -> Rust trait image
-  (`&self` vs consuming `self`; `IO` -> direct return vs `Result`/error
-  type; `HashMap Repo Meta` -> std HashMap; `Meta` ownership in
-  create/put/get — the source shares immutable values, so `&Meta` vs a
-  clone is the open question); `Store(..)` exports the trait and all five
-  methods; object safety and the `Some Catalog.Store` / `forall local.
-  Store local => Catalog` consumers (Config.hs:118, Catalog.hs:133) may
-  force `'static`/`Send`/`Sync`/`Any` bounds; `list`'s map order is
-  hash-dependent (audit consumers). No `Debug`/`Send`/`Sync` unless a
-  pinned consumer needs them.
-- **Consumers** (edges.tsv :172/:177/:182/:220): Catalog.hs (Store.put
-  :276, Store.list :312, Store.create :370/:550, Store.delete :396; the
-  `Catalog` existential at :133), Catalog/Local/Files.hs and
-  Catalog/Local/Memory.hs (the two impls), Database/Config.hs (the
-  `Some Catalog.Store` at :118). Outbound :184 -> Database/Meta.hs (row
-  48, shipped; `Meta` is the method payload). Re-grep exact call sites in
-  the brief.
-- **Inventory**: precise grep for `Catalog/Store.hs` across
-  inventory*.tsv — zero hits (the `Restore.hs` rows are a substring false
-  positive); no governing row expected (re-grep in the brief).
+**Row 51**: `glean/hs/Glean/Repo/Text.hs` (72 lines) ->
+`rust/glean-core/src/repo/text.rs`. Orientation only — brief it FRESH
+from the source + inventory per §3.1. Essentials:
+- **Wiring**: a NEW `Repo/` area inside glean-core. Create `src/repo.rs`
+  (Rust-only directory module) declaring `pub mod text;`. glean-core has
+  NO crate-root `lib.rs`/`Cargo.toml` — Step 4 owns that scaffold (§2),
+  so the `pub mod repo;` line is a Step-4 contract, not this unit's;
+  record it in the header and do NOT create lib.rs.
+- **Shape**: 8 pure exports (:10-19) — `showRepo` (:28-29), `showRepoSep`
+  (:31-33), `repoToText` (:36-37), `repoToTextSep` (:39-40), `readRepo`
+  (:42-46), `parseRepo` (:50-51), `parseRepoText` (:55-56),
+  `parseRepoTextSep` (:64-72).
+  Imports `Data.Maybe` (:21), `Data.Text` (:22-23), `Glean.Types` (:25).
+  Outbound depmap edges: NONE (Glean.Types is generated/assumed).
+- **Fidelity traps to probe in the brief**: `showRepoSep`/`repoToText`
+  concatenate name+sep+hash with no escaping; `readRepo sep s` falls back
+  to `Repo (Text.pack s) ""` when the separator is absent (`fromMaybe` of
+  the parse); `parseRepoTextSep` splits at the LAST separator via
+  `Text.breakOnEnd` and yields `Nothing` only for `("", _)`; the source's
+  own examples (`parseRepo "." "a.b.c.d" == Just (Repo "a.b.c" "d")`,
+  `parseRepo "/" "a.b.c.d" == Nothing`) are probe targets; the
+  `Text.dropEnd (Text.length sep) pfx` step for a MULTI-CHAR separator;
+  the empty-separator edge (`Text.breakOnEnd ""`) — probe the source;
+  `Text.pack`/`unpack` -> String boundaries (RULE §1); Repo's generated
+  fields name/hash (glean.thrift:106-109).
+- **Consumers** (edges.tsv :78/:110/:112/:164/:168/:208/:305/:336/:352/
+  :419/:434): client Glean.hs re-exports all 8 (:64-71); client/Repo.hs
+  (:148/:151) and Util/ShellPrint.hs (:212-224) use `showRepo`;
+  Backup/Locator.hs:51 uses `parseRepoTextSep "."`; db/Repo.hs's
+  `databaseSubdir = showRepoSep "/"` (:20-21) is the DB path builder.
+  Re-grep exact call sites in the brief.
+- **Inventory**: precise grep for `Repo/Text.hs` across inventory*.tsv —
+  zero hits (verified at this refresh); no governing row expected
+  (re-grep in the brief).
 
 ## 5. Operational lessons (behavior-changing; carried forward)
 
