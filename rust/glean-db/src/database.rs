@@ -44,13 +44,16 @@ pub mod meta;
 
 pub mod catalog;
 
-// Coverage: two `pub mod` lines — meta.rs (row 48, the area's first
-// shipped file) and catalog.rs (row 49's directory module, which declares
-// `pub mod filter;`) — and nothing else: no re-exports (each submodule is
-// its own facade). Row 49's append is now CONSUMED (past tense above).
+pub mod repo;
+
+// Coverage: three `pub mod` lines — meta.rs (row 48, the area's first
+// shipped file), catalog.rs (row 49's directory module, which declares
+// `pub mod filter;`), and repo.rs (row 52's port of Repo.hs) — and
+// nothing else: no re-exports (each submodule is its own facade). Row 49's
+// append and row 52's append are now CONSUMED (past tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos (the
-// row-49 wiring is complete; both `pub mod` lines exist), no
+// row-49 and row-52 wiring is complete; all three `pub mod` lines exist), no
 // source-defect reproductions (no Haskell source), no performance
 // deferrals (the declarations are not runtime code), no inventory
 // divergence (no inventory row can govern a file with no Haskell
@@ -60,6 +63,9 @@ pub mod catalog;
 // (:215-232, :602-605) — or the Util/IO HandleIO row's
 // Catalog/Local/Files.hs consumer evidence (inventory.tsv:111 ==
 // inventory.protocol.tsv:14); none names this scaffolding, and
-// "Glean.Database" finds no row at all).
+// "Glean.Database" finds no row at all. Row 52's source file is likewise
+// zero-hit (`grep -n 'Database/Repo\.hs' migration/inventory*.tsv` exits
+// 1); the lone broad-grep hit, inventory.sites.tsv:615, is Open.hs's row
+// with `inRepo` as consumer evidence, not a row about repo.rs).
 //
 // PORT STATUS: confidence=high todos=0

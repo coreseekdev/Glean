@@ -150,8 +150,6 @@
 //     changing it.
 //   * `readRepo`'s `fromMaybe (Repo (pack s) "")` fallback is preserved:
 //     when parsing fails the WHOLE spec is the name and the hash is empty.
-//
-// PORT STATUS: confidence=high todos=0
 
 use glean_thrift as thrift;
 
@@ -213,3 +211,6 @@ pub fn parse_repo_text_sep(sep: &str, s: &str) -> Option<thrift::Repo> {
         }),
     }
 }
+
+//
+// PORT STATUS: confidence=high todos=0

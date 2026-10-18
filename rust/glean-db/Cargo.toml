@@ -30,6 +30,13 @@ edition = "2021"
 #   depmap/edges.tsv for Backend/Types.hs -> Glean.Types: zero; row 19
 #   is the Backend/Types.hs -> Util/Some.hs edge) — that absence is
 #   precisely why Glean.Types is an assumed import (RULE §4 B4).
+# * glean-core — the edge behind row 52's `import Glean.Repo.Text`
+#   (glean/db/Glean/Database/Repo.hs:17): depmap/edges.tsv:352. Row 51
+#   shipped rust/glean-core/src/repo/text.rs at 6ce4e79;
+#   src/database/repo.rs calls `show_repo_sep` from it as
+#   `glean_core::repo::text::show_repo_sep` (one owner, no re-impl).
+#   glean-core has no Cargo.toml/lib.rs yet (Step 4 owns the scaffold),
+#   so the edge is recorded here rather than as a real entry.
 # * glean-typed — shipped (commit 82b4437); backend/types.rs imports
 #   `IdOf`/`Type`/`Predicates`/`SchemaPredicates`/`make_predicates`.
 #   Outbound edge: depmap/edges.tsv:18.
