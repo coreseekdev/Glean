@@ -480,7 +480,12 @@ pub enum SourcePat_<S, ST, P, T> {
     /// There's no concrete syntax for this (yet), but it can be used
     /// via the DSL. (Source comment.)
     Array(S, Vec<SourcePat_<S, ST, P, T>>),
-    ArrayPrefix(S, NonEmpty<SourcePat_<S, ST, P, T>>),
+    // Box on the NonEmpty: NonEmpty's `head: T` is unboxed, so the
+    // unboxed form is E0072 (recursive without indirection — discovered
+    // at unit 44, coordinator-repaired; the Haskell payload is
+    // `NonEmpty (SourcePat_ v t p)` with free sharing, which the Box
+    // preserves at one indirection's cost).
+    ArrayPrefix(S, Box<NonEmpty<SourcePat_<S, ST, P, T>>>),
     Tuple(S, Vec<SourcePat_<S, ST, P, T>>),
     Struct(S, Vec<Field<S, ST, P, T>>),
     App(

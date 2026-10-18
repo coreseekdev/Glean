@@ -1650,14 +1650,16 @@ where
         )),
         SourcePat_::ArrayPrefix(s, pats) => Ok(SourcePat_::ArrayPrefix(
             s,
-            NonEmpty {
+            // Box: the ArrayPrefix payload is Box<NonEmpty<_>> (E0072
+            // repair, angle/types.rs:483-488) — pats auto-derefs.
+            Box::new(NonEmpty {
                 head: resolve_pat(ctx, pats.head)?,
                 tail: pats
                     .tail
                     .into_iter()
                     .map(|p| resolve_pat(ctx, p))
                     .collect::<Result<Vec<_>, _>>()?,
-            },
+            }),
         )),
         SourcePat_::Tuple(s, pats) => Ok(SourcePat_::Tuple(
             s,
