@@ -48,8 +48,8 @@ pub mod backend;
 // siblings are not Backend children). The directory module file is
 // src/query.rs (Rust-only scaffolding — Haskell has no `Glean.Query` root
 // module); this unit appends `pub mod query;` for row 45's file, and row
-// 47 appends `pub mod thrift;` inside src/query.rs when it lands (that
-// contract is recorded there in prose).
+// 47 has since appended `pub mod thrift;` inside src/query.rs (that
+// contract was recorded there in prose and is now consumed).
 pub mod query;
 
 // The Write/ area wiring: the source modules Glean.Write.SendBatch.hs
@@ -73,10 +73,10 @@ pub mod write;
 // re-exports").
 //
 // Marker breakdown (closed set — zero of every class): no port todos
-// (the crate-root wiring is complete through this unit's append; the two
-// remaining area lines are row 47's `pub mod thrift;` inside src/query.rs
-// and row 115's `pub mod json;` inside src/write.rs, both named in prose
-// here and in those files), no source-defect reproductions (no Haskell
+// (the crate-root wiring is complete — row 47's `pub mod thrift;` inside
+// src/query.rs has since SHIPPED; the one remaining area line is row
+// 115's `pub mod json;` inside src/write.rs, named in prose here and in
+// that file), no source-defect reproductions (no Haskell
 // source), no performance deferrals (no code), no inventory divergence (no
 // inventory row can govern a file with no Haskell counterpart).
 //

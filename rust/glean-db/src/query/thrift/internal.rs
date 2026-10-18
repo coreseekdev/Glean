@@ -26,15 +26,15 @@
 //     formatter/logger.
 //
 // MODULE WIRING (RULE §4): this unit also adds the crate's Query-area
-// scaffolding — src/query.rs (Rust-only, prose-only: Haskell has no
-// `Glean.Query` root module) and `pub mod query;` in src/lib.rs. The
-// remaining link is row 47's (src/query/thrift.rs, manifest.tsv line 47):
-// it appends `pub mod thrift;` at the top of src/query.rs and declares
-// `pub mod internal;` in src/query/thrift.rs, which is what binds this
-// file's path as `crate::query::thrift::internal`. Until row 47 lands the
-// path is an ordinary forward reference (the same class as
-// `crate::database::types::Env` / `crate::haxl::engine` named in
-// src/lib.rs:28-37), documented in src/query.rs's own contract block.
+// scaffolding — src/query.rs (Rust-only: Haskell has no `Glean.Query`
+// root module) and `pub mod query;` in src/lib.rs. The link row 47 owed
+// (src/query/thrift.rs, manifest.tsv line 47) SHIPPED: it declares
+// `pub mod thrift;` at the top of src/query.rs and `pub mod internal;`
+// in src/query/thrift.rs, which is what binds this file's path as
+// `crate::query::thrift::internal`. The path is no longer a forward
+// reference (the `crate::database::types::Env` / `crate::haxl::engine`
+// class named in src/lib.rs:28-37); siblings may import it, and
+// src/query.rs's contract block records the consumed append.
 //
 // ---------------------------------------------------------------------------
 // INVENTORY (RULE §5; migration/inventory.tsv)
@@ -299,7 +299,7 @@
 //   * src/query.rs (this unit, Rust-only) — its prose block records row 47's
 //     two wiring edits (see MODULE WIRING above); this file does not declare
 //     them.
-//   * row 47 (src/query/thrift.rs, NOT SHIPPED) — the facade that imports
+//   * row 47 (src/query/thrift.rs, SHIPPED) — the facade that imports
 //     this module (`import Glean.Query.Thrift.Internal`, Thrift.hs:46) and
 //     re-exports 13 of the 18 names (its export list, Thrift.hs:9-34,
 //     omits `reportUserQueryStats`/`showUserQueryStats`/`decodeResults`/
