@@ -113,7 +113,10 @@
 //      ring); str::parse::<i64> fails instead and the port panics with
 //      "Prelude.read: no parse". Unreachable for df output (a filesystem
 //      cannot report more than 2^63 bytes in this field), so the simpler
-//      total-parse path is kept rather than emulating the wrap.
+//      total-parse path is kept rather than emulating the wrap. Haskell's
+//      Read Int also accepts forms str::parse rejects — hex/octal literals
+//      ("0x10"), a parenthesised "(5)", a doubled sign — so those panic
+//      here where the source would return a number; df prints none.
 //   2. words uses Data.Char.isSpace; split_whitespace uses
 //      char::is_whitespace. The two tables differ only for exotic
 //      non-ASCII code points that df never emits.
@@ -126,23 +129,30 @@
 //   5. A path containing a NUL byte is rejected by Command::spawn
 //      (InvalidInput) where the C shell string would simply truncate at the
 //      NUL. POSIX paths cannot contain NUL, so this is unreachable.
+//   6. The source's fmap over readCreateProcess leaves the (!! 1)/read
+//      errors to fire on first FORCE of the result (A6 timing); the port
+//      panics inside the call. Both consumers force the value immediately
+//      (LMDB.hs:114-116, RocksDB.hs:153-155), so nothing reachable differs.
 //
 // ---------------------------------------------------------------------------
 // SIBLING-UNIT CONTRACTS
 // ---------------------------------------------------------------------------
 //
 //   * row 70 (storage/lmdb.rs) and row 72 (storage/rocks_db.rs) call these
-//     from their capacity methods, each guarded by doesDirectoryExist so a
-//     missing root yields Nothing rather than the IOException:
+//     from their capacity methods:
 //       getTotalCapacity (LMDB.hs:110-118, RocksDB.hs:149-157) takes
 //         getDiskSize and mins it against the virtual limit;
 //       getUsedCapacity (:120-124, :159-163) is
 //         `Just <$> getUsedDiskSpace` with no limit check;
 //       getFreeCapacity (:126-131, :165-170) subtracts used from total and
-//         falls back to getFreeDiskSpace only when either side is Nothing.
-//     The i64 return is what the min/subtract expect. Neither storage
-//     catches around these calls: the only IOException handler in either
-//     file (LMDB.hs:158) wraps the `umount` in close.
+//         falls back to getFreeDiskSpace when either side is Nothing.
+//     getTotalCapacity and getUsedCapacity are guarded by
+//     doesDirectoryExist, so a missing root yields None there. The
+//     getFreeCapacity fallback is NOT guarded, and Storage.hs:160 types it
+//     `IO Int` (not Maybe), so a missing root surfaces the IOException from
+//     getFreeDiskSpace at that call. Neither storage catches around these:
+//     the only IOException handler in either file (LMDB.hs:158) wraps the
+//     `umount` in close. The i64 return is what the min/subtract expect.
 //
 // MARKERS: one source-defect reproduction (the unescaped shell quoting), zero
 // port todos, zero performance deferrals, zero inventory divergences, zero
@@ -162,17 +172,20 @@ pub fn get_disk_size(path: &str) -> io::Result<i64> {
 }
 
 /// `getUsedDiskSpace :: FilePath -> IO Int` (:24-25): the used bytes.
+/// Same error contract as `get_disk_size` (:23).
 pub fn get_used_disk_space(path: &str) -> io::Result<i64> {
     get_df_output("used", path)
 }
 
 /// `getFreeDiskSpace :: FilePath -> IO Int` (:29-30): the available bytes.
+/// Same error contract as `get_disk_size` (:28).
 pub fn get_free_disk_space(path: &str) -> io::Result<i64> {
     get_df_output("avail", path)
 }
 
 /// `getDfOutput :: String -> FilePath -> IO Int` (:33-37): run `df` for one
-/// column and read the second word of its output.
+/// column and read the second word of its output. Throws (returns Err) when
+/// the path does not exist (:32).
 fn get_df_output(outp: &str, path: &str) -> io::Result<i64> {
     // cmd = shell (printf "df --output=%s -B1 '%s'" outp path) (:37). The
     // path is deliberately NOT escaped — see the source-defect note.
@@ -212,6 +225,10 @@ fn read_create_process(cmd: &str) -> io::Result<String> {
     // take+drop is hClose inh.
     drop(child.stdin.take());
     let output = child.wait_with_output()?;
+    // readCreateProcess forces (decodes) the output BEFORE waitForProcess
+    // checks the exit code, so a decode error wins over a non-zero exit.
+    let stdout = String::from_utf8(output.stdout)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
     if !output.status.success() {
         let code = match output.status.code() {
             Some(code) => code,
@@ -223,5 +240,5 @@ fn read_create_process(cmd: &str) -> io::Result<String> {
             format!("readCreateProcess: {} (exit {})", cmd, code),
         ));
     }
-    String::from_utf8(output.stdout).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    Ok(stdout)
 }
