@@ -25,21 +25,21 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-20 (HEAD `f88e113`, after unit 71)
+## 2. STATUS — 2026-10-20 (HEAD `7d7c282`, after unit 72)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `f88e113`, 110 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `7d7c282`, 112 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
   Push protocol: the user pushes the fork after batch commits on request —
-  local has since advanced 56 commits to `f88e113` (`git rev-list --count
+  local has since advanced 58 commits to `7d7c282` (`git rev-list --count
   9251205..HEAD`; the last five: unit 70 `640c94c`, the records refresh for
-  70 `632b78f`, unit 71 `f88e113`, and the records refresh for 71 plus its
-  successor HANDOFF commit that follow; this records refresh makes 57, and
-  the HANDOFF successor-refresh commit that follows makes 58); sync the fork
-  at the next batch gate.
-- **Step 3 counters: 69 unit-commits / 68 distinct target files shipped;
-  317 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+  70 `632b78f`, unit 71 `f88e113`, the records refresh for 71 `c151804`, and
+  unit 72 `7d7c282`; this records refresh makes 59, and the HANDOFF
+  successor-refresh commit that follows makes 60); sync the fork at the next
+  batch gate.
+- **Step 3 counters: 70 unit-commits / 69 distinct target files shipped;
+  316 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
   `1f9a2fa` — the only double. Non-unit fix commits: `9354cbb`
   (dead session's hash.rs derive-attachment repair), `42117fc` (the
@@ -68,7 +68,11 @@ in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
   (with_temp_directory / get_file_size / call_process), and reproducing
   the `doesDirectoryExist`-on-a-file guard bug; 71 is the Memory backend
   (STM -> Mutex, FactSet's !Send propagating to a TODO(port) owned by rows
-  104/85, the source's own unimplemented stubs preserved).
+  104/85, the source's own unimplemented stubs preserved); 72 is the RocksDB
+  engine — the second `Storage` backend, the `Cache` ForeignPtr that owns
+  `glean_rocksdb_free_cache`, the f32 ties-to-even `cacheSize`, the
+  cache-flagged container open, and the tar restore/backup pair (no
+  `call_process`: `findExecutable` + `Command::output`).
 - Steps 0/0b/1/2 records: see DECISIONS.md's dated entries and §7 below.
 - RULEBOOK v0.3 + the §4 assumed-imports paragraph are transcribed and
   current (2026-10-16/17).
@@ -149,7 +153,7 @@ not old commit numbers. Going forward: manifest file lines only.
 | glean-bytecode | 1 | 5 | types.rs only; sys_calls/decode/generate/{instruction,cpp,haskell} remain |
 | glean-typed | 9 | 0 | COMPLETE (lib.rs + Cargo.toml + query-module wiring at lib.rs per the source-shape rule; Angle DSL = unit 44) |
 | glean-util | 8 | 20 | service.rs + thrift_service.rs + some.rs + vector.rs + retry_channel_exception.rs + util/io.rs (63) + impl/memory_reader.rs (68) + util/disk.rs (69) + scaffolding |
-| glean-db | 22 | 68 | rows 41/43/45-50 + 52-56/58-62/64-67 (database area: exception/repo/catalog(+local files,memory)/acl_config/acl_ownership/storage(+db)/backup(+backend,mock)/data/batch_location/schema(+compute_ids)); crate wired per §4.2 (no [dependencies] yet) |
+| glean-db | 23 | 67 | rows 41/43/45-50 + 52-56/58-62/64-72 (database area: exception/repo/catalog(+local files,memory)/acl_config/acl_ownership/storage(+db)/backup(+backend,mock)/data/batch_location/schema(+compute_ids)); crate wired per §4.2 (no [dependencies] yet) |
 | glean-glass | 0 | 88 | not started |
 | glean-client | 0 | 27 | not started |
 | glean-cli | 0 | 26 | not started |
@@ -169,55 +173,38 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 72** `glean/db/Glean/Database/Storage/RocksDB.hs`
-(326 lines) → `rust/glean-db/src/database/storage/rocks_db.rs`. Orientation
-only — brief it fresh per §3.1:
-- Exports `RocksDB(..)`, `newStorage`, `getCacheCapacity` (:9-13). The
-  record is `rocksRoot`, `rocksCache :: Maybe Cache`,
-  `rocksCacheIndexAndFilterBlocks`, `rocksMaxDiskSize` (:67-79).
-  `Cache` is a `ForeignPtr` newtype whose `destroy` is
-  `glean_rocksdb_free_cache` (:52-57) — a REAL owner, unlike `Container`.
-- `cacheSize` (:86-90) is the f32 trap row 68's header already flags:
-  `round (fromIntegral ramKB * ratio * 1024)` with `ratio` an
-  `optional float` (server_config.thrift:332) and Haskell's `round`
-  ties-to-EVEN — use `f32::round_ties_even`, not `round()`. The fallback
-  is `db_rocksdb_cache_mb * 1024 * 1024`; `newStorage` allocates a cache
-  only when the size is > 0 (:92-115).
-- `open` (:119-140) is row 70's shape plus two arguments:
-  `glean_rocksdb_container_open cpath cmode (fromEnum
-  rocksCacheIndexAndFilterBlocks) cache_ptr`, with `withCache` passing
-  `nullPtr` for `Nothing`. There is NO squashfs branch (no `data.mdb`
-  check, no mount). The handle still goes through `DB::from_raw` (row 67):
-  do NOT attach a second finalizer and do NOT redeclare `database_free`.
-- `delete`/`safeRemoveForcibly`/the three capacities (:144-171) are
-  identical to row 70's — call the shipped helpers. `withScratchRoot` is
-  `root </> ".scratch"` (:172), unlike Memory's temp dir.
-- `restore` (:174-182) untars, then `restoreFromDir` (:255-278):
-  `SourceFile` → `tar -xf file -C dir`; `SourceStream` → a spawned
-  `tar -x -C dir` with `std_in = UseHandle`, stderr read FULLY before
-  `waitForProcess`, failure text `"tar -x from stream failed: <stderr>"`
-  (:230-253). `restoreFromDir` picks `<scratch>/backup` (RocksDB backup →
-  `glean_rocksdb_restore` into `<scratch>/db`) or `<scratch>/db` (plain
-  tarball), else `userError "unrecognised backup"`, then `renameDirectory`
-  onto `containerPath`.
-- `backup` (:208-220): `mkTar` splits the checkpoint path, writes a tar
-  into a `withTempFile`, sizes it with `getFileSize`, then runs
-  `checkpoint db scratch mkTar` or `backup db cfg scratch mkTar` depending
-  on `config_db_backup_use_checkpoint`, with the source's two `logInfo`
-  lines. `tar` is `findExecutable` + `readProcessWithExitCode` (:280-287),
-  NOT `call_process`.
-- **Seams**: reuse row 70's `with_temp_directory`/`get_file_size` and the
-  `DB`/`Container`/`DB::from_raw`/`checkpoint` layer. `call_process` does
-  not fit `tar` (different error text, no argv quoting), so decide
-  explicitly whether to extend the seam or add a
-  `read_process_with_exit_code` helper, and record it.
-- Inventory: row 72's own rows plus inventory.ffi.tsv for the cache
-  externs; run `grep -n 'Storage/RocksDB' migration/*.tsv` before writing
-  the header (row 70's pattern).
-- The queued `Container` structural fix (STATUS) applies here: this is the
-  second owned-container site.
-- Then rows 85 (Config.hs), 89 (`Schema/Types.hs` → `pub mod types;` in
-  schema.rs), 98, 104, 105, 117, 125, 177 (S3.hs).
+Next: **row 73** `glean/db/Glean/Database/Trace.hs` (46 lines) →
+`rust/glean-db/src/database/trace.rs`. Orientation only — brief it fresh per
+§3.1:
+- Three enums and two TextShow instances: `GleanTrace` (:17-23, six
+  constructors carrying `Thrift.Repo`, `Word64` and `Int` payloads),
+  `WriteTraceEvent` (:25-28; `showb` is the literal "input" / "rename" /
+  "commit"), and `EnqueueTraceEvent` (:30-34, `deriving Show` with
+  `showb = fromString . show` — for a nullary constructor GHC's derived
+  `show` is the constructor name verbatim, so the Rust `Display` must
+  print `EnqueueBatch` etc., not a snake_case rendering).
+- Imports are only `Data.Word` (→ u64) and `Glean.Types as Thrift`
+  (→ the generated `glean_thrift` crate, ASSUMED IMPORT per §4 B4: this
+  unit needs `glean_thrift::Repo`, already assumed by rows 47/48/60).
+- Wiring: `pub mod trace;` appended to `rust/glean-db/src/database.rs`
+  (the area module's one-line-append convention) and bump its
+  "Coverage: eleven `pub mod` lines" tally to twelve.
+- No FFI, no IO, no unsafe: three enums + two Display impls. The whole
+  file is a mechanical §2 ADT row.
+- Queue correction (2026-10-20): the previous queue jumped from 72 to 85,
+  which deviated from §1's manifest order and would have forced row 85
+  (`Database/Config.hs`) to assume NINE unshipped modules — 73 Trace,
+  79 ConfigProvider, 80 Observed, 81 ThriftSource, 83 ShardManager,
+  84 Trace, 106/124 loggers, 156 Impl/ConfigProvider. Walking manifest
+  order instead turns those guesses into real APIs before Config lands.
+- Order from here: 73, 74 (`Logger/Database.hs`), 75 (`Logger/Server.hs`),
+  76 (`github/Database/AclKnobs.hs`), 77 (`github/TestRunner.hs`),
+  78 (`github/Init.hsc`), 79-84 (ConfigProvider, Observed, ThriftSource,
+  DefaultConfigs, ShardManager, Trace), then 85 (Config.hs), 89
+  (`Schema/Types.hs` → `pub mod types;` in schema.rs), 98, 104 (the closed
+  Storage enum + the `!Send` decision), 105, 117, 125, 177 (S3.hs). Row 85
+  also consumes the row-71 `!Send` TODO; keep that in its brief.
+
 Working style: 1–2 units per session, then a records-refresh commit.
 
 Recompute the queue any time (manifest file-line numbers):
@@ -432,20 +419,23 @@ staleness check to fire on files it touched (re-read and continue).
 - `util/disk.rs` — `d96790c` (line 69; the `df --output=<field> -B1 '<path>'` shell-out: `/bin/sh -c`, stderr inherited, byte-exact `readCreateProcess: <cmd> (exit N)` parity, GHC panic messages for `(!! 1)`/`read`; one reproduced shell-quoting defect with an injection repro plus six documented divergences; reviewer A returned PASS WITH MINOR after the commit (the unguarded getFreeCapacity fallback, thinner doc comments, decode-vs-exit precedence, lazy-force timing, Read Int's other accepted forms) and all five fixes are in the follow-up commit; reviewer B also returned PASS WITH MINOR (7 doc/lint findings: process version, the ": failed" Show suffix — scoped out of the message at the time, then reversed by `981f518` after a GHC 9.4.7 probe showed the suffix is what `show` prints — E2BIG, the ASCII-header wording, the getUsedCapacity force claim, a false "doubled sign" clause, and io::Error::other) and its fixes are in the second follow-up commit)
 - `storage/memory.rs` — `f88e113` (line 71; the in-memory backend: Memory over Mutex<HashMap<Repo, Arc<MemoryDb>>>, MemoryDb { Mutex<FactSet>, Mutex<byte map> }, all 37 trait methods with the source's stubs preserved byte-for-byte; STM->Mutex with the read+insert critical section; the !Send propagation recorded as a TODO(port) for rows 104/85; INVENTORY-BUG-CANDIDATE row 30 for the sketch's missing dbFacts; reviewer A found no behavioural mismatch (1 major: the TODO's owner, plus three citation errors and nine nits) and reviewer B found the same !Send marker gap plus 6 minor + 5 nits — all applied; probe A-L green)
 - `storage/lmdb.rs` — `640c94c` (line 70; the LMDB engine: `LMDB{root, max_disk_size}`, the full `Storage`/`DatabaseOps`/`CanLookup` surface, the squashfs open path through `glean_lmdb_container_open` + `open_database`, and the `doesDirectoryExist`-on-a-file guard bug reproduced; NO second finalizer — `DB::from_raw` (row 67) stays the one owner; three new `storage.rs` seams with a bounded mkdtemp retry; eight divergences incl. `delegate_ctlc`; reviewer A PASS WITH MINOR (7 minor + 9 nit, all applied — manifest rows 19/11, DBVersion cite, the ": failed" text, `doesFileExist` vs `is_file` for FIFOs, withCString truncating at NUL instead of panicking, takeDirectory's all-separator caveat, ffi.h/ffi.cpp/io.rs ranges) and reviewer B PASS (3 minor + 3 nit, all applied; its Container finding updated row 67's `db.rs` comment to name the borrow-vs-owned roles); probe A-L green)
+- `storage/rocks_db.rs` — `7d7c282` (line 72; the RocksDB engine, row 70's twin: `Cache` as a `ForeignPtr` + the file's one `unsafe impl Object` (the only real owner of `glean_rocksdb_free_cache`), the f32 ties-to-even `cacheSize`, the cache-flagged container open (still `DB::from_raw`, so no second finalizer), the tar restore/backup pair through `findExecutable` + `Command::output` (NOT `call_process`: different error text, no argv quoting), and `restoreFromDir`'s db-vs-backup choice, with `take_directory` promoted out of lmdb.rs into storage.rs; 11 SAFETY notes, seven divergences; both review dispatches hung past the window and were interrupted, so both reviews were performed INLINE per DEV-001 — that round fixed the tar-stderr decode (locale `String` from `readProcessWithExitCode` vs `BS.Char8.unpack`: `from_utf8_lossy` for `tar`, `latin1()` only for the stream path), made `unTarFromHandle` reap the child on a stderr read failure, and corrected the header's extern count / outbound tally / SAFETY count; probe A-R green)
 
-### 4.2 Immediate next-unit orientation (row 72 — NEXT UP)
+### 4.2 Immediate next-unit orientation (row 73 — NEXT UP)
 
-**Row 72**: `glean/db/Glean/Database/Storage/RocksDB.hs` (326 lines) ->
-`rust/glean-db/src/database/storage/rocks_db.rs`. The RocksDB `Storage`
-backend, and row 70's twin: same container/open/finalizer path, plus a
-`Cache` handle that genuinely owns `glean_rocksdb_free_cache`, a tar-based
-restore/backup, and the f32 `cacheSize` computation. Reuse `DB::from_raw`
-(row 67) so the `Db` marker stays the one database finalizer, reuse row 70's
-`with_temp_directory`/`get_file_size`, and do not redeclare
-`database_free`. The `tar` paths use `findExecutable` +
-`readProcessWithExitCode`, not `call_process` — decide that seam
-explicitly. §2.4 has the same orientation; brief every unit fresh from the
-source + inventory per §3.1.
+**Row 73**: `glean/db/Glean/Database/Trace.hs` (46 lines) →
+`rust/glean-db/src/database/trace.rs`. Three enums (GleanTrace,
+WriteTraceEvent, EnqueueTraceEvent) and two TextShow instances; the only
+dependency is `Thrift.Repo` (assumed `glean_thrift` import, the same one
+rows 47/48/60 declare). EnqueueTraceEvent's `showb = fromString . show`
+means the derived constructor name verbatim. Wiring is one line in
+`rust/glean-db/src/database.rs` (`pub mod trace;`) plus bumping that file's
+module tally. No FFI, no IO, no unsafe.
+
+Then manifest order 74-84 (loggers, github AclKnobs/TestRunner/Init.hsc/
+DefaultConfigs, ConfigProvider, Observed, ThriftSource, ShardManager, Trace)
+before row 85 Config.hs — see §2.4's queue correction. §2.4 has the same
+orientation; brief every unit fresh from the source + inventory per §3.1.
 
 ## 5. Operational lessons (behavior-changing; carried forward)
 
