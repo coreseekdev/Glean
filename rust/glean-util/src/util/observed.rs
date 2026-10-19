@@ -139,7 +139,12 @@ use std::sync::{Arc, Mutex};
 /// 'onUpdate :: (a -> a) -> IO ()' (:36, :41-43): the action the owner of a
 /// changing value calls with a function that computes the new value from the
 /// current one.
-pub type UpdateFn<A> = Arc<dyn Fn(&dyn Fn(&A) -> A) + Send + Sync>;
+///
+/// The function receives `Option<&A>`: `None` only for a DEFERRED Observed
+/// (see `changing_value_deferred`) before its first update. The source passes
+/// a bottom thunk there and relies on the update function being `const`
+/// (which never forces it); Rust has no bottoms, so the absence is explicit.
+pub type UpdateFn<A> = Arc<dyn Fn(&dyn Fn(Option<&A>) -> A) + Send + Sync>;
 
 /// 'data Observed a' (:24-28) — a value that may change over time, and that
 /// we can observe efficiently.
@@ -193,12 +198,39 @@ pub fn changing_value<A>(initial: A) -> (Observed<A>, UpdateFn<A>)
 where
     A: Clone + Send + Sync + 'static,
 {
+    changing_value_with(Some(initial), "")
+}
+
+/// The image of `changingValue (error msg)` — a changing value whose initial
+/// value is BOTTOM. `get` panics with `missing` until the first update.
+///
+/// ThriftSource's `configWithValue` (ThriftSource.hs:225) builds exactly
+/// this: the value is only read after `subscribe` has invoked its callback
+/// once, so the bottom is never forced (ThriftSource.hs:225-236).
+///
+/// Why a separate constructor: Rust has no bottom value of type `A` to
+/// store, so the uninitialised state must be explicit (`Option<A>`), and the
+/// update function must accept the absence (`UpdateFn`'s `Option<&A>`).
+pub fn changing_value_deferred<A>(missing: &'static str) -> (Observed<A>, UpdateFn<A>)
+where
+    A: Clone + Send + Sync + 'static,
+{
+    changing_value_with(None, missing)
+}
+
+fn changing_value_with<A>(initial: Option<A>, missing: &'static str) -> (Observed<A>, UpdateFn<A>)
+where
+    A: Clone + Send + Sync + 'static,
+{
     // 'tvar <- newTVarIO initial' (:38).
     let value = Arc::new(Mutex::new(initial));
 
     // 'Observed (readTVar tvar)' (:44).
     let read = value.clone();
-    let get: Arc<dyn Fn() -> A + Send + Sync> = Arc::new(move || read.lock().unwrap().clone());
+    let get: Arc<dyn Fn() -> A + Send + Sync> = Arc::new(move || match &*read.lock().unwrap() {
+        Some(v) => v.clone(),
+        None => panic!("{}", missing),
+    });
 
     // 'updateActionRef <- newIORef (return ())' (:39).
     let chain: Arc<Mutex<Vec<Arc<dyn Fn() + Send + Sync>>>> = Arc::new(Mutex::new(Vec::new()));
@@ -207,10 +239,10 @@ where
     let callbacks = chain.clone();
     // 'onUpdate fn = do atomically (modifyTVar tvar fn);
     //                  join $ readIORef updateActionRef' (:41-43).
-    let on_update: UpdateFn<A> = Arc::new(move |f: &dyn Fn(&A) -> A| {
+    let on_update: UpdateFn<A> = Arc::new(move |f: &dyn Fn(Option<&A>) -> A| {
         {
             let mut current = write.lock().unwrap();
-            *current = f(&*current);
+            *current = Some(f(current.as_ref()));
         }
         // The value is visible before any callback runs (:56-57); the
         // snapshot is taken under the chain's own lock, then released

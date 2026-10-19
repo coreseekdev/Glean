@@ -97,9 +97,13 @@
 //      NullConfigProviderOptions` (:103) is not shipped either. The first
 //      unit that owns a parser image adds both.
 //   3. `IO a` becomes `Result<_, ConfigError>` for withConfigProvider,
-//      subscribe, get and setTestConfig: the source throws, and the
-//      fallback path needs the failure as a value so isConfigFailure can
-//      classify it. `cancel` stays infallible (`IO ()` that only returns).
+//      subscribe, get and setTestConfig, AND for the subscribe CALLBACK
+//      (`a -> IO ()`, :57): the source throws, and the fallback path needs
+//      the failure as a value so isConfigFailure can classify it. A
+//      callback failure propagates out of `subscribe` when the provider
+//      invokes it synchronously (row 156 does, ConfigProvider.hs:80-82) and
+//      is swallowed by the watcher afterwards — both match the source.
+//      `cancel` stays infallible (`IO ()` that only returns).
 //   4. `SomeException` (:70) becomes
 //      `&(dyn std::error::Error + Send + Sync + 'static)` — Rust's dynamic
 //      exception image, and the referent of `ConfigError` (the boxed form
@@ -110,13 +114,15 @@
 //      a new restriction, because a value stored behind `dyn Any` must be
 //      'static anyway.
 //   6. `Deserializer a = ByteString -> Either String a` (:32) becomes
-//      `Box<dyn Fn(&[u8]) -> Result<T, String> + Send>`: ByteString -> &[u8]
+//      `Arc<dyn Fn(&[u8]) -> Result<T, String> + Send + Sync>`: ByteString -> &[u8]
 //      and Text (ConfigPath, :34) -> String per RULE §1's strings row. The
 //      Either's String is the deserializer's own message, not a
 //      ConfigError. `subscribe` takes it BY VALUE (the source's impl
 //      captures it for later re-reads; a borrow could not outlive the
-//      call), while `get` borrows it (used within the call). `+ Send` is
-//      DIVERGENCE 8's threading requirement.
+//      call), while `get` borrows it (used within the call). `Arc` makes
+//      that sharing cheap and lets a caller keep one (row 81's ThriftSource
+//      holds it in two closures). `+ Send + Sync` is DIVERGENCE 8's
+//      threading requirement.
 //   7. `data NullConfigSubscription a` (:98) has NO constructors. The Rust
 //      image is a struct with one private PhantomData field: an empty enum
 //      cannot use its type parameter (E0392), and the private field keeps
@@ -158,15 +164,18 @@
 // INVENTORY-BUG-CANDIDATE, zero SAFETY notes (no unsafe in this file).
 
 use std::marker::PhantomData;
+use std::sync::Arc;
 
 /// 'type Deserializer a = ByteString -> Either String a' (:32).
 ///
 /// The closure's `String` is the deserializer's own failure message; a
 /// config-fetch failure is the separate `ConfigError` the trait methods
-/// return. `+ Send` for the same reason as the subscribe callback
-/// (DIVERGENCES 8): row 156 stores it beside the callback on the watcher
-/// thread.
-pub type Deserializer<T> = Box<dyn Fn(&[u8]) -> Result<T, String> + Send>;
+/// return. `Arc` because the value is SHARED, not consumed (the source's
+/// Haskell function is a value): row 81's ThriftSource keeps one deserializer
+/// in two closures and hands a clone to `subscribe`. `+ Send + Sync` for the
+/// same reason as the subscribe callback (DIVERGENCES 8): row 156 stores it
+/// beside the callback on the watcher thread.
+pub type Deserializer<T> = Arc<dyn Fn(&[u8]) -> Result<T, String> + Send + Sync>;
 
 /// 'type ConfigPath = Text' (:34). Text -> String per RULE §1.
 pub type ConfigPath = String;
@@ -207,7 +216,7 @@ pub trait ConfigProvider {
     fn subscribe<T: 'static>(
         &self,
         path: &ConfigPath,
-        callback: Box<dyn Fn(&T) + Send>,
+        callback: Box<dyn Fn(&T) -> Result<(), ConfigError> + Send>,
         deserializer: Deserializer<T>,
     ) -> Result<Self::Subscription<T>, ConfigError>;
 
@@ -276,7 +285,7 @@ impl ConfigProvider for NullConfigProvider {
     fn subscribe<T: 'static>(
         &self,
         _path: &ConfigPath,
-        _callback: Box<dyn Fn(&T) + Send>,
+        _callback: Box<dyn Fn(&T) -> Result<(), ConfigError> + Send>,
         _deserializer: Deserializer<T>,
     ) -> Result<NullConfigSubscription<T>, ConfigError> {
         // 'subscribe _ _ _ _ = throwIO $ ErrorCall "NullConfigProvider:
