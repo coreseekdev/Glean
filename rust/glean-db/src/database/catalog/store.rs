@@ -113,24 +113,15 @@
 //
 //   * Meta (row 48, shipped): `crate::database::meta::Meta` (re-export at
 //     meta.rs:529; derives at meta.rs:249-250). No field access here.
-//   * Files (row 64, future): `impl Store for Files`. Its filesystem
-//     helpers (Files.hs:44-99: doesDirectoryExist, getDirectoryContents,
-//     readFileContents, createDirectoryIfMissing, writeMeta,
-//     doesFileExist, safeRemovePathForcibly) fail as `StoreError::Io`
-//     on the uncaught paths: `list` :45/:47 (the subdir listing :51-54
-//     and the per-hash read/parse :55-67 are wrapped in `catchAll` and
-//     are LOGGED AND SKIPPED inside the impl, so they never surface),
-//     `create` :71/:73/:74, `delete` :79/:80, `put` :85/:86, and `get`
-//     :91/:94. `get`'s JSON `Left` arm at :97 calls `dbError` (row 53's
-//     DBError, not yet shipped) and lands in `StoreError::Other` until
-//     that row adds a typed arm (see RUST-ONLY ADDITIONS).
-//
-//     CARRY-FORWARD for row 64: `get` at :90 sets `path = metaPath root
-//     repo` (already `.../meta`) and then reads `path </> "meta"` at
-//     :94, i.e. `.../meta/meta`, while `writeMeta` (:101-104) writes the
-//     `.../meta` FILE. That is a source defect; reproduce it
-//     bug-for-bug at the row-64 site (RULE §2 BUG rule) rather than
-//     silently fixing it here.
+//   * Files (row 64, SHIPPED): `impl Store for Files` in
+//     catalog/local/files.rs. Its uncaught std::fs failures land in
+//     `StoreError::Io` (`list`'s root listing :47, `create` :73/:74,
+//     `delete` :80, `put` :86, `get`'s read :94); the `catchAll` legs
+//     (`list` :51-54 and :55-67) log and skip inside the impl and never
+//     surface. `get`'s JSON `Left` arm at :97 now lands in the typed
+//     `StoreError::Db` arm: row 64 CONSUMED the forward contract below.
+//     The source's `.../meta/meta` defect (:90/:94) is reproduced
+//     bug-for-bug there.
 //   * Memory (row 65, future): `impl Store for Memory`. The source
 //     methods (Memory.hs:27-45) are IORef operations that cannot throw,
 //     so every method returns `Ok(...)`; the IORef ->
@@ -203,19 +194,23 @@
 // constructor-shaped Display, std::error::Error impl).
 //
 //   * `Io(std::io::Error)` — the Files impl's uncaught std::fs failures
-//     (Files.hs:45/:47, :71/:73/:74, :79/:80, :85/:86, :91/:94).
+//     (Files.hs:47, :73/:74, :80, :86, :94; the doesDirectoryExist/
+//     doesFileExist checks return Bool and never throw).
+//   * `Db(DbError)` — the typed database-error leg, added by row 64 (see
+//     the CONSUMED contract below). It carries `get`'s `dbError` at
+//     Files.hs:97 with the area's own taxonomy instead of erasing it.
 //   * `Other(Box<dyn std::error::Error + Send + Sync>)` — the open
-//     `SomeException` leg. The only escaping non-IO error today is
-//     `get`'s `dbError` at Files.hs:97 (row 53's DBError). The
+//     `SomeException` leg. No in-tree Store impl uses it today; it stays
+//     for callers that raise an unclassified error through a store. The
 //     `catchAll` legs at :52-54 and :67 do NOT land here: they log and
 //     return `[]`/`Nothing` inside the impl. JSON parse failures are
 //     `Either String Meta`, not exceptions, so they are also handled
 //     inside the impl (:63-66 skip, :95-97 dbError).
 //
-// FORWARD CONTRACT (row 53/64): when `database/exception.rs` ships its
-// DBError image, the `get` arm should extend this enum with a typed
-// `Db(..)` variant (or `From<DBError>`) instead of erasing into
-// `Other`; recorded here so row 64 does not silently lose the match.
+// FORWARD CONTRACT (row 53/64) — CONSUMED BY ROW 64: `database/`
+// `exception.rs` shipped the DbError image, and catalog/local/files.rs
+// added the typed `Db(DbError)` variant plus `From<DbError>`; `get` now
+// uses `db_error(repo, ..)?` directly and nothing is erased into `Other`.
 // The two concrete impls (rows 64/65) pin which io/dbError cases land
 // where; the catch taxonomy itself is Step 4's, exactly as BackendError
 // defers its Display/catch table and RunQueryError defers only its
@@ -254,13 +249,13 @@
 // `MockStore`, Test.hs:46-51) may need a `#[cfg(test)]` variant or an
 // equivalent hook, but tests do not widen the production set.
 //
-// The variant types are FORWARD REFERENCES: `crate::database::catalog::
-// local::files::Files` is row 64 and `...::local::memory::Memory` is row
-// 65. Neither file exists yet, and neither `catalog/local.rs` nor the
-// `pub mod local;` line is created by row 54 — rows 64/65 own them (the
-// SomeBackend forward-reference form: this compiles once the modules
-// land, and a missing path is a Step-4 compile error, never a silent
-// divergence).
+// The variant types: `crate::database::catalog::local::files::Files` is
+// row 64, SHIPPED at catalog/local/files.rs, and `...::local::memory::
+// Memory` is row 65, still a FORWARD REFERENCE — row 54 created neither
+// `catalog/local.rs` nor the `pub mod local;` line, and row 64 has since
+// created both plus files.rs. Only the Memory path is missing (the
+// SomeBackend forward-reference form: this compiles once row 65 lands, and
+// a missing path is a Step-4 compile error, never a silent divergence).
 
 use std::collections::HashMap;
 use std::fmt;
@@ -304,15 +299,19 @@ pub trait Store {
 
 /// The area's `SomeException` image (RUST-ONLY; see the header's
 /// RUST-ONLY ADDITIONS block). `Io` carries the Files impl's std::fs
-/// failures; `Other` is the open leg for `dbError`/caller-raised errors.
+/// failures, `Db` the database-error leg (row 64's consumption of the
+/// forward contract), and `Other` the open leg for caller-raised errors.
 #[derive(Debug)]
 pub enum StoreError {
     /// `std::fs` / `std::io` failure from the Files impl on an uncaught
-    /// path (Files.hs:45/:47, :71/:73/:74, :79/:80, :85/:86, :91/:94).
+    /// path (Files.hs:47, :73/:74, :80, :86, :94; the existence checks
+    /// return Bool and never throw).
     Io(std::io::Error),
-    /// The open leg: `dbError` (row 53) at Files.hs:97. The `catchAll`
-    /// legs at :52-54/:67 do NOT reach here — they log and return
-    /// `[]`/`Nothing` inside the impl.
+    /// The typed database-error leg (row 64): `dbError` at Files.hs:97.
+    /// The `catchAll` legs at :52-54/:67 do NOT reach here — they log and
+    /// return `[]`/`Nothing` inside the impl.
+    Db(crate::database::exception::DbError),
+    /// The open leg for an unclassified caller-raised error.
     Other(Box<dyn std::error::Error + Send + Sync>),
 }
 
@@ -322,12 +321,21 @@ impl From<std::io::Error> for StoreError {
     }
 }
 
+/// Row 64's consumption of the forward contract: the Files `get` arm
+/// converts the single throw funnel's `DbError` into this store error.
+impl From<crate::database::exception::DbError> for StoreError {
+    fn from(e: crate::database::exception::DbError) -> Self {
+        StoreError::Db(e)
+    }
+}
+
 /// Constructor-shaped, per RULE §2's deriving-Show default (the type has
 /// no source counterpart, so there is no Show text to replicate).
 impl fmt::Display for StoreError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             StoreError::Io(e) => write!(f, "Io({})", e),
+            StoreError::Db(e) => write!(f, "Db({})", e),
             StoreError::Other(e) => write!(f, "Other({})", e),
         }
     }
@@ -345,13 +353,16 @@ impl std::error::Error for StoreError {}
 /// `forall local. Store local => Catalog` (Catalog.hs:133), per RULE §2's
 /// GADT/existential row. The production variant set is closed:
 ///
-///   * `Files(crate::database::catalog::local::files::Files)` — row 64;
-///   * `Memory(crate::database::catalog::local::memory::Memory)` — row 65.
+///   * `Files(crate::database::catalog::local::files::Files)` — row 64,
+///     SHIPPED;
+///   * `Memory(crate::database::catalog::local::memory::Memory)` — row 65,
+///     a FORWARD REFERENCE.
 ///
-/// Both variant types are FORWARD REFERENCES (the SomeBackend precedent,
-/// backend/types.rs:745-778): rows 64/65 create the two modules and the
-/// `pub mod local;` declaration in catalog.rs. The test `MockStore`
-/// instance is tests and does not widen the production set (RULE §4).
+/// Row 64 created catalog/local.rs, its `pub mod files;` line and
+/// catalog/local/files.rs. Row 65 still owes memory.rs and
+/// `pub mod memory;` (the SomeBackend precedent, backend/types.rs:745-778).
+/// The test `MockStore` instance is tests and does not widen the production
+/// set (RULE §4).
 /// No derive list is attached: the enum is moved into
 /// `CatalogInner.local` and never cloned, so it must not impose Clone or
 /// Debug on stores that do not have them. The variant types MUST be
@@ -413,11 +424,13 @@ impl Store for CatalogStore {
 // five methods (EXPORT MAPPING above); nothing is omitted (no
 // superclasses, associated types, defaults, instances or deriving in
 // :19-37). Two Rust-only additions: `StoreError` (required by RULE §2,
-// documented above) and `CatalogStore` (row 54's consumption of the
+// documented above; its typed `Db` arm is row 64's consumption of the
+// forward contract) and `CatalogStore` (row 54's consumption of the
 // existential contract, documented above).
 //
 // Markers: no port todos, no source-defect reproductions here (row 64's
-// `get` double-join is a carry-forward, recorded above), ONE performance
+// `get` double-join is reproduced at its own site in files.rs, recorded
+// above), ONE performance
 // deferral (the owned `list` deep clone, marked at the method; the
 // forwarding impl adds no clone of its own), no unsafe code (no unsafe
 // blocks), no inventory divergence (zero governing rows for Store.hs

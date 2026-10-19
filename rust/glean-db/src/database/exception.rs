@@ -108,13 +108,12 @@
 //     value), never a fresh per-unit error type. That is the inventory's
 //     clause 4/5 and the reason this module is the only owner of the
 //     database error taxonomy.
-//   * StoreError's future Db arm: rust/glean-db/src/database/catalog/store.rs
-//     :213-217 records the FORWARD CONTRACT (row 53/64): once this module
-//     ships, the Files `get` arm (Files.hs:97) should extend `StoreError`
-//     with a typed `Db(..)` variant (or `From<DbError>`) instead of erasing
-//     the error into `StoreError::Other`. Row 64 (manifest line 64,
-//     Catalog/Local/Files.hs) owns that change; this unit only supplies the
-//     type it names.
+//   * StoreError's Db arm: rust/glean-db/src/database/catalog/store.rs
+//     :213-217 recorded the FORWARD CONTRACT (row 53/64), and row 64
+//     CONSUMED it: catalog/local/files.rs added the typed `Db(DbError)`
+//     variant and `From<DbError>`, so the Files `get` arm (Files.hs:97)
+//     no longer erases the error into `StoreError::Other`. This module
+//     supplies the type it names.
 //   * Wiring: this unit appends `pub mod exception;` to
 //     rust/glean-db/src/database.rs after `pub mod repo;`, binding
 //     `crate::database::exception` at the crate root. database.rs is
