@@ -61,6 +61,10 @@
 //! ROW 60'S WIRING CONTRACT — CONSUMED (row 60 shipped
 //! src/database/data.rs): the same one-line append (`pub mod data;`).
 //! Data.hs exports no submodules.
+//!
+//! ROW 62'S WIRING CONTRACT — CONSUMED (row 62 shipped
+//! src/database/batch_location.rs): the same one-line append
+//! (`pub mod batch_location;`). BatchLocation.hs exports no submodules.
 
 pub mod meta;
 
@@ -85,22 +89,26 @@ pub mod acl_ownership;
 // glean/db/Glean/Database/Data.hs -> src/database/data.rs (manifest line 60)
 pub mod data;
 
-// Coverage: nine `pub mod` lines — meta.rs (row 48, the area's first
+// glean/db/Glean/Database/BatchLocation.hs -> src/database/batch_location.rs
+// (manifest line 62)
+pub mod batch_location;
+
+// Coverage: ten `pub mod` lines — meta.rs (row 48, the area's first
 // shipped file), catalog.rs (row 49's directory module, which declares
 // `pub mod filter;`), repo.rs (row 52's port of Repo.hs), exception.rs
 // (row 53's port of Exception.hs), acl_config.rs (row 55's port of
 // ACLConfig.hs), backup.rs (row 56's directory module, which declares
 // `pub mod backend;` for the Backup/Backend.hs port), and storage.rs
 // (row 58's port of Storage.hs), acl_ownership.rs (row 59's port of
-// ACLOwnership.hs), and data.rs (row 60's port of Data.hs) — and nothing
-// else:
+// ACLOwnership.hs), data.rs (row 60's port of Data.hs), and
+// batch_location.rs (row 62's port of BatchLocation.hs) — and nothing else:
 // no re-exports (each submodule is its own facade). Row 49's, row 52's,
-// row 53's, row 55's, row 56's, row 58's, row 59's and row 60's appends
-// are now CONSUMED (past tense above).
+// row 53's, row 55's, row 56's, row 58's, row 59's, row 60's and row 62's
+// appends are now CONSUMED (past tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos (the
-// row-49, row-52, row-53, row-55, row-56, row-58, row-59 and row-60
-// wiring is complete; all nine `pub mod` lines exist), no source-defect
+// row-49, row-52, row-53, row-55, row-56, row-58, row-59, row-60 and row-62
+// wiring is complete; all ten `pub mod` lines exist), no source-defect
 // reproductions (no Haskell source), no performance deferrals (the
 // declarations are not runtime code), no inventory divergence (no
 // inventory row can govern a file with no Haskell counterpart: the
@@ -131,5 +139,8 @@ pub mod data;
 // (`grep -n 'ACLOwnership' migration/inventory*.tsv` exits 1).
 // Row 60's source file is likewise zero-hit
 // (`grep -n 'Database/Data\.hs' migration/inventory*.tsv` exits 1).
+// Row 62's source file is likewise zero-hit
+// (`grep -n 'BatchLocation' migration/inventory*.tsv` exits 1); its
+// existential follows the construct-level row 136 ('Some c', closed enum).
 //
 // PORT STATUS: confidence=high todos=0
