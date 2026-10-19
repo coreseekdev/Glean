@@ -136,8 +136,9 @@
 //     so every method returns `Ok(...)`; the IORef ->
 //     `Mutex<HashMap<..>>` image is that row's call.
 //   * Config (row 85, future): `Some Catalog.Store` (Config.hs:118).
-//   * Catalog (row 54, future): `forall local. Store local => Catalog`
-//     (Catalog.hs:133).
+//   * Catalog (row 54, THIS unit, SHIPPED): `forall local. Store local =>
+//     Catalog` (Catalog.hs:133) -> `crate::database::catalog::CatalogInner`
+//     holds `local: CatalogStore`.
 //
 // ---------------------------------------------------------------------------
 // EXPORT MAPPING (1/1 source exports; StoreError is Rust-only)
@@ -177,10 +178,11 @@
 //   * `list`'s result. `HashMap Repo Meta -> HashMap<thrift::Repo, Meta>`
 //     OWNED. A trait method cannot lend out storage it does not own; the
 //     returned map is a deep clone where the source shared the entries.
-//     This is the value-semantics consequence of the owned return, not a
-//     deferral, so no PERF marker is attached. Both sides are unordered
-//     maps (Data.HashMap.Strict and std HashMap), so no iteration-order
-//     contract is introduced or lost here.
+//     This is the value-semantics consequence of the owned return; it is
+//     recorded as the PERF(port) deferral at the method (the fast version
+//     is a shared snapshot). Both sides are unordered maps
+//     (Data.HashMap.Strict and std HashMap), so no iteration-order contract
+//     is introduced or lost here.
 //   * Effects. Every `IO` return becomes `Result<_, StoreError>` per RULE
 //     §2's dynamic-exceptions row. `Bool` stays `bool`; `Maybe Meta`
 //     stays `Option<Meta>`.
@@ -242,14 +244,23 @@
 // cat` :159) into `Catalog.open` (Env.hs:84-85 -> Catalog.hs:310) and is
 // stored in `catLocal` (Catalog.hs:133), so two distinct enums would not
 // type-check without a conversion. The enum belongs to THIS module (the
-// trait's home, the SomeBackend placement) and is added by the first
-// consumer — row 54 (Catalog.hs), which precedes rows 64/65 in the
+// trait's home, the SomeBackend placement) and was ADDED BY THE FIRST
+// CONSUMER, row 54 (Catalog.hs), which precedes rows 64/65 in the
 // manifest and therefore forward-references `Files`/`Memory` (the
-// SomeBackend forward-reference precedent). Row 85 (Config.hs) imports
-// it; it must not define a second one. Row 50 ships only the trait and
-// records this contract. Test re-expression (RULE §4; `MockStore`,
-// Test.hs:46-51) may need a `#[cfg(test)]` variant or an equivalent
-// hook, but tests do not widen the production set.
+// SomeBackend forward-reference precedent). Row 54 CONSUMED this
+// contract: the `CatalogStore` enum and its forwarding `impl Store`
+// are at the bottom of this file. Row 85 (Config.hs) imports the enum;
+// it must not define a second one. Test re-expression (RULE §4;
+// `MockStore`, Test.hs:46-51) may need a `#[cfg(test)]` variant or an
+// equivalent hook, but tests do not widen the production set.
+//
+// The variant types are FORWARD REFERENCES: `crate::database::catalog::
+// local::files::Files` is row 64 and `...::local::memory::Memory` is row
+// 65. Neither file exists yet, and neither `catalog/local.rs` nor the
+// `pub mod local;` line is created by row 54 — rows 64/65 own them (the
+// SomeBackend forward-reference form: this compiles once the modules
+// land, and a missing path is a Step-4 compile error, never a silent
+// divergence).
 
 use std::collections::HashMap;
 use std::fmt;
@@ -327,19 +338,90 @@ impl fmt::Display for StoreError {
 impl std::error::Error for StoreError {}
 
 // ---------------------------------------------------------------------------
+// CatalogStore (row 54's consumption of the existential contract)
+// ---------------------------------------------------------------------------
+
+/// The closed-set image of `Some Catalog.Store` (Config.hs:118) and
+/// `forall local. Store local => Catalog` (Catalog.hs:133), per RULE §2's
+/// GADT/existential row. The production variant set is closed:
+///
+///   * `Files(crate::database::catalog::local::files::Files)` — row 64;
+///   * `Memory(crate::database::catalog::local::memory::Memory)` — row 65.
+///
+/// Both variant types are FORWARD REFERENCES (the SomeBackend precedent,
+/// backend/types.rs:745-778): rows 64/65 create the two modules and the
+/// `pub mod local;` declaration in catalog.rs. The test `MockStore`
+/// instance is tests and does not widen the production set (RULE §4).
+/// No derive list is attached: the enum is moved into
+/// `CatalogInner.local` and never cloned, so it must not impose Clone or
+/// Debug on stores that do not have them. The variant types MUST be
+/// Send + Sync: the committer thread holds an `Arc<CatalogInner>` that
+/// owns this enum. That is a Step-4 obligation on rows 64/65 (the source
+/// class has no such constraint; the constraint comes from the Rust thread
+/// boundary, not from Store.hs).
+pub enum CatalogStore {
+    Files(crate::database::catalog::local::files::Files),
+    Memory(crate::database::catalog::local::memory::Memory),
+}
+
+/// Method-for-method forwarding, the `impl Backend for SomeBackend<R>`
+/// shape (backend/types.rs:786-900): every class method delegates to the
+/// wrapped store. This is the image of the source's dictionary passing
+/// under `forall local. Store local =>`.
+impl Store for CatalogStore {
+    fn list(&self) -> Result<HashMap<thrift::Repo, Meta>, StoreError> {
+        match self {
+            CatalogStore::Files(store) => store.list(),
+            CatalogStore::Memory(store) => store.list(),
+        }
+    }
+
+    fn create(&self, repo: &thrift::Repo, meta: &Meta) -> Result<bool, StoreError> {
+        match self {
+            CatalogStore::Files(store) => store.create(repo, meta),
+            CatalogStore::Memory(store) => store.create(repo, meta),
+        }
+    }
+
+    fn delete(&self, repo: &thrift::Repo) -> Result<bool, StoreError> {
+        match self {
+            CatalogStore::Files(store) => store.delete(repo),
+            CatalogStore::Memory(store) => store.delete(repo),
+        }
+    }
+
+    fn put(&self, repo: &thrift::Repo, meta: &Meta) -> Result<bool, StoreError> {
+        match self {
+            CatalogStore::Files(store) => store.put(repo, meta),
+            CatalogStore::Memory(store) => store.put(repo, meta),
+        }
+    }
+
+    fn get(&self, repo: &thrift::Repo) -> Result<Option<Meta>, StoreError> {
+        match self {
+            CatalogStore::Files(store) => store.get(repo),
+            CatalogStore::Memory(store) => store.get(repo),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Coverage / marker tally (closed set)
 // ---------------------------------------------------------------------------
 //
 // Source symbols: one export, `Store(..)`, imaged as the trait plus its
 // five methods (EXPORT MAPPING above); nothing is omitted (no
 // superclasses, associated types, defaults, instances or deriving in
-// :19-37). One Rust-only addition, `StoreError`, is required by RULE §2
-// and documented above.
+// :19-37). Two Rust-only additions: `StoreError` (required by RULE §2,
+// documented above) and `CatalogStore` (row 54's consumption of the
+// existential contract, documented above).
 //
 // Markers: no port todos, no source-defect reproductions here (row 64's
 // `get` double-join is a carry-forward, recorded above), ONE performance
-// deferral (the owned `list` deep clone, marked at the method), no unsafe
-// code (no unsafe blocks), no inventory divergence (zero governing rows,
-// above).
+// deferral (the owned `list` deep clone, marked at the method; the
+// forwarding impl adds no clone of its own), no unsafe code (no unsafe
+// blocks), no inventory divergence (zero governing rows for Store.hs
+// itself; the CatalogStore addition follows Catalog.hs's row 21 exactly
+// as its EXISTENTIAL MAPPING contract required).
 //
 // PORT STATUS: confidence=high todos=0
