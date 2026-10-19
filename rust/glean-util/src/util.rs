@@ -13,14 +13,17 @@
 //! scaffolding (src/util/some.rs, manifest line 38). Later units append
 //! their own `pub mod` lines here.
 
+// glean/util/Glean/Util/IO.hs -> src/util/io.rs (manifest line 63)
+pub mod io;
+
 pub mod retry_channel_exception;
 pub mod service;
 pub mod some;
 pub mod thrift_service;
 pub mod vector;
 
-// Coverage: five `pub mod` lines wiring every glean-util file shipped
-// so far (util/retry_channel_exception.rs, util/service.rs,
+// Coverage: six `pub mod` lines wiring every glean-util file shipped
+// so far (util/io.rs, util/retry_channel_exception.rs, util/service.rs,
 // util/some.rs, util/thrift_service.rs, util/vector.rs) and nothing
 // else — no re-exports (each submodule is its own facade).
 //
