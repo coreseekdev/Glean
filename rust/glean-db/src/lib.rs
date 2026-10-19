@@ -94,7 +94,17 @@ pub mod write;
 // recorded in src/database.rs's prose and is now CONSUMED).
 pub mod database;
 
-// Coverage: four `pub mod`s (backend, query, write, database) and nothing
+// The Logger/ area wiring: the source modules Glean.Logger.Database.hs
+// (migration/manifest.tsv line 74, src/logger/database.rs) and
+// Glean.Logger.Server.hs (line 75) are children of Glean.Logger.hs (line
+// 106), which itself maps to src/logger.rs — so the directory module hangs
+// off the crate root here, after `pub mod database;`. This unit appends
+// `pub mod logger;` for row 74's file; src/logger.rs declares
+// `pub mod database;` now and will gain row 75's `pub mod server;` and row
+// 106's own body in their units.
+pub mod logger;
+
+// Coverage: five `pub mod`s (backend, query, write, database, logger) and nothing
 // else — no lib-level re-exports (a `pub use` here would fork the
 // namespace the siblings' `crate::backend::…` / `crate::query::…` /
 // `crate::write::…` / `crate::database::…` paths already presume; each
@@ -106,8 +116,9 @@ pub mod database;
 // src/query.rs has since SHIPPED, and row 49's `pub mod catalog;` inside
 // src/database.rs has since SHIPPED; the one remaining CONTRACTED area
 // line so far is row 115's `pub mod json;` inside src/write.rs, named in
-// prose here and in its file; the `haxl`/`logger`/github-straggler lines
-// named in the doc header above remain for their own units), no
+// prose here and in its file; the `logger` line named in the doc header
+// above has since SHIPPED (row 74), and the `haxl`/github-straggler lines
+// remain for their own units), no
 // source-defect reproductions (no Haskell
 // source), no performance deferrals (no code), no inventory divergence (no
 // inventory row can govern a file with no Haskell counterpart).
