@@ -108,7 +108,12 @@ pub mod schema;
 // 73). Row 73's append.
 pub mod trace;
 
-// Coverage: twelve `pub mod` lines — meta.rs (row 48, the area's first
+// glean/github/Glean/Database/AclKnobs.hs -> src/database/acl_knobs.rs
+// (manifest line 76). Row 76's append — the github/ source path still maps
+// into this crate's database area (manifest column 2 is authoritative).
+pub mod acl_knobs;
+
+// Coverage: thirteen `pub mod` lines — meta.rs (row 48, the area's first
 // shipped file), catalog.rs (row 49's directory module, which declares
 // `pub mod filter;`), repo.rs (row 52's port of Repo.hs), exception.rs
 // (row 53's port of Exception.hs), acl_config.rs (row 55's port of
@@ -117,17 +122,18 @@ pub mod trace;
 // (row 58's port of Storage.hs), acl_ownership.rs (row 59's port of
 // ACLOwnership.hs), data.rs (row 60's port of Data.hs),
 // batch_location.rs (row 62's port of BatchLocation.hs), schema.rs
-// (row 66's directory module, which declares `pub mod compute_ids;`), and
-// trace.rs (row 73's port of Trace.hs) — and nothing else: no re-exports
-// (each submodule is its own facade). Row 49's, row 52's, row 53's, row
-// 55's, row 56's, row 58's, row 59's, row 60's, row 62's, row 66's and row
-// 73's appends are now CONSUMED (past tense above).
+// (row 66's directory module, which declares `pub mod compute_ids;`),
+// trace.rs (row 73's port of Trace.hs) and acl_knobs.rs (row 76's port of
+// github/Database/AclKnobs.hs) — and nothing else: no re-exports (each
+// submodule is its own facade). Row 49's, row 52's, row 53's, row 55's, row
+// 56's, row 58's, row 59's, row 60's, row 62's, row 66's, row 73's and row
+// 76's appends are now CONSUMED (past tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos (the
 // row-49, row-52, row-53, row-55, row-56, row-58, row-59, row-60, row-62,
-// row-66 and row-73 wiring is complete; all twelve `pub mod` lines exist),
-// no source-defect reproductions (no Haskell source), no performance
-// deferrals (the
+// row-66, row-73 and row-76 wiring is complete; all thirteen `pub mod` lines
+// exist), no source-defect reproductions (no Haskell source), no
+// performance deferrals (the
 // declarations are not runtime code), no inventory divergence (no
 // inventory row can govern a file with no Haskell counterpart: the
 // "Database/Catalog" grep hits across migration/inventory*.tsv all name
@@ -162,5 +168,7 @@ pub mod trace;
 // existential follows the construct-level row 136 ('Some c', closed enum).
 // Row 73's source file is likewise zero-hit
 // (`grep -n 'Database/Trace' migration/inventory*.tsv` exits 1).
+// Row 76's source file is likewise zero-hit
+// (`grep -n 'AclKnobs' migration/inventory*.tsv` exits 1).
 //
 // PORT STATUS: confidence=high todos=0
