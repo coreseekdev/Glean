@@ -170,12 +170,12 @@
 //      (Haskell renders a numeric escape, Rust the character) and for
 //      control characters (Haskell uses mnemonics such as \SOH, Rust
 //      \u{1}).
-//   6. takeDirectory is a local copy of the glean-util port
-//      (util/io.rs:402-420), which is private there. It matches
-//      System.FilePath for every path this unit builds ("<root>/<repo>/db");
-//      the two differ only for an all-separator prefix, where filepath keeps
-//      the separators (takeDirectory "//foo" = "//", "///" = "///") and the
-//      port collapses to "/".
+//   6. takeDirectory comes from storage.rs's shared seam (promoted there at
+//      row 72; the glean-util port at util/io.rs:402-420 is private). It
+//      matches System.FilePath for every path this unit builds
+//      ("<root>/<repo>/db"); the two differ only for an all-separator
+//      prefix, where filepath keeps the separators (takeDirectory "//foo" =
+//      "//", "///" = "///") and the seam collapses to "/".
 //   7. callProcess's delegate_ctlc is not reproduced (the call_process
 //      seam uses Command::status). The child stays in the parent's process
 //      group in BOTH implementations — callProcess sets only delegate_ctlc
@@ -240,8 +240,8 @@ use crate::database::exception::DbError;
 use crate::database::repo::{combine, database_path};
 use crate::database::storage::db::{Container, DB};
 use crate::database::storage::{
-    call_process, get_file_size, with_materialized_file, with_temp_directory, AxiomOwnership,
-    DBVersion, DatabaseOps, Mode, Storage, WriteLock,
+    call_process, get_file_size, take_directory, with_materialized_file, with_temp_directory,
+    AxiomOwnership, DBVersion, DatabaseOps, Mode, Storage, WriteLock,
 };
 
 /// 'data LMDB = LMDB { lmdbRoot :: FilePath, lmdbMaxDiskSize :: Maybe Int }'
@@ -512,23 +512,6 @@ fn does_file_exist(path: &str) -> bool {
     std::fs::metadata(path)
         .map(|metadata| !metadata.is_dir())
         .unwrap_or(false)
-}
-
-/// System.FilePath.takeDirectory (the glean-util port, private there):
-/// no directory component means ".", trailing separators are stripped, and
-/// a run of separators collapses to the root "/".
-fn take_directory(path: &str) -> String {
-    let dir = match path.rfind('/') {
-        Some(i) => &path[..=i],
-        None => "",
-    };
-    let dir = if dir.is_empty() { "./" } else { dir };
-    let stripped = dir.trim_end_matches('/');
-    if stripped.is_empty() {
-        "/".to_string()
-    } else {
-        stripped.to_string()
-    }
 }
 
 // ---------------------------------------------------------------------------

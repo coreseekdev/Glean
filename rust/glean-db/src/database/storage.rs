@@ -38,7 +38,7 @@
 // src/database/storage/db.rs): the append is `pub mod db;` at the bottom of
 // this file, binding Storage/DB.hs's port as a child of this file (the
 // source's module nesting is Storage.hs <- Storage/DB.hs). The remaining
-// engine unit (row 72 RocksDB) will append its own line.
+// engine unit (row 72 RocksDB) appended its own line.
 //
 // ROW 70'S WIRING CONTRACT — CONSUMED (row 70 shipped
 // src/database/storage/lmdb.rs): the append is `pub mod lmdb;` at the
@@ -53,6 +53,14 @@
 // with_temp_directory for withSystemTempDirectory (:82). It also needs no
 // extern and owns no raw pointer — the FactSet handle comes from
 // glean-core's shipped fact_set module.
+//
+// ROW 72'S WIRING CONTRACT — CONSUMED (row 72 shipped
+// src/database/storage/rocks_db.rs): the append is `pub mod rocks_db;` at
+// the bottom of this file. That unit also PROMOTED take_directory out of
+// row 70's lmdb.rs into the seam block below: restoreFromDir (:277)
+// needs it, lmdb.rs needs it, and a third private copy was not acceptable.
+// No other seam was needed — the tar paths use findExecutable +
+// readProcessWithExitCode (RocksDB.hs:232, :282-286), not callProcess.
 //
 // INVENTORY (RULE §5):
 //   * inventory.tsv row 19 (line 19, the strict-eager-reads group) names
@@ -371,6 +379,25 @@ fn create_temp_directory(parent: &str, prefix: &str) -> io::Result<String> {
     }))
 }
 
+/// System.FilePath.takeDirectory (filepath-1.4.2.2, promoted to a seam at
+/// row 72): no directory component means ".", trailing separators are
+/// stripped, and a run of separators collapses to the root "/". It matches
+/// filepath for every path the engines build; only an all-separator prefix
+/// differs (takeDirectory "//foo" = "//" there, "/" here).
+pub(crate) fn take_directory(path: &str) -> String {
+    let dir = match path.rfind('/') {
+        Some(i) => &path[..=i],
+        None => "",
+    };
+    let dir = if dir.is_empty() { "./" } else { dir };
+    let stripped = dir.trim_end_matches('/');
+    if stripped.is_empty() {
+        "/".to_string()
+    } else {
+        stripped.to_string()
+    }
+}
+
 /// 'getFileSize :: FilePath -> IO Integer' (System.Directory): the size in
 /// bytes, following symlinks. Integer is unbounded in the source; the port
 /// narrows st_size (u64) to i64, which only differs for files above 2^63
@@ -661,6 +688,10 @@ pub mod lmdb;
 // glean/db/Glean/Database/Storage/Memory.hs -> src/database/storage/memory.rs
 // (manifest line 71). Row 71's append.
 pub mod memory;
+
+// glean/db/Glean/Database/Storage/RocksDB.hs -> src/database/storage/rocks_db.rs
+// (manifest line 72). Row 72's append.
+pub mod rocks_db;
 
 // Marker breakdown (closed set — 1 TODO(port), 0 BUG(port), 0 PERF(port),
 // 0 INVENTORY-BUG-CANDIDATE):
