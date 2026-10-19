@@ -34,6 +34,13 @@
 // Storage/DB.hs) own the C ABI in their own units; this unit only fixes
 // the trait surface they implement and the helper functions.
 //
+// ROW 67'S WIRING CONTRACT — CONSUMED (row 67 shipped
+// src/database/storage/db.rs): the append is `pub mod db;` at the bottom of
+// this file, binding Storage/DB.hs's port as a child of this file (the
+// source's module nesting is Storage.hs <- Storage/DB.hs). The remaining
+// engine units (row 70 LMDB, row 71 Memory, row 72 RocksDB) will append
+// their own lines.
+//
 // INVENTORY (RULE §5):
 //   * inventory.tsv row 19 (line 19, the strict-eager-reads group) names
 //     Storage.hs:81 as a COMMENT stating the source already avoids lazy
@@ -153,15 +160,16 @@
 //     this unit.
 //   * crate::database::exception (unit 53) — DbError, plus the additive
 //     From<io::Error> seam.
-//   * OPEN CROSS-UNIT ISSUE (no marker here; owed by the engine units:
-//     row 71 Memory, row 67 DB, row 70 LMDB, row 72 RocksDB): commit takes
-//     &FactSet, matching the C++ commit's
-//     borrow, but the Memory engine's image of 'FactSet.append (dbFacts
-//     db) facts' (Storage/Memory.hs:91) needs a mutable fact store behind
-//     interior mutability — and FactSet is deliberately !Send + !Sync and
-//     append takes &mut self (fact_set.rs:415-424, :879). The Memory unit
-//     must choose its fact representation or revisit that posture; the
-//     trait surface here does not force either answer.
+//   * OPEN CROSS-UNIT ISSUE (no marker here; owed by the engine units):
+//     commit takes &FactSet, matching the C++ commit's borrow. Row 67 (DB)
+//     has since shipped and needed no choice: every one of its facts
+//     consumers only borrows the handle (storage/db.rs commit/add_ownership).
+//     The Memory engine's image of 'FactSet.append (dbFacts db) facts'
+//     (Storage/Memory.hs:91) is the open case — it needs a mutable fact
+//     store behind interior mutability, and FactSet is deliberately
+//     !Send + !Sync while append takes &mut self (fact_set.rs:415-424,
+//     :879). Row 71 must choose its fact representation or revisit that
+//     posture; the trait surface here does not force either answer.
 
 //! The storage-backend trait layer: Storage (engines), DatabaseOps (an
 //! open database), Mode/CreateSchema/WriteLock, the two pure version
@@ -503,6 +511,10 @@ pub trait DatabaseOps: CanLookup {
 // types are unshipped forward references, and DatabaseOps is not
 // object-safe (CanLookup::with_lookup is generic), so a Box<dyn> is not an
 // option either.
+
+// glean/db/Glean/Database/Storage/DB.hs -> src/database/storage/db.rs
+// (manifest line 67). This line binds the submodule of this file.
+pub mod db;
 
 // Marker breakdown (closed set — 1 TODO(port), 0 BUG(port), 0 PERF(port),
 // 0 INVENTORY-BUG-CANDIDATE):
