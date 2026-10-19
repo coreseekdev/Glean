@@ -38,8 +38,14 @@
 // src/database/storage/db.rs): the append is `pub mod db;` at the bottom of
 // this file, binding Storage/DB.hs's port as a child of this file (the
 // source's module nesting is Storage.hs <- Storage/DB.hs). The remaining
-// engine units (row 70 LMDB, row 71 Memory, row 72 RocksDB) will append
-// their own lines.
+// engine units (row 71 Memory, row 72 RocksDB) will append their own lines.
+//
+// ROW 70'S WIRING CONTRACT — CONSUMED (row 70 shipped
+// src/database/storage/lmdb.rs): the append is `pub mod lmdb;` at the
+// bottom of this file. The same unit added the three pub(crate) seams
+// documented under "ROW 70'S SEAMS" below (with_temp_directory,
+// get_file_size, call_process) because their source modules are outside
+// the manifest and both backends need them.
 //
 // INVENTORY (RULE §5):
 //   * inventory.tsv row 19 (line 19, the strict-eager-reads group) names
@@ -284,6 +290,131 @@ fn h_copy_to_file(handle: &mut std::fs::File, path: &str) -> io::Result<()> {
     Ok(())
 }
 
+// ---------------------------------------------------------------------------
+// ROW 70'S SEAMS — ADDED (Rust-only helpers for external packages)
+// ---------------------------------------------------------------------------
+//
+// The three helpers below have no manifest unit: their source modules are
+// outside the OSS tree or are boot packages with no depmap edge. They live
+// here rather than in an engine unit because they are shared: LMDB.hs uses
+// all three (:85, :136, :144, :157, :186, :188, :190), and RocksDB.hs uses
+// with_temp_directory (:175) and get_file_size (:213). RocksDB does NOT use
+// call_process — its tar path goes through findExecutable +
+// readProcessWithExitCode (:232, :282-286) — but the seam stays here so the
+// next process caller does not re-implement the message.
+//
+//   * with_temp_directory — System.IO.Temp.withTempDirectory (:136, :186):
+//     create a unique directory under the given parent, run the action,
+//     then remove it recursively on every exit path (bracket). The
+//     temporary package's mkdtemp name pattern is not part of any
+//     contract (the action only sees the path), so the port uses the
+//     process-global unique counter and mode 0700 like mkdtemp.
+//   * get_file_size — System.Directory.getFileSize (:190): st_size of the
+//     path, following symlinks.
+//   * call_process — System.Process.callProcess (:85, :144, :157, :188):
+//     run with inherited stdio and throw
+//     "callProcess: <cmd> <show args> (exit N): failed" on a non-zero exit
+//     (the suffix is Show's rendering of ioe_type = OtherError).
+
+/// 'withTempDirectory targetDir template' (temporary-1.3): create a unique
+/// directory under `parent` and remove it once the action returns.
+///
+/// Error precedence mirrors 'bracket' on the normal path: a cleanup error
+/// replaces the body's result. RemoveOnDrop covers the panic path (Drop
+/// cannot report, so a cleanup error there is swallowed) — the same caveat
+/// with_materialized_file documents.
+pub(crate) fn with_temp_directory<T, E, F>(parent: &str, prefix: &str, action: F) -> Result<T, E>
+where
+    E: From<io::Error>,
+    F: FnOnce(&str) -> Result<T, E>,
+{
+    let dir = create_temp_directory(parent, prefix)?;
+    let mut guard = RemoveOnDrop::new(&dir);
+
+    let result: Result<T, E> = action(&dir);
+
+    let cleanup = remove_path_forcibly(&dir);
+    guard.disarm();
+    match (result, cleanup) {
+        (_, Err(e)) => Err(E::from(e)),
+        (r, Ok(())) => r,
+    }
+}
+
+/// The mkdtemp half of with_temp_directory: `parent/prefix<unique>`,
+/// created with mode 0700 (mkdtemp's mode), retrying on a name collision.
+///
+/// The retry is bounded like mkdtemp's (glibc gives up after 62 attempts
+/// with EEXIST); the counter makes a collision unreachable in practice, so
+/// the cap only keeps a pathological parent from spinning forever.
+fn create_temp_directory(parent: &str, prefix: &str) -> io::Result<String> {
+    use std::os::unix::fs::DirBuilderExt;
+
+    let mut last_collision = None;
+    for _ in 0..62 {
+        let path = combine(parent, &format!("{}{}", prefix, next_unique()));
+        match std::fs::DirBuilder::new().mode(0o700).create(&path) {
+            Ok(()) => return Ok(path),
+            Err(e) if e.kind() == io::ErrorKind::AlreadyExists => last_collision = Some(e),
+            Err(e) => return Err(e),
+        }
+    }
+    Err(last_collision.unwrap_or_else(|| {
+        io::Error::new(io::ErrorKind::AlreadyExists, "mkdtemp: too many attempts")
+    }))
+}
+
+/// 'getFileSize :: FilePath -> IO Integer' (System.Directory): the size in
+/// bytes, following symlinks. Integer is unbounded in the source; the port
+/// narrows st_size (u64) to i64, which only differs for files above 2^63
+/// bytes (unreachable on a real filesystem).
+pub(crate) fn get_file_size(path: &str) -> io::Result<i64> {
+    Ok(std::fs::metadata(path)?.len() as i64)
+}
+
+/// 'callProcess :: FilePath -> [String] -> IO ()' (System.Process): run
+/// with inherited stdin/stdout/stderr and throw on a non-zero exit.
+///
+/// The failure text is what GHC's `show` prints for processFailedException's
+/// IOException: `callProcess: <cmd> <show arg>… (exit <n>): failed`. The
+/// trailing `": failed"` is ioe_type = OtherError rendered by Show (base
+/// 4.17.1.0 GHC/IO/Exception.hs:394, :417-430) — verified against the pinned
+/// GHC 9.4.7: `callProcess "false" []` shows exactly
+/// `callProcess: false (exit 1): failed`.
+///
+/// Rust's `{:?}` on a str is Haskell's `show` for printable ASCII (quotes
+/// and backslash escapes); non-ASCII and control characters differ (Haskell
+/// renders a numeric escape or a mnemonic such as \SOH, Rust the character
+/// or \u{1}).
+///
+/// Two divergences are documented rather than reproduced:
+///   * a spawn failure (missing tool) keeps Rust's io::Error text, where GHC
+///     says `<cmd>: callProcess: posix_spawnp: does not exist (No such file
+///     or directory)`;
+///   * delegate_ctlc: the child is in the parent's process group either way
+///     (callProcess sets only delegate_ctlc), so SIGINT reaches both; GHC
+///     however ignores SIGINT/SIGQUIT while waiting and raises UserInterrupt
+///     once the child has died from it, where Rust's Command::status keeps
+///     the default disposition and lets the signal end the parent.
+pub(crate) fn call_process(cmd: &str, args: &[&str]) -> io::Result<()> {
+    use std::os::unix::process::ExitStatusExt;
+
+    let status = std::process::Command::new(cmd).args(args).status()?;
+    if status.success() {
+        return Ok(());
+    }
+    let code = match status.code() {
+        Some(code) => code,
+        // Killed by a signal: GHC's ExitCode is ExitFailure (-signal).
+        None => -status.signal().unwrap_or(0),
+    };
+    let shown: String = args.iter().map(|a| format!(" {:?}", a)).collect();
+    Err(io::Error::other(format!(
+        "callProcess: {}{} (exit {}): failed",
+        cmd, shown, code
+    )))
+}
+
 /// 'data CreateSchema' (Storage.hs:101-105) — which schema a new DB gets.
 #[derive(Debug)]
 pub enum CreateSchema {
@@ -515,6 +646,10 @@ pub trait DatabaseOps: CanLookup {
 // glean/db/Glean/Database/Storage/DB.hs -> src/database/storage/db.rs
 // (manifest line 67). This line binds the submodule of this file.
 pub mod db;
+
+// glean/db/Glean/Database/Storage/LMDB.hs -> src/database/storage/lmdb.rs
+// (manifest line 70). Row 70's append.
+pub mod lmdb;
 
 // Marker breakdown (closed set — 1 TODO(port), 0 BUG(port), 0 PERF(port),
 // 0 INVENTORY-BUG-CANDIDATE):

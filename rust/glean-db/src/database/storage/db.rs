@@ -878,17 +878,32 @@ where
 // ---------------------------------------------------------------------------
 
 /// 'newtype Container = Container (Ptr Container)' (DB.hs:284-285): the C++
-/// Container* handed out by glean_rocksdb_database_container. It is owned
-/// by the DB, not by this value, so no Drop is attached.
+/// Container* handed out by glean_rocksdb_database_container. No Drop is
+/// attached, so the value carries TWO meanings and the caller must know
+/// which one it holds:
+///
+///   * BORROWED — the shape with_container returns: the pointer points into
+///     a DB that owns it, and only the DB may free it.
+///   * OWNED — the shape an engine's open path builds from
+///     glean_lmdb_container_open / glean_rocksdb_container_open: the caller
+///     is the sole owner and hands it to `using`, whose Static guard frees
+///     it (row 70's lmdb.rs:347 is this case).
+///
+/// Because the type is Copy and its Static impl is destructive, feeding a
+/// with_container borrow into `using` would double free and the compiler
+/// cannot stop it. A distinct owned wrapper is the structural fix (queued
+/// in HANDOFF §2); until then, keep the two roles in separate functions.
 #[repr(transparent)]
 #[derive(Clone, Copy)]
 pub struct Container(pub *mut c_void);
 
 impl Static for Container {
     fn destroy_static(&self) {
-        // SAFETY: self.0 is a live Container* owned by its DB; the Haskell
-        // declares the same destroyStatic (DB.hs:287-288) and never calls it
-        // on a container the DB still owns (no call sites in the tree).
+        // SAFETY: self.0 is a live Container* and the caller is its owner.
+        // Two call sites exist: an engine open path's OWNED container (row
+        // 70's lmdb.rs:347, freed here through `using`) and, in future,
+        // row 72's RocksDB twin. A BORROWED container from with_container
+        // must never reach this impl — see the type doc.
         unsafe { sys::glean_rocksdb_container_free(*self) }
     }
 }
