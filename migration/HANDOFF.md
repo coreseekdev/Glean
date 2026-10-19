@@ -25,26 +25,30 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-19 (HEAD `d96790c`, after unit 69)
+## 2. STATUS — 2026-10-20 (HEAD `640c94c`, after unit 70)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `d96790c`, 103 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `640c94c`, 108 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
   Push protocol: the user pushes the fork after batch commits on request —
-  local has since advanced 49 commits to `d96790c` (`git rev-list --count
-  9251205..HEAD`; the last five: unit 66 `ca5a639`, unit 67 `21505c8`,
-  records refresh `6291d8f`, unit 68 `508d3f3`, unit 69 `d96790c`; this
-  records refresh makes 50, and the HANDOFF successor-refresh commit that
-  follows makes 51); sync the fork at the next batch gate.
-- **Step 3 counters: 67 unit-commits / 66 distinct target files shipped;
-  319 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+  local has since advanced 54 commits to `640c94c` (`git rev-list --count
+  9251205..HEAD`; the last six: unit 69 `d96790c`, the unit-69 review fixes
+  `f63ef39`/`e0ebe39`, the unit-69 message correction `981f518`, unit 70
+  `640c94c`, and the records refresh for 68-69 `ce388de`; this records
+  refresh makes 55, and the HANDOFF successor-refresh commit that follows
+  makes 56); sync the fork at the next batch gate.
+- **Step 3 counters: 68 unit-commits / 67 distinct target files shipped;
+  318 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
-  `1f9a2fa` — the only double. Three non-unit fix commits: `9354cbb`
+  `1f9a2fa` — the only double. Non-unit fix commits: `9354cbb`
   (dead session's hash.rs derive-attachment repair), `42117fc` (the
   unit-42 retry-surface amendment — `&RetryPolicy` + `Box<dyn Fn>`,
   DECISIONS.md 2026-10-18), `41905c2` (the unit-3 AST's ArrayPrefix
-  E0072 repair — `Box<NonEmpty<…>>`, discovered at unit 44's review).
+  E0072 repair — `Box<NonEmpty<…>>`, discovered at unit 44's review), and
+  `981f518` (the unit-69 `readCreateProcess` text: GHC's Show appends
+  ": failed", probed on the pinned GHC 9.4.7 — the earlier "rendering
+  artifact, not reproduced" note was wrong).
 - Units 51–67 (all committed; one records-refresh commit `e3c971c` at unit
   50): 51 repo/text.rs, 52 database/repo.rs, 53 database/exception.rs, 54
   database/catalog.rs, 55 acl_config.rs, 56 backup/backend.rs, 57
@@ -58,7 +62,11 @@ in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
   DatabaseOps layer (29 externs incl. the shared `database_free`); 68 is the
   OSS MemoryReader stub (the migration's first keyword-named module —
   `pub mod r#impl;`); 69 is Util/Disk's `df` shell-out (one reproduced
-  shell-quoting defect, five documented divergences).
+  shell-quoting defect, five documented divergences); 70 is the LMDB
+  engine — the first `Storage` backend, reusing row 67's `DB::from_raw`
+  as the single finalizer, adding the three `storage.rs` seams
+  (with_temp_directory / get_file_size / call_process), and reproducing
+  the `doesDirectoryExist`-on-a-file guard bug.
 - Steps 0/0b/1/2 records: see DECISIONS.md's dated entries and §7 below.
 - RULEBOOK v0.3 + the §4 assumed-imports paragraph are transcribed and
   current (2026-10-16/17).
@@ -68,6 +76,14 @@ in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
   no todo) as the convention going forward; unit 43's private stand-in +
   TODO in `retry_channel_exception.rs:311-324` remains that file's to
   delete when the log module lands. Recorded in DECISIONS.md 2026-10-18.
+- Queued structural item (unit 70's review B): `storage/db.rs`'s
+  `Container` is `Copy` and its `Static` impl is destructive, so it now
+  carries two meanings — a BORROW from `with_container` and an OWNED handle
+  from an engine's open path (row 70's `lmdb.rs` adoption site). The doc
+  names both roles, but feeding a borrow into `using` would double free and
+  the compiler cannot stop it. The fix is a distinct non-`Copy` owned
+  wrapper (moving the `Static` impl to it) — do it when `db.rs` is next
+  touched (row 72 will be the second owned user), not as a drive-by.
 - Open doc-staleness item: `backend/types.rs:255-258`'s sibling-contract
   sentence "These paths do not exist in the tree yet" is stale for
   `crate::backend::retry` (shipped unit 43). types.rs is frozen for
@@ -151,34 +167,60 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 70** `glean/db/Glean/Database/Storage/LMDB.hs` (207 lines) →
-`rust/glean-db/src/database/storage/lmdb.rs`. Orientation only — brief it
-fresh per §3.1:
-- Exports `LMDB(..)` + `newStorage` (:9-12). The record is
-  `lmdbRoot :: FilePath` + `lmdbMaxDiskSize :: Maybe Int` (:44-51), and
-  the limit is built from rows 68/69 (`totalMemCapacityKB` × the config
-  ratio) — both shipped, so this is the first unit whose glean-util
-  imports all exist.
-- The `Storage` instance (row 58's trait) + the `DatabaseOps` forwarding
-  instance + `CanLookup`. The `open` body is the real work: squashfs
-  handling (a `data.mdb` existence check and a `squashfuse_ll` mount at
-  :85), the `ReadOnly`/`ReadWrite`/`Create` mode mapping to the C
-  `cmode`, `using` around `glean_lmdb_container_open`, then
-  `glean_lmdb_container_open_database` inside `mask_`, then
-  `newForeignPtr glean_rocksdb_database_free p` (:91-99).
-- **Finalizer**: row 67 already owns that C symbol. Construct the shipped
-  `DB::from_raw(p, repo)` (storage/db.rs) — it wraps the pointer in the
-  `Db` marker whose Drop calls `glean_rocksdb_database_free` — and do NOT
-  attach a second ForeignPtr or guard. This is row 67's cross-unit
-  contract in action.
-- Inventory: inventory.tsv:29 == inventory.ffi.tsv:24 (OWNED_MUTABLE,
-  confirmed — "keep ONE free symbol for both backends in the bridge") plus
-  sites.tsv:52-54 (the three FFI imports). The squashfs process calls
-  (:85 `squashfuse_ll`, :144 `unsquashfs`, :157 `umount`, :188
-  `mksquashfs`) stay `std::process::Command` — the Disk.hs precedent,
-  including its quoting/exit-code handling.
-- Then rows 71 (Memory — the open `&FactSet` fact-store choice), 72
-  (RocksDB — consumes `DB::from_raw`/`checkpoint`).
+Next: **row 71** `glean/db/Glean/Database/Storage/Memory.hs`
+(134 lines) → `rust/glean-db/src/database/storage/memory.rs`. Orientation
+only — brief it fresh per §3.1:
+- A tests-only skeleton (module doc :9-11: "only usable for tests which
+  don't produce or query facts"). Exports `Memory(..)`, `newStorage`,
+  `Database(..)`.
+- `newtype Memory = Memory (TVar (HashMap Repo (Database Memory)))` (:34);
+  `newStorage = Memory <$> newTVarIO HashMap.empty` (:36-37).
+  `Database Memory = Database { dbRepo, dbFacts :: FactSet, dbData :: TVar
+  (HashMap ByteString ByteString) }` (:39-43).
+- `Storage` (:46-91): `describe = const "memory:"`; versions `[0]/[0]`;
+  `open` — `Create start` makes `FactSet.new start` then, atomically,
+  inserts or `dbError repo "database already exists"`; every other mode
+  looks up or `dbError repo "database doesn't exist"`; `delete` and
+  `safeRemoveForcibly` are the same `modifyTVar'` delete; capacities are
+  `Nothing`/`Nothing`/`maxBound` (:74-80); `withScratchRoot = f <$>
+  withSystemTempDirectory "glean"` (:82); `restore` is
+  `dbError repo "unimplemented 'restore'"` (:85).
+- `CanLookup`: `lookupName = "memory:" <> repoToText dbRepo`;
+  `withLookup = withLookup . dbFacts` (:87-89).
+- `DatabaseOps` (:91-134): `close` no-op; `predicateStats` from the
+  FactSet; `store`/`retrieve` on `dbData`; batch-descriptor no-ops
+  (`isBatchDescriptorStored` False, `getUnprocessed` []); `commit =
+  FactSet.append`; `addOwnership` no-op; `registerACLUnits` is
+  `error "unimplemented registerACLUnits"`; `optimize`/`flush` no-ops;
+  `computeOwnership`, `getUnitId`, `getUnit`, `addDefineOwnership`,
+  `computeDerivedOwnership` are `return (error "unimplemented …")` — a
+  LAZY error, so decide where the port panics (see below);
+  `getUnitsByPrefix` []; `storeOwnership` (); `getOwnership` Nothing;
+  `cacheOwnership`/`prepareFactOwnerCache` (); `backup` is
+  `dbError dbRepo "unimplemented 'backup'"`.
+- **Decisions the brief must settle** (none is settled by a shipped unit):
+  (a) STM — `Util/STM.hs` has NO manifest row (grep `STM` in
+  manifest.tsv returns nothing) and there is no Rust module. Use std
+  primitives; the row-65 precedent (`catalog/local/memory.rs`:
+  `Mutex<HashMap<Repo, Meta>>`) is the model. `open`'s read-then-insert
+  must be ONE critical section, which is exactly what `atomically` gave.
+  (b) `FactSet` is deliberately `!Send + !Sync` (glean-core
+  fact_set.rs's struct doc) while the Haskell `Memory` is shared across
+  threads. The `Storage` trait carries no `Send` bound today, so a
+  `Mutex<HashMap<…>>` holding FactSets is not `Sync` — document that,
+  and leave the Send/Sync decision with rows 61/177. Do NOT write an
+  `unsafe impl Send`.
+  (c) `return (error …)` is a lazy exception: it fires when the value is
+  forced, not when the method is called. Pick one shape and record it.
+  (d) `maxBound :: Int` → `i64::MAX`; the messages above are
+  byte-exact.
+  (e) `withSystemTempDirectory "glean"` has no parent argument; row 70's
+  seam is `with_temp_directory(parent, prefix)`, so the parent is
+  `std::env::temp_dir()` (and the prefix is `"glean"`).
+- Then row 72 (`storage/rocks_db.rs` — consumes `DB::from_raw` and
+  `checkpoint`, must reuse row 70's three seams, must NOT attach a second
+  finalizer), then 85 (Config.hs), 89 (`Schema/Types.hs` → `pub mod
+  types;` in schema.rs), 98, 104, 105, 117, 125, 177 (S3.hs).
 Working style: 1–2 units per session, then a records-refresh commit.
 
 Recompute the queue any time (manifest file-line numbers):
@@ -390,18 +432,20 @@ staleness check to fire on files it touched (re-read and continue).
 - `schema/compute_ids.rs` — `ca5a639` (line 66; the schema hasher: Tarjan SCCs, Data.Binary encodings, Text-vs-[Char] cross-unit correction; 1 TODO for old-binary schema-id parity)
 - `storage/db.rs` — `21505c8` (line 67; the RocksDB DatabaseOps layer: 29 externs incl. the shared `database_free`, `DB::from_raw` owns the finalizer, checkpoint bracketOnError + makeAbsolute normalise; 2 A/B reviews 429'd, inline review)
 - `impl/memory_reader.rs` — `508d3f3` (line 68; the OSS stub `totalMemCapacityKB = return Nothing` -> `total_mem_capacity_kb() -> Option<i64>`, no Result because the IO is total; NEW `Impl/` area carrying the migration's first raw-identifier module `pub mod r#impl;`; reviewer A returned PASS WITH MINOR with 13 citation fixes applied; reviewer B 429'd, inline pass)
-- `util/disk.rs` — `d96790c` (line 69; the `df --output=<field> -B1 '<path>'` shell-out: `/bin/sh -c`, stderr inherited, byte-exact `readCreateProcess: <cmd> (exit N)` parity, GHC panic messages for `(!! 1)`/`read`; one reproduced shell-quoting defect with an injection repro plus six documented divergences; reviewer A returned PASS WITH MINOR after the commit (the unguarded getFreeCapacity fallback, thinner doc comments, decode-vs-exit precedence, lazy-force timing, Read Int's other accepted forms) and all five fixes are in the follow-up commit; reviewer B also returned PASS WITH MINOR (7 doc/lint findings: process version, the ": failed" Show suffix, E2BIG, the ASCII-header wording, the getUsedCapacity force claim, a false "doubled sign" clause, and io::Error::other) and its fixes are in the second follow-up commit)
+- `util/disk.rs` — `d96790c` (line 69; the `df --output=<field> -B1 '<path>'` shell-out: `/bin/sh -c`, stderr inherited, byte-exact `readCreateProcess: <cmd> (exit N)` parity, GHC panic messages for `(!! 1)`/`read`; one reproduced shell-quoting defect with an injection repro plus six documented divergences; reviewer A returned PASS WITH MINOR after the commit (the unguarded getFreeCapacity fallback, thinner doc comments, decode-vs-exit precedence, lazy-force timing, Read Int's other accepted forms) and all five fixes are in the follow-up commit; reviewer B also returned PASS WITH MINOR (7 doc/lint findings: process version, the ": failed" Show suffix — scoped out of the message at the time, then reversed by `981f518` after a GHC 9.4.7 probe showed the suffix is what `show` prints — E2BIG, the ASCII-header wording, the getUsedCapacity force claim, a false "doubled sign" clause, and io::Error::other) and its fixes are in the second follow-up commit)
+- `storage/lmdb.rs` — `640c94c` (line 70; the LMDB engine: `LMDB{root, max_disk_size}`, the full `Storage`/`DatabaseOps`/`CanLookup` surface, the squashfs open path through `glean_lmdb_container_open` + `open_database`, and the `doesDirectoryExist`-on-a-file guard bug reproduced; NO second finalizer — `DB::from_raw` (row 67) stays the one owner; three new `storage.rs` seams with a bounded mkdtemp retry; eight divergences incl. `delegate_ctlc`; reviewer A PASS WITH MINOR (7 minor + 9 nit, all applied — manifest rows 19/11, DBVersion cite, the ": failed" text, `doesFileExist` vs `is_file` for FIFOs, withCString truncating at NUL instead of panicking, takeDirectory's all-separator caveat, ffi.h/ffi.cpp/io.rs ranges) and reviewer B PASS (3 minor + 3 nit, all applied; its Container finding updated row 67's `db.rs` comment to name the borrow-vs-owned roles); probe A-L green)
 
-### 4.2 Immediate next-unit orientation (row 70 — NEXT UP)
+### 4.2 Immediate next-unit orientation (row 71 — NEXT UP)
 
-**Row 70**: `glean/db/Glean/Database/Storage/LMDB.hs` (207 lines) ->
-`rust/glean-db/src/database/storage/lmdb.rs`. The LMDB `Storage`
-backend: squashfs containers, three externs, and the SHARED
-`glean_rocksdb_database_free`. Build the handle through row 67's
-`DB::from_raw` so the `Db` marker stays the one finalizer; the record's
-disk limit consumes rows 68/69. Inventory.tsv:29 == inventory.ffi.tsv:24
-plus sites.tsv:52-54. §2.4 has the same orientation; brief every unit
-fresh from the source + inventory per §3.1.
+**Row 71**: `glean/db/Glean/Database/Storage/Memory.hs` (134 lines) ->
+`rust/glean-db/src/database/storage/memory.rs`. The in-memory `Storage`
+backend: a `TVar (HashMap Repo (Database Memory))` of FactSet + byte-map
+databases, with most of `DatabaseOps` stubbed. There is no STM unit in the
+manifest — take the row-65 `Mutex<HashMap<…>>` precedent, keep `open`'s
+read-then-insert in one critical section, and do not paper over `FactSet`'s
+deliberate `!Send`. `registerACLUnits` and the four `return (error …)`
+methods are lazy failures — decide where they fire. §2.4 has the same
+orientation; brief every unit fresh from the source + inventory per §3.1.
 
 
 ## 5. Operational lessons (behavior-changing; carried forward)
