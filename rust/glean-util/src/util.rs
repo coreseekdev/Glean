@@ -32,15 +32,22 @@ pub mod retry_channel_exception;
 pub mod service;
 pub mod some;
 pub mod thrift_service;
+
+// glean/util/Glean/Util/ThriftSource.hs -> src/util/thrift_source.rs
+// (manifest line 81). Row 81's append: ThriftSource (+ its exception), the
+// three constructor families and with_value/load/load_default.
+pub mod thrift_source;
+
 pub mod vector;
 
-// Coverage: nine `pub mod` lines wiring every glean-util file shipped
-// so far (util/config_provider.rs, util/disk.rs, util/io.rs,
+// Coverage: ten `pub mod` lines wiring every glean-util file shipped so
+// far (util/config_provider.rs, util/disk.rs, util/io.rs,
 // util/observed.rs, util/retry_channel_exception.rs, util/service.rs,
-// util/some.rs, util/thrift_service.rs, util/vector.rs) and nothing else —
-// no re-exports (each submodule is its own facade). Row 69's (disk.rs),
-// row 79's (config_provider.rs) and row 80's (observed.rs) appends are
-// CONSUMED (past tense above).
+// util/some.rs, util/thrift_service.rs, util/thrift_source.rs,
+// util/vector.rs) and nothing else — no re-exports (each submodule is its
+// own facade). Row 69's (disk.rs), row 79's (config_provider.rs), row 80's
+// (observed.rs) and row 81's (thrift_source.rs) appends are CONSUMED (past
+// tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos
 // (wiring is complete for all shipped files), no source-defect
