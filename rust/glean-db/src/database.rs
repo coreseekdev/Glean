@@ -17,7 +17,8 @@
 //! Catalog.hs -> src/database/catalog.rs, line 54; ACLConfig.hs ->
 //! src/database/acl_config.rs, line 55; Backup/Backend.hs ->
 //! src/database/backup/backend.rs, line 56; Storage.hs -> src/database/
-//! storage.rs, line 58; Catalog/Local/{Files,Memory}.hs
+//! storage.rs, line 58; ACLOwnership.hs -> src/database/acl_ownership.rs,
+//! line 59; Catalog/Local/{Files,Memory}.hs
 //! -> src/database/catalog/local/{files,memory}.rs, lines 64-65; …). Owned by
 //! the same unit that owns the area's first write file (row 48,
 //! src/database/meta.rs), following the query.rs precedent (row
@@ -50,6 +51,11 @@
 //! module is involved; the line is the same write.rs:29 shape as
 //! `pub mod meta;`. Storage.hs exports no submodules, so the line is the
 //! whole contract.
+//!
+//! ROW 59'S WIRING CONTRACT — CONSUMED (row 59 shipped
+//! src/database/acl_ownership.rs): a second direct child, so the same
+//! one-line append (`pub mod acl_ownership;`). ACLOwnership.hs exports no
+//! submodules.
 
 pub mod meta;
 
@@ -67,25 +73,30 @@ pub mod backup;
 // line 58)
 pub mod storage;
 
-// Coverage: seven `pub mod` lines — meta.rs (row 48, the area's first
+// glean/db/Glean/Database/ACLOwnership.hs -> src/database/acl_ownership.rs
+// (manifest line 59)
+pub mod acl_ownership;
+
+// Coverage: eight `pub mod` lines — meta.rs (row 48, the area's first
 // shipped file), catalog.rs (row 49's directory module, which declares
 // `pub mod filter;`), repo.rs (row 52's port of Repo.hs), exception.rs
 // (row 53's port of Exception.hs), acl_config.rs (row 55's port of
 // ACLConfig.hs), backup.rs (row 56's directory module, which declares
 // `pub mod backend;` for the Backup/Backend.hs port), and storage.rs
-// (row 58's port of Storage.hs) — and nothing else:
+// (row 58's port of Storage.hs), and acl_ownership.rs (row 59's port of
+// ACLOwnership.hs) — and nothing else:
 // no re-exports (each submodule is its own facade). Row 49's, row 52's,
-// row 53's, row 55's, row 56's and row 58's appends are now CONSUMED (past
-// tense above).
+// row 53's, row 55's, row 56's, row 58's and row 59's appends are now
+// CONSUMED (past tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos (the
-// row-49, row-52, row-53, row-55, row-56 and row-58 wiring is complete;
-// all seven `pub mod` lines exist), no source-defect reproductions (no
-// Haskell source), no performance deferrals (the declarations are not
-// runtime code), no inventory divergence (no inventory row can govern a
-// file with no Haskell counterpart: the "Database/Catalog" grep hits
-// across
-// migration/inventory*.tsv all name Catalog.hs — its STM_GROUP rows
+// row-49, row-52, row-53, row-55, row-56, row-58 and row-59 wiring is
+// complete; all eight `pub mod` lines exist), no source-defect
+// reproductions (no Haskell source), no performance deferrals (the
+// declarations are not runtime code), no inventory divergence (no
+// inventory row can govern a file with no Haskell counterpart: the
+// "Database/Catalog" grep hits across migration/inventory*.tsv all name
+// Catalog.hs — its STM_GROUP rows
 // (inventory.tsv:21 == inventory.stm.tsv:23), its sites.tsv rows
 // (:215-232, :602-605) — or the Util/IO HandleIO row's
 // Catalog/Local/Files.hs consumer evidence (inventory.tsv:111 ==

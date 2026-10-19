@@ -240,6 +240,15 @@ impl From<std::io::Error> for DbError {
     }
 }
 
+/// SIBLING-UNIT SEAM (added for migration unit 59 — database/acl_ownership.rs):
+/// `augmentWithACL` throws through the FFI (`FfiError`); the source's
+/// `SomeDBError` leg models exactly that. Additive; no behavior change.
+impl From<glean_core::ffi::FfiError> for DbError {
+    fn from(e: glean_core::ffi::FfiError) -> DbError {
+        DbError::Other(Box::new(e))
+    }
+}
+
 /// Source: dbException (:33-34) — `DBError . inRepo repo`.
 pub fn db_exception(repo: &thrift::Repo, msg: &str) -> DbError {
     DbError::Msg(in_repo(repo, msg))
