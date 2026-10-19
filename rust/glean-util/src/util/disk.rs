@@ -78,12 +78,15 @@
 //   * A non-zero exit is an IOException in the source:
 //       processFailedException "readCreateProcess" cmd [] r
 //     = ioError (mkIOError OtherError "readCreateProcess: <cmd> (exit <r>)")
-//     (process-1.6.17.0 System/Process.hs). The message text (GHC's
-//     ioe_location) is reproduced exactly, including the Other kind and the
-//     trailing " (exit N)". GHC's Show would append ": failed" (show
-//     OtherError); that suffix is a rendering artifact and is not
-//     reproduced. A signal-killed child has no exit code, and GHC reports
-//     ExitFailure (-signal), so the negated signal is used there.
+//     (process-1.6.17.0 System/Process.hs). The text users see is
+//     `show (exc :: SomeException)`, which renders the whole IOError:
+//     "<ioe_location>: failed", because ioe_type is OtherError (base
+//     4.17.1.0 GHC/IO/Exception.hs:394, :417-430). The port therefore
+//     reproduces the trailing ": failed" as well — verified against the
+//     pinned GHC 9.4.7: `callProcess "false" []` shows
+//     `callProcess: false (exit 1): failed`. A signal-killed child has no
+//     exit code, and GHC reports ExitFailure (-signal), so the negated
+//     signal is used there.
 //   * words (:35) -> split_whitespace (both split on Unicode whitespace and
 //     drop empty fields; df's numeric column is ASCII, and a translated
 //     header is still one word).
@@ -223,7 +226,8 @@ fn get_df_output(outp: &str, path: &str) -> io::Result<i64> {
 
 /// `readCreateProcess cmd ""` (:35): run `cmd` through `/bin/sh -c`, with
 /// stderr inherited, and return stdout. A non-zero exit becomes the source's
-/// `readCreateProcess: <cmd> (exit <n>)` IOException.
+/// `readCreateProcess: <cmd> (exit <n>): failed` IOException (the suffix
+/// is Show's rendering of ioe_type = OtherError).
 fn read_create_process(cmd: &str) -> io::Result<String> {
     let mut child = Command::new("/bin/sh")
         .arg("-c")
@@ -247,7 +251,7 @@ fn read_create_process(cmd: &str) -> io::Result<String> {
             None => -output.status.signal().unwrap_or(0),
         };
         return Err(io::Error::other(format!(
-            "readCreateProcess: {} (exit {})",
+            "readCreateProcess: {} (exit {}): failed",
             cmd, code
         )));
     }
