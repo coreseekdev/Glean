@@ -13,6 +13,11 @@
 //! scaffolding (src/util/some.rs, manifest line 38). Later units append
 //! their own `pub mod` lines here.
 
+// glean/util/Glean/Util/ConfigProvider.hs -> src/util/config_provider.rs
+// (manifest line 79). Row 79's append: the ConfigProvider trait (+ the
+// deferred parser method, port todo 2) and NullConfigProvider.
+pub mod config_provider;
+
 // glean/util/Glean/Util/Disk.hs -> src/util/disk.rs (manifest line 69)
 pub mod disk;
 
@@ -25,11 +30,12 @@ pub mod some;
 pub mod thrift_service;
 pub mod vector;
 
-// Coverage: seven `pub mod` lines wiring every glean-util file shipped
-// so far (util/disk.rs, util/io.rs, util/retry_channel_exception.rs,
-// util/service.rs, util/some.rs, util/thrift_service.rs, util/vector.rs)
-// and nothing else — no re-exports (each submodule is its own facade).
-// Row 69's append (disk.rs) is CONSUMED (past tense above).
+// Coverage: eight `pub mod` lines wiring every glean-util file shipped
+// so far (util/config_provider.rs, util/disk.rs, util/io.rs,
+// util/retry_channel_exception.rs, util/service.rs, util/some.rs,
+// util/thrift_service.rs, util/vector.rs) and nothing else — no
+// re-exports (each submodule is its own facade). Row 69's (disk.rs) and
+// row 79's (config_provider.rs) appends are CONSUMED (past tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos
 // (wiring is complete for all shipped files), no source-defect
