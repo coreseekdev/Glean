@@ -25,21 +25,20 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-20 (HEAD `7d7c282`, after unit 72)
+## 2. STATUS — 2026-10-20 (HEAD `64f6ff8`, after unit 78)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `7d7c282`, 112 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `64f6ff8`, 119 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
   Push protocol: the user pushes the fork after batch commits on request —
-  local has since advanced 58 commits to `7d7c282` (`git rev-list --count
-  9251205..HEAD`; the last five: unit 70 `640c94c`, the records refresh for
-  70 `632b78f`, unit 71 `f88e113`, the records refresh for 71 `c151804`, and
-  unit 72 `7d7c282`; this records refresh makes 59, and the HANDOFF
-  successor-refresh commit that follows makes 60); sync the fork at the next
-  batch gate.
-- **Step 3 counters: 70 unit-commits / 69 distinct target files shipped;
-  316 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+  local has since advanced 65 commits to `64f6ff8` (`git rev-list --count
+  9251205..HEAD`; the last five: unit 75 `8cff3e4`, unit 76 `c52dbc1`, unit
+  77 `40fa39c`, unit 78 `64f6ff8`, and the records refresh for 72 `8db01c4`;
+  this records refresh makes 66, and the HANDOFF successor-refresh commit
+  that follows makes 67); sync the fork at the next batch gate.
+- **Step 3 counters: 76 unit-commits / 75 distinct target files shipped;
+  310 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
   `1f9a2fa` — the only double. Non-unit fix commits: `9354cbb`
   (dead session's hash.rs derive-attachment repair), `42117fc` (the
@@ -72,7 +71,19 @@ in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
   engine — the second `Storage` backend, the `Cache` ForeignPtr that owns
   `glean_rocksdb_free_cache`, the f32 ties-to-even `cacheSize`, the
   cache-flagged container open, and the tar restore/backup pair (no
-  `call_process`: `findExecutable` + `Command::output`).
+  `call_process`: `findExecutable` + `Command::output`). 73 is
+  `Database/Trace.hs` (three enums, two Display impls, no derives); 74/75
+  are the two logger records (`Logger/Database.hs` 14 constructors,
+  `Logger/Server.hs` 41) and the Rust-only `logger.rs` area module that
+  declares them — both object-safe traits, both `Box<dyn>`-permitted under
+  the row-136 carve-out; 76 is `github/Database/AclKnobs.hs` (three `->
+  bool` knobs, all `false`, kept as fns because the source re-runs an IO
+  action); 77 is `github/TestRunner.hs` (ZERO-ITEM decision record, the
+  `util/some.rs` precedent); 78 is `github/Glean/Init.hsc` (folly_init with
+  the Itanium-mangled `#[link_name]` extern, folly_uninit, with_unit_test —
+  the parser surface deferred as TODO #1 because THREE of its five imports
+  are not in the tree, and inventory row 48's open folly question as TODO
+  #2: `confidence=medium todos=2`).
 - Steps 0/0b/1/2 records: see DECISIONS.md's dated entries and §7 below.
 - RULEBOOK v0.3 + the §4 assumed-imports paragraph are transcribed and
   current (2026-10-16/17).
@@ -152,8 +163,8 @@ not old commit numbers. Going forward: manifest file lines only.
 | glean-core | 19 | 10 | FFI/RTS/bytecode layer done + repo/text (51) + ownership (57); remaining rows 23/24 blocked, 94/101/109/113/114/139/278/279 |
 | glean-bytecode | 1 | 5 | types.rs only; sys_calls/decode/generate/{instruction,cpp,haskell} remain |
 | glean-typed | 9 | 0 | COMPLETE (lib.rs + Cargo.toml + query-module wiring at lib.rs per the source-shape rule; Angle DSL = unit 44) |
-| glean-util | 8 | 20 | service.rs + thrift_service.rs + some.rs + vector.rs + retry_channel_exception.rs + util/io.rs (63) + impl/memory_reader.rs (68) + util/disk.rs (69) + scaffolding |
-| glean-db | 23 | 67 | rows 41/43/45-50 + 52-56/58-62/64-72 (database area: exception/repo/catalog(+local files,memory)/acl_config/acl_ownership/storage(+db)/backup(+backend,mock)/data/batch_location/schema(+compute_ids)); crate wired per §4.2 (no [dependencies] yet) |
+| glean-util | 10 | 18 | rows 27/38/39/40/42/63/68/69/77/78: vector, some.rs, service, thrift_service, retry_channel_exception, util/io, impl/memory_reader, util/disk, test_runner, init — plus the crate scaffolding |
+| glean-db | 29 | 61 | rows 41/43/45-50 + 52-56/58-62/64-67 + 70-76 (database area: exception/repo/catalog(+local files,memory)/acl_config/acl_ownership/storage(+db,+lmdb,+rocks_db)/backup(+backend,mock)/data/batch_location/schema(+compute_ids)/trace/acl_knobs + the Logger/ area); crate wired per §4.2 (no [dependencies] yet) |
 | glean-glass | 0 | 88 | not started |
 | glean-client | 0 | 27 | not started |
 | glean-cli | 0 | 26 | not started |
@@ -173,37 +184,48 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 73** `glean/db/Glean/Database/Trace.hs` (46 lines) →
-`rust/glean-db/src/database/trace.rs`. Orientation only — brief it fresh per
-§3.1:
-- Three enums and two TextShow instances: `GleanTrace` (:17-23, six
-  constructors carrying `Thrift.Repo`, `Word64` and `Int` payloads),
-  `WriteTraceEvent` (:25-28; `showb` is the literal "input" / "rename" /
-  "commit"), and `EnqueueTraceEvent` (:30-34, `deriving Show` with
-  `showb = fromString . show` — for a nullary constructor GHC's derived
-  `show` is the constructor name verbatim, so the Rust `Display` must
-  print `EnqueueBatch` etc., not a snake_case rendering).
-- Imports are only `Data.Word` (→ u64) and `Glean.Types as Thrift`
-  (→ the generated `glean_thrift` crate, ASSUMED IMPORT per §4 B4: this
-  unit needs `glean_thrift::Repo`, already assumed by rows 47/48/60).
-- Wiring: `pub mod trace;` appended to `rust/glean-db/src/database.rs`
-  (the area module's one-line-append convention) and bump its
-  "Coverage: eleven `pub mod` lines" tally to twelve.
-- No FFI, no IO, no unsafe: three enums + two Display impls. The whole
-  file is a mechanical §2 ADT row.
-- Queue correction (2026-10-20): the previous queue jumped from 72 to 85,
-  which deviated from §1's manifest order and would have forced row 85
-  (`Database/Config.hs`) to assume NINE unshipped modules — 73 Trace,
-  79 ConfigProvider, 80 Observed, 81 ThriftSource, 83 ShardManager,
-  84 Trace, 106/124 loggers, 156 Impl/ConfigProvider. Walking manifest
-  order instead turns those guesses into real APIs before Config lands.
-- Order from here: 73, 74 (`Logger/Database.hs`), 75 (`Logger/Server.hs`),
-  76 (`github/Database/AclKnobs.hs`), 77 (`github/TestRunner.hs`),
-  78 (`github/Init.hsc`), 79-84 (ConfigProvider, Observed, ThriftSource,
-  DefaultConfigs, ShardManager, Trace), then 85 (Config.hs), 89
+Next: **row 79** `glean/util/Glean/Util/ConfigProvider.hs` (110 lines) →
+`rust/glean-util/src/util/config_provider.rs`. Orientation only — brief it
+fresh per §3.1; §4.2 has the detail. In short:
+- `ConfigProvider` class (:40): `configOptions` (:43),
+  `defaultConfigOptions` (:46), `withConfigProvider` (:49), the associated
+  `Subscription cfg :: * -> *` (:51), `subscribe` (:55-61), `cancel` (:64),
+  `get` (:67), `isConfigFailure` (:70) — plus
+  `TestConfigProvider.setTestConfig` (:74-75) and the always-failing
+  `NullConfigProvider` (:96-110).
+- Governing inventory row `inventory.tsv:110` (EXC_TAXONOMY, status
+  `unknown`) for `isConfigFailure`, with its own open TODO (which impls,
+  which exception set). Row `inventory.tsv:109` is the Impl/ConfigProvider
+  (row 156) STM_GROUP row — not this file's, but its Mutex/inotify decision
+  shapes `subscribe`.
+- `type family ConfigOptions cfg = opts | opts -> cfg` (:36) is INJECTIVE;
+  a Rust associated type cannot say so. Settle the trait's parameterisation
+  before writing the impls.
+- `configOptions :: Parser (ConfigOptions cfg)` and `withConfigOptions`'s
+  `Glean.Init.withOptions` call (:78-88) hit the SAME parser blocker as row
+  78's TODO #1 (optparse-applicative is not in this tree). Decide explicitly
+  — deferred method + TODO owned by the first program-entry unit, or one
+  `Parser` image in glean-util — and never invent a per-call API (RULE §0).
+- `NullConfigProvider`'s `throwIO $ ErrorCall "NullConfigProvider:
+  subscribe"` / `"…: get"` (:107, :109) are the SPEC: panics with those
+  exact messages (RULE §2 partial fns). `isConfigFailure _ _ = True` (:110).
+- Wiring: `pub mod config_provider;` in `rust/glean-util/src/util.rs` plus
+  its tally. No FFI, no unsafe.
+
+- Queue correction (2026-10-20, still in force): the old queue jumped from
+  72 to 85, which would have forced row 85 (`Database/Config.hs`) to assume
+  NINE unshipped modules — 73 Trace, 79 ConfigProvider, 80 Observed, 81
+  ThriftSource, 83 ShardManager, 84 Trace, 106/124 loggers, 156
+  Impl/ConfigProvider. Walking manifest order turns those guesses into real
+  APIs before Config lands. Rows 73-78 are now shipped, so the correction
+  has paid off six times.
+- Order from here: 79 (ConfigProvider), 80 (Observed), 81 (ThriftSource),
+  82 (`github/DefaultConfigs` → glean-db/src/default_configs.rs), 83
+  (ShardManager), 84 (Util/Trace), then 85 (Config.hs), 89
   (`Schema/Types.hs` → `pub mod types;` in schema.rs), 98, 104 (the closed
-  Storage enum + the `!Send` decision), 105, 117, 125, 177 (S3.hs). Row 85
-  also consumes the row-71 `!Send` TODO; keep that in its brief.
+  Storage enum + the `!Send` decision), 105, 117, 125, 148
+  (`Backend/Logging`), 177 (S3.hs). Row 85 also consumes the row-71
+  `!Send` TODO; keep that in its brief.
 
 Working style: 1–2 units per session, then a records-refresh commit.
 
@@ -382,14 +404,19 @@ staleness check to fire on files it touched (re-read and continue).
 - `typed.rs` crate-root facade + `lib.rs` + `Cargo.toml` — `82b4437` (line 37; NAMED re-exports, no globs)
 - `query/angle.rs` — `8314b35` (line 44; the typed Angle DSL — last glean-typed row; shipped with the source-shape query wiring at lib.rs/query.rs; 2 reviews + inline fix round incl. the ArrayPrefix E0072 repair `41905c2`)
 
-**glean-util — 5/28, scaffolding shipped**
+**glean-util — 10/28, scaffolding shipped**
 - `util/vector.rs` — `7f6c2ca` (dispatch 23)
 - `util/some.rs` — `4bdf95a` (line 38; ZERO-ITEM decision record + `Cargo.toml`/`lib.rs`/`util.rs` scaffolding, retro-wiring vector.rs; review corrected 3 false record claims and reopened the consumer survey as a tracked TODO — Catalog.Store/Backup.Backend/Site x7/S3BucketApi)
 - `util/service.rs` — `db51448` (line 39; the thrift `Service` union surface + `service_from_string` (stack-safe `reads @Int32` transcription) + the module-owned network-uri 2.6.4.2 `parseURI` stand-in (rows 40/166 consumers); 2 reviews + fix round; coordinator re-verified deep nesting vs the pinned GHC reference at N=2M)
 - `util/thrift_service.rs` — `495ffac` (line 40; `ThriftServiceOptions` + std `Default` (`def` = all-`None`, GHC-probed), `DbShard`, `IsThriftService<S>: Clone` (5 methods; hand-written `Clone` impl so derived bounds cannot leak `S: Clone`; phantom tag — the all-`S` blanket-impl form is E0282-uninferable, per-tag impls work), `thrift_service` (`Nothing` arm = source's `mkThriftService _ _`), `run_thrift_inefficiently`; TWO first-in-tree ASSUMED-IMPORT sketches: the `glean_thrift` runtime (`ThriftAction` rank-2 `run<P: Protocol, C: ClientChannel<S>>` image of `forall p c`; `ThriftEnv`/`Counter` field-for-field per `Monad.hsc`; `ThriftError` union; CONTRACT: actions are SINGLE-USE) plus the `Util.EventBase` kit contract (opaque handle; infallible init; CONSUMING destroy; no kit `Drop`) with this file owning the `pub with_event_base_dataplane` bracket (parse_uri precedent; destroy-exactly-once incl. panic/nested); zero `unsafe` in-file, §3-letter kit situation flagged in-block (DEV-006 class); 2 reviews (A: deliverable compiled VERBATIM against an independent kit stub; B: PASS W/ MINOR) + fix round (evidence persisted under `/tmp/opencode/ts-probe/`). CARRY-FORWARD: units 166/167 add `+ Clone` on action reuse (E0382-reproduced, `Remote.withShard` fallback); the kit must pin stored-handle ownership before Remote/Glass/CLI/Sharding land — not `Clone`)
 - `util/retry_channel_exception.rs` — `3063cc5` (line 42; `RetryPolicy` + `retry_channel_exceptions`; surface amended post-ship at `42117fc` (`&RetryPolicy` + `Box<dyn Fn>` — DECISIONS.md 2026-10-18); carries the private `log_warning` stand-in + TODO, which this refresh's log-seam ruling scopes to that file's own deletion — see §2)
+- `util/io.rs` — `dd316cf` (line 63; read/write/withTempFile/backupOnError; the HandleIO classification row)
+- `impl/memory_reader.rs` — `508d3f3` (line 68; the OSS stub `totalMemCapacityKB = return Nothing` -> `total_mem_capacity_kb() -> Option<i64>`, no Result because the IO is total; NEW `Impl/` area carrying the migration's first raw-identifier module `pub mod r#impl;`; reviewer A PASS WITH MINOR with 13 citation fixes applied; reviewer B 429'd, inline pass)
+- `util/disk.rs` — `d96790c` (line 69; the `df --output=<field> -B1 '<path>'` shell-out: `/bin/sh -c`, stderr inherited, byte-exact `readCreateProcess: <cmd> (exit N)` parity, GHC panic messages for `(!! 1)`/`read`; one reproduced shell-quoting defect with an injection repro plus six documented divergences; two follow-up commits applied reviewer A's five and reviewer B's seven findings, incl. the `": failed"` Show suffix settled by `981f518` after a GHC 9.4.7 probe)
+- `test_runner.rs` — `40fa39c` (line 77; ZERO-ITEM decision record for `github/TestRunner.hs`: DECISIONS §4 + RULEBOOK §3, the importer survey, and the sibling contract that row 78 drops `withUnitTestOptions`)
+- `init.rs` — `64f6ff8` (line 78; `folly_init` — current_exe + `--logtostderr` + args, NULL-terminated, argc = 1 + length args — `folly_uninit` (empty), `with_unit_test` (`id`), and the `$(mangle ...)` splice as a manual extern with `#[link_name = "_ZN5folly20unsafe_unscoped_initEPiPPPcb"]`; TWO port todos: the parser surface (withOptions/withOptionsGen/InitOptions/parserInfo/set*) owed to the first program-entry unit because `Util.OptParse`, `Util.Text`, `Util.Control.Exception` and `Mangle.TH` are not in this tree, and inventory row 48's open folly question; `confidence=medium todos=2`; INLINE review per DEV-001)
 
-**glean-db — 8/90, crate wired**
+**glean-db — 29/90, crate wired**
 - `backend/types.rs` — `1aed2f6` (line 41; the `Backend` class + `BackendError` + `until_done`; shipped with lib.rs/backend.rs/Cargo.toml scaffolding + the first `glean_thrift` assumed-import sketch; 2 reviews + 15 inline cite/contract fixes)
 - `backend/retry.rs` — `63fd4fb` (line 43; RetryWrites/RetryReads wrappers + the lossless `ThriftError::Service` round-trip bridge; reviews + inline fix round; supplies the carrier encoding unit 46's BatchAlreadyProcessed downcast consumes)
 - `query/thrift/internal.rs` — `b0f22b9` (line 45; decode_results/display/combinators/stats helpers; shipped `pub mod query;` + src/query.rs recording row 47's contract; 2 reviews + inline doc fixes)
@@ -410,32 +437,57 @@ staleness check to fire on files it touched (re-read and continue).
 - `database/data.rs` — `8ec2141` (line 60; the Data record)
 - `database/backup/mock.rs` — `c1b69d5` (line 61; the in-memory backup backend; Send+Sync carry-forward)
 - `database/batch_location.rs` — `624a030` (line 62; BatchLocation parse/render)
-- `util/io.rs` — `dd316cf` (line 63; read/write/withTempFile/backupOnError; the HandleIO classification row)
 - `catalog/local/files.rs` — `4cb683c` (line 64; the Files backend; reproduces the `.../meta/meta` double-join with a source-defect marker; adds `StoreError::Db`)
 - `catalog/local/memory.rs` — `0fa926e` (line 65; `Mutex<HashMap<Repo,Meta>>` per the STM_GROUP row; closes the CatalogStore enum)
 - `schema/compute_ids.rs` — `ca5a639` (line 66; the schema hasher: Tarjan SCCs, Data.Binary encodings, Text-vs-[Char] cross-unit correction; 1 TODO for old-binary schema-id parity)
 - `storage/db.rs` — `21505c8` (line 67; the RocksDB DatabaseOps layer: 29 externs incl. the shared `database_free`, `DB::from_raw` owns the finalizer, checkpoint bracketOnError + makeAbsolute normalise; 2 A/B reviews 429'd, inline review)
-- `impl/memory_reader.rs` — `508d3f3` (line 68; the OSS stub `totalMemCapacityKB = return Nothing` -> `total_mem_capacity_kb() -> Option<i64>`, no Result because the IO is total; NEW `Impl/` area carrying the migration's first raw-identifier module `pub mod r#impl;`; reviewer A returned PASS WITH MINOR with 13 citation fixes applied; reviewer B 429'd, inline pass)
-- `util/disk.rs` — `d96790c` (line 69; the `df --output=<field> -B1 '<path>'` shell-out: `/bin/sh -c`, stderr inherited, byte-exact `readCreateProcess: <cmd> (exit N)` parity, GHC panic messages for `(!! 1)`/`read`; one reproduced shell-quoting defect with an injection repro plus six documented divergences; reviewer A returned PASS WITH MINOR after the commit (the unguarded getFreeCapacity fallback, thinner doc comments, decode-vs-exit precedence, lazy-force timing, Read Int's other accepted forms) and all five fixes are in the follow-up commit; reviewer B also returned PASS WITH MINOR (7 doc/lint findings: process version, the ": failed" Show suffix — scoped out of the message at the time, then reversed by `981f518` after a GHC 9.4.7 probe showed the suffix is what `show` prints — E2BIG, the ASCII-header wording, the getUsedCapacity force claim, a false "doubled sign" clause, and io::Error::other) and its fixes are in the second follow-up commit)
 - `storage/memory.rs` — `f88e113` (line 71; the in-memory backend: Memory over Mutex<HashMap<Repo, Arc<MemoryDb>>>, MemoryDb { Mutex<FactSet>, Mutex<byte map> }, all 37 trait methods with the source's stubs preserved byte-for-byte; STM->Mutex with the read+insert critical section; the !Send propagation recorded as a TODO(port) for rows 104/85; INVENTORY-BUG-CANDIDATE row 30 for the sketch's missing dbFacts; reviewer A found no behavioural mismatch (1 major: the TODO's owner, plus three citation errors and nine nits) and reviewer B found the same !Send marker gap plus 6 minor + 5 nits — all applied; probe A-L green)
 - `storage/lmdb.rs` — `640c94c` (line 70; the LMDB engine: `LMDB{root, max_disk_size}`, the full `Storage`/`DatabaseOps`/`CanLookup` surface, the squashfs open path through `glean_lmdb_container_open` + `open_database`, and the `doesDirectoryExist`-on-a-file guard bug reproduced; NO second finalizer — `DB::from_raw` (row 67) stays the one owner; three new `storage.rs` seams with a bounded mkdtemp retry; eight divergences incl. `delegate_ctlc`; reviewer A PASS WITH MINOR (7 minor + 9 nit, all applied — manifest rows 19/11, DBVersion cite, the ": failed" text, `doesFileExist` vs `is_file` for FIFOs, withCString truncating at NUL instead of panicking, takeDirectory's all-separator caveat, ffi.h/ffi.cpp/io.rs ranges) and reviewer B PASS (3 minor + 3 nit, all applied; its Container finding updated row 67's `db.rs` comment to name the borrow-vs-owned roles); probe A-L green)
 - `storage/rocks_db.rs` — `7d7c282` (line 72; the RocksDB engine, row 70's twin: `Cache` as a `ForeignPtr` + the file's one `unsafe impl Object` (the only real owner of `glean_rocksdb_free_cache`), the f32 ties-to-even `cacheSize`, the cache-flagged container open (still `DB::from_raw`, so no second finalizer), the tar restore/backup pair through `findExecutable` + `Command::output` (NOT `call_process`: different error text, no argv quoting), and `restoreFromDir`'s db-vs-backup choice, with `take_directory` promoted out of lmdb.rs into storage.rs; 11 SAFETY notes, seven divergences; both review dispatches hung past the window and were interrupted, so both reviews were performed INLINE per DEV-001 — that round fixed the tar-stderr decode (locale `String` from `readProcessWithExitCode` vs `BS.Char8.unpack`: `from_utf8_lossy` for `tar`, `latin1()` only for the stream path), made `unTarFromHandle` reap the child on a stderr read failure, and corrected the header's extern count / outbound tally / SAFETY count; probe A-R green)
+- `database/trace.rs` — `2fb1133` (line 73; `GleanTrace` (6 variants: Write/Enqueue/Download/StorageRestore/SiteRestore/FinishRestore), `WriteTraceEvent` -> Display "input"/"rename"/"commit", `EnqueueTraceEvent` -> Display printing the constructor name verbatim (`fromString . show`); boxed payloads for the Haskell cons cells; NO derives, two Display impls; zero inventory rows — verified by path and symbol greps; no FFI/IO/unsafe; INLINE review per DEV-001)
+- `logger/database.rs` — `6a557f5` (line 74; `GleanDatabaseLogger` as an OBJECT-SAFE trait with one `run_log` method, `GleanDatabaseLog` with 14 constructors (`GleanDatabaseLogAnd(Box<…>, Box<…>)` for the cons cell), `combine`/`Default`, `NullGleanDatabaseLogger`; two divergences: `IO ()` -> `()` panics where Haskell throws, and the Box indirection)
+- `logger/server.rs` — `8cff3e4` (line 75; `GleanServerLog` with 41 constructors (Empty, And, 39 fields incl. `SetTimeElapsed(f64)`, `SetFullScans(Vec<String>)`), the object-safe `GleanServerLogger`, `combine`/`Default`, `NullGleanServerLogger`; same two divergences as row 74; the Rust-only `logger.rs` area module declares both and carries both wiring contracts — glean-db lib.rs gains `pub mod logger;` (coverage four -> five))
+- `database/acl_knobs.rs` — `c52dbc1` (line 76; `acl_calculate_enabled`/`acl_check_enabled`/`acl_local_testing_allowed`, all `-> bool` returning `false`; kept as FNS not consts because the source re-runs an IO action, and the sibling contract records that Config.hs:254-255 store the ACTIONS, so row 85 needs `fn() -> bool`)
 
-### 4.2 Immediate next-unit orientation (row 73 — NEXT UP)
+### 4.2 Immediate next-unit orientation (row 79 — NEXT UP)
 
-**Row 73**: `glean/db/Glean/Database/Trace.hs` (46 lines) →
-`rust/glean-db/src/database/trace.rs`. Three enums (GleanTrace,
-WriteTraceEvent, EnqueueTraceEvent) and two TextShow instances; the only
-dependency is `Thrift.Repo` (assumed `glean_thrift` import, the same one
-rows 47/48/60 declare). EnqueueTraceEvent's `showb = fromString . show`
-means the derived constructor name verbatim. Wiring is one line in
-`rust/glean-db/src/database.rs` (`pub mod trace;`) plus bumping that file's
-module tally. No FFI, no IO, no unsafe.
+**Row 79**: `glean/util/Glean/Util/ConfigProvider.hs` (110 lines) →
+`rust/glean-util/src/util/config_provider.rs`. The `ConfigProvider` class
+with its injective type family, the `TestConfigProvider` subclass, and the
+`NullConfigProvider` that always fails. Governing inventory row:
+`inventory.tsv:110` (EXC_TAXONOMY, status `unknown`) for `isConfigFailure`;
+its own TODO — "inventory the ConfigProvider impls and the exact exception
+set each classifies" — is a brief-time question (the OSS `Impl/ConfigProvider.hs`
+row 156 is the only in-tree impl).
 
-Then manifest order 74-84 (loggers, github AclKnobs/TestRunner/Init.hsc/
-DefaultConfigs, ConfigProvider, Observed, ThriftSource, ShardManager, Trace)
-before row 85 Config.hs — see §2.4's queue correction. §2.4 has the same
-orientation; brief every unit fresh from the source + inventory per §3.1.
+Known translation hazards to settle in the brief:
+- `type family ConfigOptions cfg = opts | opts -> cfg` (:36) is an INJECTIVE
+  type family: a Rust associated type cannot express the injectivity, so the
+  trait must be parameterised over BOTH (`ConfigProvider<Cfg, Opts>`) or the
+  opts side must become an associated type with a separate tag. Read the two
+  use sites (`withConfigOptions` :80-87, Config.hs row 85) before choosing.
+- `configOptions :: Parser (ConfigOptions cfg)` (:43) is an
+  optparse-applicative `Parser`, which does NOT exist in this tree — the
+  same blocker as row 78's TODO #1. `withConfigOptions` (:78-88) also calls
+  `Glean.Init.withOptions` (shipped at `64f6ff8` but itself deferred). Expect
+  either a deferred method with a TODO owned by the first program-entry unit,
+  or a `Parser` image defined once in glean-util — decide explicitly, do not
+  invent a per-call API (RULE §0).
+- `Typeable a` + `Deserializer a = ByteString -> Either String a` (:32, :61,
+  :67) — the Rust image is `Deserializer<T> = Box<dyn Fn(&[u8]) -> Result<T,
+  String>>` with `T: 'static` for downcasting; `SomeException`
+  (:70) has no direct image (inventory row 110's taxonomy question).
+- `Subscription cfg :: * -> *` (:51) is a second associated type; the
+  Null instance's `subscribe`/`get` throw `ErrorCall "NullConfigProvider:
+  subscribe"` / `"…: get"` — the panic message is the SPEC (RULE §2 partial
+  fn), not a `Result`.
+
+Wiring: `pub mod config_provider;` in `rust/glean-util/src/util.rs` (bump
+its tally). No FFI, no unsafe; the only IO is the Null provider's throws.
+
+Then manifest order 80-84 (Observed, ThriftSource, github/DefaultConfigs,
+ShardManager, Util/Trace) before row 85 Config.hs — see §2.4. §2.4 has the
+same orientation; brief every unit fresh from the source + inventory per §3.1.
 
 ## 5. Operational lessons (behavior-changing; carried forward)
 
