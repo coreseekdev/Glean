@@ -16,7 +16,8 @@
 //! repo.rs, line 52; Exception.hs -> src/database/exception.rs, line 53;
 //! Catalog.hs -> src/database/catalog.rs, line 54; ACLConfig.hs ->
 //! src/database/acl_config.rs, line 55; Backup/Backend.hs ->
-//! src/database/backup/backend.rs, line 56; Catalog/Local/{Files,Memory}.hs
+//! src/database/backup/backend.rs, line 56; Storage.hs -> src/database/
+//! storage.rs, line 58; Catalog/Local/{Files,Memory}.hs
 //! -> src/database/catalog/local/{files,memory}.rs, lines 64-65; …). Owned by
 //! the same unit that owns the area's first write file (row 48,
 //! src/database/meta.rs), following the query.rs precedent (row
@@ -41,6 +42,14 @@
 //! `pub mod internal;` at query/thrift.rs:369 for row 45's deeper file);
 //! reconciling the two roles at that path is row 54's call, not this
 //! unit's, and this contract records only the two lines row 49 owed.
+//!
+//! ROW 58'S WIRING CONTRACT — CONSUMED (row 58 shipped
+//! src/database/storage.rs): this unit appended `pub mod storage;` in
+//! THIS file. Unlike rows 49 and 56, storage.rs is a DIRECT child of the
+//! directory module (manifest line 58), so no intermediate directory
+//! module is involved; the line is the same write.rs:29 shape as
+//! `pub mod meta;`. Storage.hs exports no submodules, so the line is the
+//! whole contract.
 
 pub mod meta;
 
@@ -54,22 +63,28 @@ pub mod acl_config;
 
 pub mod backup;
 
-// Coverage: six `pub mod` lines — meta.rs (row 48, the area's first
+// glean/db/Glean/Database/Storage.hs -> src/database/storage.rs (manifest
+// line 58)
+pub mod storage;
+
+// Coverage: seven `pub mod` lines — meta.rs (row 48, the area's first
 // shipped file), catalog.rs (row 49's directory module, which declares
 // `pub mod filter;`), repo.rs (row 52's port of Repo.hs), exception.rs
 // (row 53's port of Exception.hs), acl_config.rs (row 55's port of
-// ACLConfig.hs), and backup.rs (row 56's directory module, which declares
-// `pub mod backend;` for the Backup/Backend.hs port) — and nothing else:
+// ACLConfig.hs), backup.rs (row 56's directory module, which declares
+// `pub mod backend;` for the Backup/Backend.hs port), and storage.rs
+// (row 58's port of Storage.hs) — and nothing else:
 // no re-exports (each submodule is its own facade). Row 49's, row 52's,
-// row 53's, row 55's and row 56's appends are now CONSUMED (past tense
-// above).
+// row 53's, row 55's, row 56's and row 58's appends are now CONSUMED (past
+// tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos (the
-// row-49, row-52, row-53, row-55 and row-56 wiring is complete; all six
-// `pub mod` lines exist), no source-defect reproductions (no Haskell source), no
-// performance deferrals (the declarations are not runtime code), no
-// inventory divergence (no inventory row can govern a file with no Haskell
-// counterpart: the "Database/Catalog" grep hits across
+// row-49, row-52, row-53, row-55, row-56 and row-58 wiring is complete;
+// all seven `pub mod` lines exist), no source-defect reproductions (no
+// Haskell source), no performance deferrals (the declarations are not
+// runtime code), no inventory divergence (no inventory row can govern a
+// file with no Haskell counterpart: the "Database/Catalog" grep hits
+// across
 // migration/inventory*.tsv all name Catalog.hs — its STM_GROUP rows
 // (inventory.tsv:21 == inventory.stm.tsv:23), its sites.tsv rows
 // (:215-232, :602-605) — or the Util/IO HandleIO row's
@@ -84,6 +99,12 @@ pub mod backup;
 // (fromDBError) — but those rows govern exception.rs, not this scaffolding;
 // this file remains rowless. Row 55's source file is likewise zero-hit in
 // all six inventory files (`grep -c 'Database/ACLConfig\.hs'` returns 0
-// everywhere), so the new line adds no governed surface.)
+// everywhere), so the new line adds no governed surface. Row 58's source
+// file IS governed — inventory.tsv rows 19 (Storage.hs:81 strict-reads
+// comment), 125 (DB admin STM_GROUP: no new state groups), 142 (the
+// generated StoredSchema module), plus inventory.sites.tsv row 444; row
+// 137 names Database/Types.hs and governs Storage.hs's 'Some DatabaseOps'
+// instances through its target — but those rows govern storage.rs, not
+// this scaffolding.)
 //
 // PORT STATUS: confidence=high todos=0

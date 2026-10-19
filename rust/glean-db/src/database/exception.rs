@@ -229,6 +229,17 @@ impl std::fmt::Debug for DbError {
 /// chain, so the default `source()` is correct.
 impl std::error::Error for DbError {}
 
+/// SIBLING-UNIT SEAM (added for migration unit 58 — database/storage.rs):
+/// the Storage trait's IO methods (`hCopyToFile`, `removePathForcibly`)
+/// produce `std::io::Error`; the source's `IOException` is one of the
+/// exceptions the `SomeDBError` leg already models, so it enters the same
+/// funnel. Additive; no behavior change.
+impl From<std::io::Error> for DbError {
+    fn from(e: std::io::Error) -> DbError {
+        DbError::Other(Box::new(e))
+    }
+}
+
 /// Source: dbException (:33-34) — `DBError . inRepo repo`.
 pub fn db_exception(repo: &thrift::Repo, msg: &str) -> DbError {
     DbError::Msg(in_repo(repo, msg))

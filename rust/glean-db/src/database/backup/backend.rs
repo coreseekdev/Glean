@@ -349,8 +349,7 @@ where
     D: FnOnce(&str) -> Result<Meta, BackupError>,
     A: FnOnce(RestoreSource) -> Result<B, BackupError>,
 {
-    let n = NEXT_UNIQUE.fetch_add(1, Ordering::Relaxed);
-    let tmp_file = combine(scratch, &format!("glean-restore{}", n));
+    let tmp_file = combine(scratch, &format!("glean-restore{}", next_unique()));
     let mut guard = RemoveOnDrop::new(&tmp_file);
 
     let result: Result<(B, Meta), BackupError> = (|| {
@@ -373,10 +372,20 @@ where
 /// uniqueness is observable; the value is not the Haskell hash.
 static NEXT_UNIQUE: AtomicU64 = AtomicU64::new(0);
 
+/// SIBLING-UNIT SEAM (added for migration unit 58 — database/storage.rs):
+/// `withMaterializedFile` needs the same unique-file source. Additive; no
+/// behavior change.
+pub(crate) fn next_unique() -> u64 {
+    NEXT_UNIQUE.fetch_add(1, Ordering::Relaxed)
+}
+
 /// System.Directory's removePathForcibly: a missing path is success; a
 /// directory is removed recursively; anything else is removed as a file.
 /// `symlink_metadata` keeps a symlink-to-directory from being followed.
-fn remove_path_forcibly(path: &str) -> std::io::Result<()> {
+///
+/// SIBLING-UNIT SEAM (unit 58): `pub(crate)` so storage.rs's
+/// `with_materialized_file` uses the one implementation.
+pub(crate) fn remove_path_forcibly(path: &str) -> std::io::Result<()> {
     match std::fs::symlink_metadata(path) {
         Ok(md) => {
             if md.file_type().is_dir() {
@@ -395,17 +404,19 @@ fn remove_path_forcibly(path: &str) -> std::io::Result<()> {
 /// a normal return does not remove twice. A cleanup ERROR on the panic path
 /// is swallowed (Drop cannot propagate); the normal path applies the
 /// finally precedence above.
-struct RemoveOnDrop<'a> {
+/// SIBLING-UNIT SEAM (unit 58): `pub(crate)` so storage.rs's
+/// `with_materialized_file` gets the same panic-path guard.
+pub(crate) struct RemoveOnDrop<'a> {
     path: &'a str,
     armed: bool,
 }
 
 impl<'a> RemoveOnDrop<'a> {
-    fn new(path: &'a str) -> Self {
+    pub(crate) fn new(path: &'a str) -> Self {
         RemoveOnDrop { path, armed: true }
     }
 
-    fn disarm(&mut self) {
+    pub(crate) fn disarm(&mut self) {
         self.armed = false;
     }
 }
