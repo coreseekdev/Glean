@@ -65,6 +65,12 @@
 //! ROW 62'S WIRING CONTRACT — CONSUMED (row 62 shipped
 //! src/database/batch_location.rs): the same one-line append
 //! (`pub mod batch_location;`). BatchLocation.hs exports no submodules.
+//!
+//! ROW 66'S WIRING CONTRACT — CONSUMED (row 66 shipped src/database/schema.rs
+//! and src/database/schema/compute_ids.rs): a new directory module, so the
+//! append is `pub mod schema;`; schema.rs in turn declares
+//! `pub mod compute_ids;`. Schema.hs (row 98) will add its body at
+//! schema.rs, and row 89 will add `pub mod types;` there.
 
 pub mod meta;
 
@@ -93,22 +99,29 @@ pub mod data;
 // (manifest line 62)
 pub mod batch_location;
 
-// Coverage: ten `pub mod` lines — meta.rs (row 48, the area's first
+// glean/db/Glean/Database/Schema/ComputeIds.hs -> src/database/schema/
+// compute_ids.rs (manifest line 66). This line binds the directory module
+// src/database/schema.rs, which declares `pub mod compute_ids;`.
+pub mod schema;
+
+// Coverage: eleven `pub mod` lines — meta.rs (row 48, the area's first
 // shipped file), catalog.rs (row 49's directory module, which declares
 // `pub mod filter;`), repo.rs (row 52's port of Repo.hs), exception.rs
 // (row 53's port of Exception.hs), acl_config.rs (row 55's port of
 // ACLConfig.hs), backup.rs (row 56's directory module, which declares
-// `pub mod backend;` for the Backup/Backend.hs port), and storage.rs
+// `pub mod backend;` for the Backup/Backend.hs port), storage.rs
 // (row 58's port of Storage.hs), acl_ownership.rs (row 59's port of
-// ACLOwnership.hs), data.rs (row 60's port of Data.hs), and
-// batch_location.rs (row 62's port of BatchLocation.hs) — and nothing else:
-// no re-exports (each submodule is its own facade). Row 49's, row 52's,
-// row 53's, row 55's, row 56's, row 58's, row 59's, row 60's and row 62's
-// appends are now CONSUMED (past tense above).
+// ACLOwnership.hs), data.rs (row 60's port of Data.hs),
+// batch_location.rs (row 62's port of BatchLocation.hs), and schema.rs
+// (row 66's directory module, which declares `pub mod compute_ids;`) —
+// and nothing else: no re-exports (each submodule is its own facade).
+// Row 49's, row 52's, row 53's, row 55's, row 56's, row 58's, row 59's,
+// row 60's, row 62's and row 66's appends are now CONSUMED (past tense
+// above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos (the
-// row-49, row-52, row-53, row-55, row-56, row-58, row-59, row-60 and row-62
-// wiring is complete; all ten `pub mod` lines exist), no source-defect
+// row-49, row-52, row-53, row-55, row-56, row-58, row-59, row-60, row-62 and
+// row-66 wiring is complete; all eleven `pub mod` lines exist), no source-defect
 // reproductions (no Haskell source), no performance deferrals (the
 // declarations are not runtime code), no inventory divergence (no
 // inventory row can govern a file with no Haskell counterpart: the

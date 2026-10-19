@@ -129,8 +129,10 @@ pub use glean_thrift::{PredicateRef, TypeRef, Version}; // RULE §0: Types.hs:21
 //                     str` (Class.hs:483): Int64be CHAR-COUNT prefix +
 //                     UTF-8 bytes. Rust's String maps the *Text* instance
 //                     (below), so the [Char] shape is exposed separately
-//                     as [`encode_char_string`] for the ComputeIds
-//                     `showRef` consumer — see that function.
+//                     as [`encode_char_string`] for genuine Haskell
+//                     String values. Note that `showRef` is NOT one of
+//                     them: it returns Text (Schema/Util.hs:88-89), so the
+//                     ComputeIds schema hash uses `Binary for String`.
 //   - Text          : text-2.0.2 Data/Text.hs:385-386
 //                     `put t = put (encodeUtf8 t)`, i.e. the strict
 //                     ByteString instance over the UTF-8 bytes.
@@ -346,11 +348,13 @@ impl Binary for crate::angle::hash::Fingerprint {
 /// while the Text instance prefixes the UTF-8 BYTE count. Divergent for
 /// any non-ASCII string.
 ///
-/// ASSUMED-IMPORT consumer (RULE §4 B4): the ComputeIds unit
-/// (glean/db/Glean/Database/Schema/ComputeIds.hs:270,273) hashes
-/// `showRef ref :: String` — its Rust port must use THIS function for
-/// those strings, and `Binary for String` (the Text shape) for schema
-/// names. Surfaced here so the two encodings cannot be silently mixed.
+/// NOT used by the ComputeIds unit: `showRef :: t -> Text`
+/// (glean/angle/Glean/Schema/Util.hs:88-89), so
+/// `Data.Binary.encode (showRef ref)` at ComputeIds.hs:270,273 takes the
+/// Text instance — byte-count prefix + UTF-8 — which Rust's
+/// `Binary for String` already provides. This function exists for
+/// genuine `[Char]` values only, so the two encodings cannot be silently
+/// mixed.
 pub fn encode_char_string(s: &str) -> Vec<u8> {
     let mut out = (s.chars().count() as i64).encode();
     out.extend_from_slice(s.as_bytes()); // putStringUtf8
