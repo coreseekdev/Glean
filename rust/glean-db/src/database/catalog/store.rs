@@ -122,10 +122,10 @@
 //     `StoreError::Db` arm: row 64 CONSUMED the forward contract below.
 //     The source's `.../meta/meta` defect (:90/:94) is reproduced
 //     bug-for-bug there.
-//   * Memory (row 65, future): `impl Store for Memory`. The source
-//     methods (Memory.hs:27-45) are IORef operations that cannot throw,
-//     so every method returns `Ok(...)`; the IORef ->
-//     `Mutex<HashMap<..>>` image is that row's call.
+//   * Memory (row 65, SHIPPED): `impl Store for Memory` in
+//     catalog/local/memory.rs. The source methods (Memory.hs:27-45) are
+//     IORef operations that cannot throw, so every method returns
+//     `Ok(...)`; the row's `Mutex<HashMap<Repo, Meta>>` image is used.
 //   * Config (row 85, future): `Some Catalog.Store` (Config.hs:118).
 //   * Catalog (row 54, THIS unit, SHIPPED): `forall local. Store local =>
 //     Catalog` (Catalog.hs:133) -> `crate::database::catalog::CatalogInner`
@@ -249,13 +249,11 @@
 // `MockStore`, Test.hs:46-51) may need a `#[cfg(test)]` variant or an
 // equivalent hook, but tests do not widen the production set.
 //
-// The variant types: `crate::database::catalog::local::files::Files` is
-// row 64, SHIPPED at catalog/local/files.rs, and `...::local::memory::
-// Memory` is row 65, still a FORWARD REFERENCE — row 54 created neither
-// `catalog/local.rs` nor the `pub mod local;` line, and row 64 has since
-// created both plus files.rs. Only the Memory path is missing (the
-// SomeBackend forward-reference form: this compiles once row 65 lands, and
-// a missing path is a Step-4 compile error, never a silent divergence).
+// The variant types: `...::local::files::Files` is row 64 and
+// `...::local::memory::Memory` is row 65, both SHIPPED (catalog/local.rs
+// declares `pub mod files;` and `pub mod memory;`). Row 54 created neither
+// module nor the `pub mod local;` line; rows 64/65 have since landed them,
+// so the enum's variant set is fully resolved.
 
 use std::collections::HashMap;
 use std::fmt;
@@ -356,11 +354,11 @@ impl std::error::Error for StoreError {}
 ///   * `Files(crate::database::catalog::local::files::Files)` — row 64,
 ///     SHIPPED;
 ///   * `Memory(crate::database::catalog::local::memory::Memory)` — row 65,
-///     a FORWARD REFERENCE.
+///     SHIPPED.
 ///
-/// Row 64 created catalog/local.rs, its `pub mod files;` line and
-/// catalog/local/files.rs. Row 65 still owes memory.rs and
-/// `pub mod memory;` (the SomeBackend precedent, backend/types.rs:745-778).
+/// Rows 64/65 created catalog/local.rs and its two `pub mod` lines, so
+/// both variant paths resolve (the SomeBackend precedent,
+/// backend/types.rs:745-778).
 /// The test `MockStore` instance is tests and does not widen the production
 /// set (RULE §4).
 /// No derive list is attached: the enum is moved into

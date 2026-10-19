@@ -32,8 +32,8 @@
 // src/database/catalog.rs serves both: it is the port target of Catalog.hs
 // (this file) and the directory module for database/catalog/filter.rs
 // (row 49, shipped), database/catalog/store.rs (row 50, shipped) and
-// database/catalog/local.rs (row 64's Catalog/Local/ namespace, which
-// declares `pub mod files;`). Rows
+// database/catalog/local.rs (rows 64/65's Catalog/Local/ namespace, which
+// declares `pub mod files;` and `pub mod memory;`). Rows
 // 49/50 declared only the `pub mod` lines they owed and left the
 // reconciliation to row 54 (their headers say so; database.rs:39-49 records
 // the same deferral). RESOLVED HERE: the directory-module declarations stay
@@ -268,8 +268,8 @@
 //   image is store.rs's `CatalogStore` enum (the SomeBackend precedent,
 //   backend/types.rs:745-778), NOT a second enum and NOT `Box<dyn Store>`.
 //   store.rs owns it; this file only stores it (`CatalogInner.local`) and
-//   accepts it in `open`. Row 64's catalog/local/files.rs is shipped; row
-//   65's catalog/local/memory.rs remains a forward reference in that enum;
+//   accepts it in `open`. Rows 64/65's catalog/local/files.rs and
+//   catalog/local/memory.rs are shipped, so the enum is fully resolved;
 //   this unit creates neither file.
 //
 // * ERROR TAXONOMY (RULE §2). The source throws five distinct things:
@@ -575,9 +575,9 @@ pub mod filter;
 
 pub mod store;
 
-// The Catalog/Local/ namespace (row 64): catalog/local.rs declares
-// `pub mod files;`, resolving this unit's sibling
-// catalog/local/files.rs. Row 65 adds `pub mod memory;` there.
+// The Catalog/Local/ namespace (rows 64/65): catalog/local.rs declares
+// `pub mod files;` and `pub mod memory;`, resolving the two sibling
+// ports.
 pub mod local;
 
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -1938,10 +1938,11 @@ fn restoring_db(repo: &thrift::Repo, meta: &Meta) -> thrift::GetDatabaseResult {
 // and `Entry = EntryF TVar` has no Show in the source (only the test-only
 // `deriving instance Show (EntryF Identity)`, :108).
 //
-// ROW 64'S WIRING CONTRACT — CONSUMED: catalog/local.rs is the directory
-// module for the Catalog/Local/ namespace and declares `pub mod files;`,
-// resolving row 64's catalog/local/files.rs. It adds one `pub mod` line
-// here and no marker of any class; `pub mod memory;` stays row 65's.
+// ROWS 64/65'S WIRING CONTRACTS — CONSUMED: catalog/local.rs is the
+// directory module for the Catalog/Local/ namespace and declares
+// `pub mod files;` and `pub mod memory;`, resolving rows 64/65's
+// catalog/local/{files,memory}.rs. It adds one `pub mod` line here and no
+// marker of any class.
 //
 // Markers actually written:
 //   * one performance deferral — the ownership-forced `Entries` snapshot

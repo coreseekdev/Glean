@@ -105,8 +105,7 @@
 //     'crate::database::catalog::local::files::Files'. Files is
 //     'Send + Sync' automatically (one String), which is the Step-4 thread
 //     obligation recorded at store.rs (the committer holds an
-//     Arc<CatalogInner>). The 'Memory' variant stays a forward reference
-//     until row 65.
+//     Arc<CatalogInner>). The 'Memory' variant was closed by row 65.
 //   * Meta (row 48): 'crate::database::meta::Meta'; no field is read here,
 //     only the serde round-trip.
 //   * Repo (row 52, SHIPPED): 'database_path' and the pub(crate) 'combine'
@@ -118,9 +117,9 @@
 //     'write_file_contents'.
 //   * Backup/Backend (row 56, SHIPPED): 'remove_path_forcibly' is a
 //     pub(crate) seam (backend.rs:391-403), already reused by storage.rs.
-//   * Memory (row 65, future): 'catalog/local.rs' will gain
-//     'pub mod memory;' and this module's sibling file; nothing here
-//     references it.
+//   * Memory (row 65, SHIPPED): 'catalog/local.rs' declares
+//     'pub mod memory;' and this module's sibling file exists; nothing
+//     here references it.
 //   * Config (row 85, future): Config.hs:141 calls 'fileCatalog path'; the
 //     Rust call is 'file_catalog(path)'.
 //
