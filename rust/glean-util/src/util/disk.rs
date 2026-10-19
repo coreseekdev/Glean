@@ -66,8 +66,8 @@
 //     i.e. format!("df --output={} -B1 '{}'", outp, path) — no escaping,
 //     see the source-defect note below.
 //   * shell (:37) -> /bin/sh -c <cmd>: commandToProcess (ShellCommand s) =
-//     ("/bin/sh", ["-c", s]) (process-1.6.19.0 System/Process/Posix.hs).
-//     No $SHELL, no Windows branch.
+//     ("/bin/sh", ["-c", s]) (process-1.6.17.0, the version the tree
+//     builds, System/Process/Posix.hs). No $SHELL, no Windows branch.
 //   * readCreateProcess cmd "" (:35) -> spawn with stdin and stdout piped
 //     and stderr INHERITED (readCreateProcess sets only std_in and std_out;
 //     stderr stays Inherit), write the empty input (the source's
@@ -78,12 +78,15 @@
 //   * A non-zero exit is an IOException in the source:
 //       processFailedException "readCreateProcess" cmd [] r
 //     = ioError (mkIOError OtherError "readCreateProcess: <cmd> (exit <r>)")
-//     (process-1.6.19.0 System/Process.hs). Reproduced exactly, including
-//     the Other kind and the trailing " (exit N)"; a signal-killed child has
-//     no exit code, and GHC reports ExitFailure (-signal), so the negated
-//     signal is used there.
+//     (process-1.6.17.0 System/Process.hs). The message text (GHC's
+//     ioe_location) is reproduced exactly, including the Other kind and the
+//     trailing " (exit N)". GHC's Show would append ": failed" (show
+//     OtherError); that suffix is a rendering artifact and is not
+//     reproduced. A signal-killed child has no exit code, and GHC reports
+//     ExitFailure (-signal), so the negated signal is used there.
 //   * words (:35) -> split_whitespace (both split on Unicode whitespace and
-//     drop empty fields; df's output is ASCII).
+//     drop empty fields; df's numeric column is ASCII, and a translated
+//     header is still one word).
 //   * (!! 1) (:35) is partial: fewer than two words panics with GHC's
 //     message "Prelude.!!: index too large".
 //   * read :: String -> Int (:35) is partial: a non-number panics with
@@ -115,8 +118,9 @@
 //      cannot report more than 2^63 bytes in this field), so the simpler
 //      total-parse path is kept rather than emulating the wrap. Haskell's
 //      Read Int also accepts forms str::parse rejects — hex/octal literals
-//      ("0x10"), a parenthesised "(5)", a doubled sign — so those panic
-//      here where the source would return a number; df prints none.
+//      ("0x10"), a parenthesised "(5)", a sign followed by a space
+//      ("- 5") — so those panic here where the source would return a
+//      number; df prints none.
 //   2. words uses Data.Char.isSpace; split_whitespace uses
 //      char::is_whitespace. The two tables differ only for exotic
 //      non-ASCII code points that df never emits.
@@ -126,13 +130,20 @@
 //      The module is POSIX-only by construction: the source shells out to
 //      df, which has no Windows equivalent, so the build target is already
 //      unix.
-//   5. A path containing a NUL byte is rejected by Command::spawn
-//      (InvalidInput) where the C shell string would simply truncate at the
-//      NUL. POSIX paths cannot contain NUL, so this is unreachable.
+//   5. Spawn-time failures bypass the readCreateProcess text: a NUL byte
+//      is rejected by Command::spawn (InvalidInput) where the C shell
+//      string would truncate at the NUL, and an over-long argument list
+//      gives E2BIG ("Argument list too long") where GHC says
+//      "createProcess: posix_spawnp: resource exhausted". POSIX paths
+//      cannot contain NUL and are far below ARG_MAX, so both are
+//      unreachable.
 //   6. The source's fmap over readCreateProcess leaves the (!! 1)/read
 //      errors to fire on first FORCE of the result (A6 timing); the port
-//      panics inside the call. Both consumers force the value immediately
-//      (LMDB.hs:114-116, RocksDB.hs:153-155), so nothing reachable differs.
+//      panics inside the call. Every reachable consumer forces the value:
+//      getTotalCapacity (LMDB.hs:114-116, RocksDB.hs:153-155),
+//      getFreeCapacity (:131, :170), and getUsedCapacity (:123, :162)
+//      returns it unforced but its only caller subtracts it. Nothing
+//      reachable differs.
 //
 // ---------------------------------------------------------------------------
 // SIBLING-UNIT CONTRACTS
@@ -235,10 +246,10 @@ fn read_create_process(cmd: &str) -> io::Result<String> {
             // Killed by a signal: GHC's ExitCode is ExitFailure (-signal).
             None => -output.status.signal().unwrap_or(0),
         };
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            format!("readCreateProcess: {} (exit {})", cmd, code),
-        ));
+        return Err(io::Error::other(format!(
+            "readCreateProcess: {} (exit {})",
+            cmd, code
+        )));
     }
     Ok(stdout)
 }
