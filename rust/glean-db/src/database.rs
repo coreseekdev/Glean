@@ -18,7 +18,8 @@
 //! src/database/acl_config.rs, line 55; Backup/Backend.hs ->
 //! src/database/backup/backend.rs, line 56; Storage.hs -> src/database/
 //! storage.rs, line 58; ACLOwnership.hs -> src/database/acl_ownership.rs,
-//! line 59; Catalog/Local/{Files,Memory}.hs
+//! line 59; Data.hs -> src/database/data.rs, line 60; Catalog/Local/
+//! {Files,Memory}.hs
 //! -> src/database/catalog/local/{files,memory}.rs, lines 64-65; …). Owned by
 //! the same unit that owns the area's first write file (row 48,
 //! src/database/meta.rs), following the query.rs precedent (row
@@ -56,6 +57,10 @@
 //! src/database/acl_ownership.rs): a second direct child, so the same
 //! one-line append (`pub mod acl_ownership;`). ACLOwnership.hs exports no
 //! submodules.
+//!
+//! ROW 60'S WIRING CONTRACT — CONSUMED (row 60 shipped
+//! src/database/data.rs): the same one-line append (`pub mod data;`).
+//! Data.hs exports no submodules.
 
 pub mod meta;
 
@@ -77,21 +82,25 @@ pub mod storage;
 // (manifest line 59)
 pub mod acl_ownership;
 
-// Coverage: eight `pub mod` lines — meta.rs (row 48, the area's first
+// glean/db/Glean/Database/Data.hs -> src/database/data.rs (manifest line 60)
+pub mod data;
+
+// Coverage: nine `pub mod` lines — meta.rs (row 48, the area's first
 // shipped file), catalog.rs (row 49's directory module, which declares
 // `pub mod filter;`), repo.rs (row 52's port of Repo.hs), exception.rs
 // (row 53's port of Exception.hs), acl_config.rs (row 55's port of
 // ACLConfig.hs), backup.rs (row 56's directory module, which declares
 // `pub mod backend;` for the Backup/Backend.hs port), and storage.rs
-// (row 58's port of Storage.hs), and acl_ownership.rs (row 59's port of
-// ACLOwnership.hs) — and nothing else:
+// (row 58's port of Storage.hs), acl_ownership.rs (row 59's port of
+// ACLOwnership.hs), and data.rs (row 60's port of Data.hs) — and nothing
+// else:
 // no re-exports (each submodule is its own facade). Row 49's, row 52's,
-// row 53's, row 55's, row 56's, row 58's and row 59's appends are now
-// CONSUMED (past tense above).
+// row 53's, row 55's, row 56's, row 58's, row 59's and row 60's appends
+// are now CONSUMED (past tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos (the
-// row-49, row-52, row-53, row-55, row-56, row-58 and row-59 wiring is
-// complete; all eight `pub mod` lines exist), no source-defect
+// row-49, row-52, row-53, row-55, row-56, row-58, row-59 and row-60
+// wiring is complete; all nine `pub mod` lines exist), no source-defect
 // reproductions (no Haskell source), no performance deferrals (the
 // declarations are not runtime code), no inventory divergence (no
 // inventory row can govern a file with no Haskell counterpart: the
@@ -117,5 +126,10 @@ pub mod acl_ownership;
 // 137 names Database/Types.hs and governs Storage.hs's 'Some DatabaseOps'
 // instances through its target — but those rows govern storage.rs, not
 // this scaffolding.)
+//
+// Row 59's source file is zero-hit in all six inventory files
+// (`grep -n 'ACLOwnership' migration/inventory*.tsv` exits 1).
+// Row 60's source file is likewise zero-hit
+// (`grep -n 'Database/Data\.hs' migration/inventory*.tsv` exits 1).
 //
 // PORT STATUS: confidence=high todos=0
