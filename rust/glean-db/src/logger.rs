@@ -28,19 +28,21 @@
 // Row 74 (Logger/Database.hs, manifest line 74) appends
 // 'pub mod database;' below, resolving .../logger/database.rs.
 //
-// ROW 75'S WIRING CONTRACT (forward)
-// Row 75 (Logger/Server.hs, manifest line 75) will append 'pub mod server;'
-// below, resolving .../logger/server.rs. This unit does not declare it: the
-// file does not exist yet, and the declaration belongs to the unit that
-// creates it.
+// ROW 75'S WIRING CONTRACT — CONSUMED
+// Row 75 (Logger/Server.hs, manifest line 75) appends 'pub mod server;'
+// below, resolving .../logger/server.rs.
 //
-// Coverage: one 'pub mod' line (database.rs, row 74) and nothing else; no
-// re-exports. Marker breakdown: zero of every class — no port todos (the
-// server line is a documented forward reference, not a deferral), no
+// Coverage: two 'pub mod' lines (database.rs row 74, server.rs row 75) and
+// nothing else; no re-exports. Marker breakdown: zero of every class — no
+// port todos (both lines shipped), no
 // source-defect reproductions (no body yet), no performance deferrals
 // (declarations only), no inventory divergence (no Haskell counterpart
 // governs this scaffolding), no SAFETY notes (no unsafe code).
 
 pub mod database;
+
+// glean/db/Glean/Logger/Server.hs -> src/logger/server.rs (manifest line 75).
+// Row 75's append.
+pub mod server;
 
 // PORT STATUS: confidence=high todos=0
