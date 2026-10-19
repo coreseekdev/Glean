@@ -51,16 +51,22 @@ pub mod util;
 // where reviewers look for it.
 pub mod test_runner;
 
-// Coverage: three `pub mod` lines — r#impl (row 68's directory module,
-// which declares `pub mod memory_reader;`), util (the crate's first area)
-// and test_runner (row 77's decision record) — and nothing else: no
+// glean/github/Glean/Init.hsc -> src/init.rs (manifest line 78). Row 78's
+// append: the folly init block (with its extern) plus two port todos, the
+// parser surface being owed to the first program-entry unit.
+pub mod init;
+
+// Coverage: four `pub mod` lines — r#impl (row 68's directory module,
+// which declares `pub mod memory_reader;`), util (the crate's first area),
+// test_runner (row 77's decision record) and init (row 78) — and nothing
+// else: no
 // lib-level re-exports (a `pub use` here would fork the namespace; the
 // facades are each submodule's own, RULE §4 "no glob re-exports across
-// crates"). Row 68's and row 77's appends are now CONSUMED (past tense
-// above).
+// crates"). Row 68's, row 77's and row 78's appends are now CONSUMED (past
+// tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos
-// (the crate-root wiring is complete for all three modules), no source-defect
+// (the crate-root wiring is complete for all four modules), no source-defect
 // reproductions (no Haskell source), no performance deferrals (no
 // code), no inventory divergence (no inventory row can govern a file
 // with no Haskell counterpart).
