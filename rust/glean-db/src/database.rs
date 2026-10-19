@@ -14,10 +14,11 @@
 //! Filter.hs -> src/database/catalog/filter.rs, line 49; Catalog/Store.hs
 //! -> src/database/catalog/store.rs, line 50; Repo.hs -> src/database/
 //! repo.rs, line 52; Exception.hs -> src/database/exception.rs, line 53;
-//! Catalog.hs -> src/database/catalog.rs, line 54; Catalog/Local/{Files,
-//! Memory}.hs -> src/database/catalog/local/{files,memory}.rs, lines
-//! 64-65; …). Owned by the same unit that owns the area's first write file
-//! (row 48, src/database/meta.rs), following the query.rs precedent (row
+//! Catalog.hs -> src/database/catalog.rs, line 54; ACLConfig.hs ->
+//! src/database/acl_config.rs, line 55; Catalog/Local/{Files,Memory}.hs ->
+//! src/database/catalog/local/{files,memory}.rs, lines 64-65; …). Owned by
+//! the same unit that owns the area's first write file (row 48,
+//! src/database/meta.rs), following the query.rs precedent (row
 //! 45, src/query.rs) and the write.rs precedent (row 46, src/write.rs):
 //! the earliest unit of an area owns the area's scaffolding. Because row
 //! 48's file is a DIRECT child of this directory module, its
@@ -48,18 +49,21 @@ pub mod repo;
 
 pub mod exception;
 
-// Coverage: four `pub mod` lines — meta.rs (row 48, the area's first
+pub mod acl_config;
+
+// Coverage: five `pub mod` lines — meta.rs (row 48, the area's first
 // shipped file), catalog.rs (row 49's directory module, which declares
-// `pub mod filter;`), repo.rs (row 52's port of Repo.hs), and exception.rs
-// (row 53's port of Exception.hs) — and nothing else: no re-exports (each
-// submodule is its own facade). Row 49's, row 52's and row 53's appends are
-// now CONSUMED (past tense above).
+// `pub mod filter;`), repo.rs (row 52's port of Repo.hs), exception.rs
+// (row 53's port of Exception.hs), and acl_config.rs (row 55's port of
+// ACLConfig.hs) — and nothing else: no re-exports (each submodule is its
+// own facade). Row 49's, row 52's, row 53's and row 55's appends are now
+// CONSUMED (past tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos (the
-// row-49, row-52 and row-53 wiring is complete; all four `pub mod` lines
-// exist), no source-defect reproductions (no Haskell source), no performance
-// deferrals (the declarations are not runtime code), no inventory
-// divergence (no inventory row can govern a file with no Haskell
+// row-49, row-52, row-53 and row-55 wiring is complete; all five `pub mod`
+// lines exist), no source-defect reproductions (no Haskell source), no
+// performance deferrals (the declarations are not runtime code), no
+// inventory divergence (no inventory row can govern a file with no Haskell
 // counterpart: the "Database/Catalog" grep hits across
 // migration/inventory*.tsv all name Catalog.hs — its STM_GROUP rows
 // (inventory.tsv:21 == inventory.stm.tsv:23), its sites.tsv rows
@@ -73,6 +77,8 @@ pub mod exception;
 // source file IS governed — inventory.tsv:24 == inventory.protocol.tsv:24
 // (EXC_TAXONOMY, confirmed), plus sites rows 610 (toDBError) and 611
 // (fromDBError) — but those rows govern exception.rs, not this scaffolding;
-// this file remains rowless.)
+// this file remains rowless. Row 55's source file is likewise zero-hit in
+// all six inventory files (`grep -c 'Database/ACLConfig\.hs'` returns 0
+// everywhere), so the new line adds no governed surface.)
 //
 // PORT STATUS: confidence=high todos=0
