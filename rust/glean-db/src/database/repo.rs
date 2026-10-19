@@ -141,8 +141,11 @@ pub fn in_repo(repo: &thrift::Repo, s: &str) -> String {
 }
 
 /// System.FilePath.Posix `</>` — see FIDELITY NOTES for the probed table.
-/// Private: the source exports only the three functions above.
-fn combine(a: &str, b: &str) -> String {
+/// `pub(crate)`: the source exports only the three functions above, but
+/// row 56's Backup/Backend.hs port (src/database/backup/backend.rs) reuses
+/// this one owner for `scratch </> "glean-restore" <> …` rather than
+/// forking a second `</>`; the visibility stays crate-internal.
+pub(crate) fn combine(a: &str, b: &str) -> String {
     if a.is_empty() {
         return b.to_string();
     }
