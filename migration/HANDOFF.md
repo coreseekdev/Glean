@@ -25,20 +25,20 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-19 (HEAD `21505c8`, after unit 67)
+## 2. STATUS — 2026-10-19 (HEAD `d96790c`, after unit 69)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `21505c8`, 100 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `d96790c`, 103 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
   Push protocol: the user pushes the fork after batch commits on request —
-  local has since advanced 46 commits to `21505c8` (`git rev-list --count
-  9251205..HEAD`; the last five: unit 63 `dd316cf`, unit 64 `4cb683c`,
-  unit 65 `0fa926e`, unit 66 `ca5a639`, unit 67 `21505c8`; this records
-  refresh makes 47, and the HANDOFF successor-refresh commit that follows
-  makes 48); sync the fork at the next batch gate.
-- **Step 3 counters: 65 unit-commits / 64 distinct target files shipped;
-  322 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+  local has since advanced 49 commits to `d96790c` (`git rev-list --count
+  9251205..HEAD`; the last five: unit 66 `ca5a639`, unit 67 `21505c8`,
+  records refresh `6291d8f`, unit 68 `508d3f3`, unit 69 `d96790c`; this
+  records refresh makes 50, and the HANDOFF successor-refresh commit that
+  follows makes 51); sync the fork at the next batch gate.
+- **Step 3 counters: 67 unit-commits / 66 distinct target files shipped;
+  319 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
   `1f9a2fa` — the only double. Three non-unit fix commits: `9354cbb`
   (dead session's hash.rs derive-attachment repair), `42117fc` (the
@@ -55,7 +55,10 @@ in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
   closed the `CatalogStore` enum's last forward reference; `StoreError`
   gained the typed `Db(DbError)` arm at 64; 66 is the schema hasher (the
   schema-id linchpin, one TODO for old-binary parity); 67 is the RocksDB
-  DatabaseOps layer (29 externs incl. the shared `database_free`).
+  DatabaseOps layer (29 externs incl. the shared `database_free`); 68 is the
+  OSS MemoryReader stub (the migration's first keyword-named module —
+  `pub mod r#impl;`); 69 is Util/Disk's `df` shell-out (one reproduced
+  shell-quoting defect, five documented divergences).
 - Steps 0/0b/1/2 records: see DECISIONS.md's dated entries and §7 below.
 - RULEBOOK v0.3 + the §4 assumed-imports paragraph are transcribed and
   current (2026-10-16/17).
@@ -127,7 +130,7 @@ not old commit numbers. Going forward: manifest file lines only.
 | glean-core | 19 | 10 | FFI/RTS/bytecode layer done + repo/text (51) + ownership (57); remaining rows 23/24 blocked, 94/101/109/113/114/139/278/279 |
 | glean-bytecode | 1 | 5 | types.rs only; sys_calls/decode/generate/{instruction,cpp,haskell} remain |
 | glean-typed | 9 | 0 | COMPLETE (lib.rs + Cargo.toml + query-module wiring at lib.rs per the source-shape rule; Angle DSL = unit 44) |
-| glean-util | 6 | 22 | service.rs + thrift_service.rs + some.rs + vector.rs + retry_channel_exception.rs + util/io.rs (63) + scaffolding |
+| glean-util | 8 | 20 | service.rs + thrift_service.rs + some.rs + vector.rs + retry_channel_exception.rs + util/io.rs (63) + impl/memory_reader.rs (68) + util/disk.rs (69) + scaffolding |
 | glean-db | 22 | 68 | rows 41/43/45-50 + 52-56/58-62/64-67 (database area: exception/repo/catalog(+local files,memory)/acl_config/acl_ownership/storage(+db)/backup(+backend,mock)/data/batch_location/schema(+compute_ids)); crate wired per §4.2 (no [dependencies] yet) |
 | glean-glass | 0 | 88 | not started |
 | glean-client | 0 | 27 | not started |
@@ -148,22 +151,34 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 68** `glean/util/Glean/Impl/MemoryReader.hs` (16 lines) →
-`rust/glean-util/src/impl/memory_reader.rs`. Orientation only — brief it
+Next: **row 70** `glean/db/Glean/Database/Storage/LMDB.hs` (207 lines) →
+`rust/glean-db/src/database/storage/lmdb.rs`. Orientation only — brief it
 fresh per §3.1:
-- The source is the OPEN-SOURCE STUB: one export
-  (`totalMemCapacityKB :: IO (Maybe Int)`, :11-16) whose body is
-  `return Nothing` ("template for open source build / not implemented
-  yet"). Port the stub, not a real /proc/meminfo reader; the unit is a
-  fidelity trap in the opposite direction (do NOT "improve" it).
-- **Wiring**: a NEW `Impl/` area. `impl` is a Rust keyword, so the
-  crate-root line is `pub mod r#impl;` (the raw identifier's file is
-  `src/impl.rs`); that file declares `pub mod memory_reader;`. Append
-  both lines at this unit and record the raw-identifier choice.
-- Then rows 69 (`Util/Disk.hs`: three `df --output=… -B1 '<path>'`
-  shell-outs, `Int` → i64, IOException on failure), 70 (LMDB), 71
-  (Memory), 72 (RocksDB — consumes `DB::from_raw`/`checkpoint` from
-  unit 67 and must NOT attach a second finalizer).
+- Exports `LMDB(..)` + `newStorage` (:9-12). The record is
+  `lmdbRoot :: FilePath` + `lmdbMaxDiskSize :: Maybe Int` (:44-51), and
+  the limit is built from rows 68/69 (`totalMemCapacityKB` × the config
+  ratio) — both shipped, so this is the first unit whose glean-util
+  imports all exist.
+- The `Storage` instance (row 58's trait) + the `DatabaseOps` forwarding
+  instance + `CanLookup`. The `open` body is the real work: squashfs
+  handling (a `data.mdb` existence check and a `squashfuse_ll` mount at
+  :85), the `ReadOnly`/`ReadWrite`/`Create` mode mapping to the C
+  `cmode`, `using` around `glean_lmdb_container_open`, then
+  `glean_lmdb_container_open_database` inside `mask_`, then
+  `newForeignPtr glean_rocksdb_database_free p` (:91-99).
+- **Finalizer**: row 67 already owns that C symbol. Construct the shipped
+  `DB::from_raw(p, repo)` (storage/db.rs) — it wraps the pointer in the
+  `Db` marker whose Drop calls `glean_rocksdb_database_free` — and do NOT
+  attach a second ForeignPtr or guard. This is row 67's cross-unit
+  contract in action.
+- Inventory: inventory.tsv:29 == inventory.ffi.tsv:24 (OWNED_MUTABLE,
+  confirmed — "keep ONE free symbol for both backends in the bridge") plus
+  sites.tsv:52-54 (the three FFI imports). The squashfs process calls
+  (:85 `squashfuse_ll`, :144 `unsquashfs`, :157 `umount`, :188
+  `mksquashfs`) stay `std::process::Command` — the Disk.hs precedent,
+  including its quoting/exit-code handling.
+- Then rows 71 (Memory — the open `&FactSet` fact-store choice), 72
+  (RocksDB — consumes `DB::from_raw`/`checkpoint`).
 Working style: 1–2 units per session, then a records-refresh commit.
 
 Recompute the queue any time (manifest file-line numbers):
@@ -374,16 +389,19 @@ staleness check to fire on files it touched (re-read and continue).
 - `catalog/local/memory.rs` — `0fa926e` (line 65; `Mutex<HashMap<Repo,Meta>>` per the STM_GROUP row; closes the CatalogStore enum)
 - `schema/compute_ids.rs` — `ca5a639` (line 66; the schema hasher: Tarjan SCCs, Data.Binary encodings, Text-vs-[Char] cross-unit correction; 1 TODO for old-binary schema-id parity)
 - `storage/db.rs` — `21505c8` (line 67; the RocksDB DatabaseOps layer: 29 externs incl. the shared `database_free`, `DB::from_raw` owns the finalizer, checkpoint bracketOnError + makeAbsolute normalise; 2 A/B reviews 429'd, inline review)
+- `impl/memory_reader.rs` — `508d3f3` (line 68; the OSS stub `totalMemCapacityKB = return Nothing` -> `total_mem_capacity_kb() -> Option<i64>`, no Result because the IO is total; NEW `Impl/` area carrying the migration's first raw-identifier module `pub mod r#impl;`; reviewer A returned PASS WITH MINOR with 13 citation fixes applied; reviewer B 429'd, inline pass)
+- `util/disk.rs` — `d96790c` (line 69; the `df --output=<field> -B1 '<path>'` shell-out: `/bin/sh -c`, stderr inherited, byte-exact `readCreateProcess: <cmd> (exit N)` parity, GHC panic messages for `(!! 1)`/`read`; one reproduced shell-quoting defect with an injection repro plus five documented divergences; A/B dispatched, no report at commit time -> inline)
 
-### 4.2 Immediate next-unit orientation (row 68 — NEXT UP)
+### 4.2 Immediate next-unit orientation (row 70 — NEXT UP)
 
-**Row 68**: `glean/util/Glean/Impl/MemoryReader.hs` (16 lines) ->
-`rust/glean-util/src/impl/memory_reader.rs`. The source is the
-open-source STUB (`totalMemCapacityKB = return Nothing`); port the stub.
-NEW `Impl/` area: the crate-root line is `pub mod r#impl;` (keyword) and
-`src/impl.rs` declares `pub mod memory_reader;`. Then rows 69 (Disk.hs),
-70 (LMDB), 71 (Memory), 72 (RocksDB). §2.4 has the same orientation; brief
-every unit fresh from the source + inventory per §3.1.
+**Row 70**: `glean/db/Glean/Database/Storage/LMDB.hs` (207 lines) ->
+`rust/glean-db/src/database/storage/lmdb.rs`. The LMDB `Storage`
+backend: squashfs containers, three externs, and the SHARED
+`glean_rocksdb_database_free`. Build the handle through row 67's
+`DB::from_raw` so the `Db` marker stays the one finalizer; the record's
+disk limit consumes rows 68/69. Inventory.tsv:29 == inventory.ffi.tsv:24
+plus sites.tsv:52-54. §2.4 has the same orientation; brief every unit
+fresh from the source + inventory per §3.1.
 
 
 ## 5. Operational lessons (behavior-changing; carried forward)
