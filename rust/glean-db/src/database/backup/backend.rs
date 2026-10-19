@@ -53,9 +53,11 @@
 //                      (manifest line 48, SHIPPED: src/database/meta.rs,
 //                      which re-exports `Meta` from crate::internal::types).
 //       edges.tsv:161  Backup/Backend.hs -> glean/util/Glean/Util/Some.hs
-//                      (NO manifest unit — the existential, see
-//                      TRANSLATION NOTES: the port is the two closed enums
-//                      below, not an import of Util.Some).
+//                      (manifest line 38, SHIPPED at 4bdf95a as
+//                      rust/glean-util/src/util/some.rs, which by design
+//                      exports no code; see TRANSLATION NOTES: the port is
+//                      the two closed enums below, not an import of
+//                      Util.Some).
 //     Every other source import is base: Control.Exception (`finally`),
 //     Data.HashMap.Strict, Data.Text, Data.Unique, System.Directory,
 //     System.FilePath, System.IO — no edges.
@@ -70,8 +72,9 @@
 // ---------------------------------------------------------------------------
 //
 // * EXISTENTIALS -> TWO CLOSED ENUMS. `Some Backend` and `Some Site`
-//   (:43-44, :87-94) are the existential wrappers of Glean.Util.Some (no
-//   manifest unit; RULE §2's existential row). The variant set is CLOSED:
+//   (:43-44, :87-94) are the existential wrappers of Glean.Util.Some
+//   (manifest line 38, a no-code decision; RULE §2's existential row). The
+//   variant set is CLOSED:
 //   `grep -rn 'instance Backend|instance Site' glean/db glean/db/backup`
 //   finds only Mock.hs:44/:47 and S3.hs:101/:265; the two `instance …
 //   (Some …)` hits in this file ARE the forwarding instances, and
