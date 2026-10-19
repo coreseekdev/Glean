@@ -45,15 +45,22 @@ pub mod r#impl;
 
 pub mod util;
 
-// Coverage: two `pub mod` lines — r#impl (row 68's directory module,
-// which declares `pub mod memory_reader;`) and util (the crate's first
-// area) — and nothing else: no lib-level re-exports (a `pub use` here
-// would fork the namespace; the facades are each submodule's own, RULE §4
-// "no glob re-exports across crates"). Row 68's append is now CONSUMED
-// (past tense above).
+// glean/github/TestRunner.hs -> src/test_runner.rs (manifest line 77). Row
+// 77's append. A ZERO-ITEM decision record (DECISIONS §4: test suites are
+// not translated), like util/some.rs; the path is kept so the record sits
+// where reviewers look for it.
+pub mod test_runner;
+
+// Coverage: three `pub mod` lines — r#impl (row 68's directory module,
+// which declares `pub mod memory_reader;`), util (the crate's first area)
+// and test_runner (row 77's decision record) — and nothing else: no
+// lib-level re-exports (a `pub use` here would fork the namespace; the
+// facades are each submodule's own, RULE §4 "no glob re-exports across
+// crates"). Row 68's and row 77's appends are now CONSUMED (past tense
+// above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos
-// (the crate-root wiring is complete for both areas), no source-defect
+// (the crate-root wiring is complete for all three modules), no source-defect
 // reproductions (no Haskell source), no performance deferrals (no
 // code), no inventory divergence (no inventory row can govern a file
 // with no Haskell counterpart).
