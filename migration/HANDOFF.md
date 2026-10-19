@@ -25,26 +25,37 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-19 (HEAD `0461423`, after unit 50)
+## 2. STATUS — 2026-10-19 (HEAD `21505c8`, after unit 67)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `0461423`, 82 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `21505c8`, 100 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
   Push protocol: the user pushes the fork after batch commits on request —
-  local has since advanced 28 commits to `0461423` (`git rev-list --count
-  9251205..HEAD`; the last five: unit 48 `67cf160`, unit 49 `9874c48`,
-  records refresh `8bd66db`, HANDOFF note `676c92c`, unit 50 `0461423`;
-  this records refresh makes 29, and the HANDOFF successor-refresh commit
-  that follows makes 30); sync the fork at the next batch gate.
-- **Step 3 counters: 48 unit-commits / 47 distinct target files shipped;
-  339 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+  local has since advanced 46 commits to `21505c8` (`git rev-list --count
+  9251205..HEAD`; the last five: unit 63 `dd316cf`, unit 64 `4cb683c`,
+  unit 65 `0fa926e`, unit 66 `ca5a639`, unit 67 `21505c8`; this records
+  refresh makes 47, and the HANDOFF successor-refresh commit that follows
+  makes 48); sync the fork at the next batch gate.
+- **Step 3 counters: 65 unit-commits / 64 distinct target files shipped;
+  322 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
   `1f9a2fa` — the only double. Three non-unit fix commits: `9354cbb`
   (dead session's hash.rs derive-attachment repair), `42117fc` (the
   unit-42 retry-surface amendment — `&RetryPolicy` + `Box<dyn Fn>`,
   DECISIONS.md 2026-10-18), `41905c2` (the unit-3 AST's ArrayPrefix
   E0072 repair — `Box<NonEmpty<…>>`, discovered at unit 44's review).
+- Units 51–67 (all committed; one records-refresh commit `e3c971c` at unit
+  50): 51 repo/text.rs, 52 database/repo.rs, 53 database/exception.rs, 54
+  database/catalog.rs, 55 acl_config.rs, 56 backup/backend.rs, 57
+  rts/foreign/ownership.rs, 58 database/storage.rs, 59 acl_ownership.rs, 60
+  data.rs, 61 backup/mock.rs, 62 batch_location.rs, 63 util/io.rs, 64
+  catalog/local/files.rs, 65 catalog/local/memory.rs, 66
+  schema/compute_ids.rs, 67 storage/db.rs. The Catalog/Local pair (64/65)
+  closed the `CatalogStore` enum's last forward reference; `StoreError`
+  gained the typed `Db(DbError)` arm at 64; 66 is the schema hasher (the
+  schema-id linchpin, one TODO for old-binary parity); 67 is the RocksDB
+  DatabaseOps layer (29 externs incl. the shared `database_free`).
 - Steps 0/0b/1/2 records: see DECISIONS.md's dated entries and §7 below.
 - RULEBOOK v0.3 + the §4 assumed-imports paragraph are transcribed and
   current (2026-10-16/17).
@@ -113,11 +124,11 @@ not old commit numbers. Going forward: manifest file lines only.
 | crate | shipped | remaining | notes |
 |---|---|---|---|
 | glean-angle | 7 | 0 | COMPLETE (hash, display, angle/types, schema/{util,types,evolve,resolve}) |
-| glean-core | 17 | 12 | FFI/RTS/bytecode layer done; remaining rows 23/24 blocked, 51/57/94/101/109/113/114/139/278/279 |
+| glean-core | 19 | 10 | FFI/RTS/bytecode layer done + repo/text (51) + ownership (57); remaining rows 23/24 blocked, 94/101/109/113/114/139/278/279 |
 | glean-bytecode | 1 | 5 | types.rs only; sys_calls/decode/generate/{instruction,cpp,haskell} remain |
 | glean-typed | 9 | 0 | COMPLETE (lib.rs + Cargo.toml + query-module wiring at lib.rs per the source-shape rule; Angle DSL = unit 44) |
-| glean-util | 5 | 23 | service.rs + thrift_service.rs + some.rs + vector.rs + retry_channel_exception.rs + scaffolding |
-| glean-db | 8 | 82 | rows 41/43/45/46/47/48/49/50 + scaffolding (lib.rs + backend/ + query/ + write/ + database/); crate wired per §4.2 (no [dependencies] yet) |
+| glean-util | 6 | 22 | service.rs + thrift_service.rs + some.rs + vector.rs + retry_channel_exception.rs + util/io.rs (63) + scaffolding |
+| glean-db | 22 | 68 | rows 41/43/45-50 + 52-56/58-62/64-67 (database area: exception/repo/catalog(+local files,memory)/acl_config/acl_ownership/storage(+db)/backup(+backend,mock)/data/batch_location/schema(+compute_ids)); crate wired per §4.2 (no [dependencies] yet) |
 | glean-glass | 0 | 88 | not started |
 | glean-client | 0 | 27 | not started |
 | glean-cli | 0 | 26 | not started |
@@ -137,12 +148,22 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 51** `glean/hs/Glean/Repo/Text.hs` →
-`rust/glean-core/src/repo/text.rs` (a NEW `repo/` area in glean-core:
-create src/repo.rs declaring `pub mod text;`; glean-core has no crate-root
-lib.rs/Cargo.toml — Step 4 owns that scaffold per §2, so `pub mod repo;`
-is a Step-4 contract, not this unit's line). Brief fresh from the source
-+ inventory; §4.2 has the orientation.
+Next: **row 68** `glean/util/Glean/Impl/MemoryReader.hs` (16 lines) →
+`rust/glean-util/src/impl/memory_reader.rs`. Orientation only — brief it
+fresh per §3.1:
+- The source is the OPEN-SOURCE STUB: one export
+  (`totalMemCapacityKB :: IO (Maybe Int)`, :11-16) whose body is
+  `return Nothing` ("template for open source build / not implemented
+  yet"). Port the stub, not a real /proc/meminfo reader; the unit is a
+  fidelity trap in the opposite direction (do NOT "improve" it).
+- **Wiring**: a NEW `Impl/` area. `impl` is a Rust keyword, so the
+  crate-root line is `pub mod r#impl;` (the raw identifier's file is
+  `src/impl.rs`); that file declares `pub mod memory_reader;`. Append
+  both lines at this unit and record the raw-identifier choice.
+- Then rows 69 (`Util/Disk.hs`: three `df --output=… -B1 '<path>'`
+  shell-outs, `Int` → i64, IOException on failure), 70 (LMDB), 71
+  (Memory), 72 (RocksDB — consumes `DB::from_raw`/`checkpoint` from
+  unit 67 and must NOT attach a second finalizer).
 Working style: 1–2 units per session, then a records-refresh commit.
 
 Recompute the queue any time (manifest file-line numbers):
@@ -336,43 +357,34 @@ staleness check to fire on files it touched (re-read and continue).
 - `database/meta.rs` — `67cf160` (line 48; the DB metadata layer (21/21 exports) + the database-area wiring (`pub mod database;` + src/database.rs declaring `pub mod meta;`); the generated-module dispositions (crate::internal::types per DECISIONS vs the glean-schema cross-crate tension, thrift::DBVersion per A10) and the first `glean_util::time_sec` seam sketch; the Meta-JSON ground-truth oracle captured for the serde obligation; reviewer A reproduced the rounding/ACL/Database mappings byte-exactly against the real generated Haskell packages; 2 reviews + fix round incl. the Meta(..) re-export)
 - `database/catalog/filter.rs` — `9874c48` (line 49; the catalog filter DSL (23/23 exports); `Value` -> a fn pointer with bound-free manual `Copy`/`Clone`, `Filter` -> `Arc<dyn Fn(Vec<Item>) -> (A, Vec<Item>)>` with `map`/`and_then`/`pure`/`ap`; `groupF` carries the one TODO for cross-group HashMap order (Backup.hs:123/:132/:137 and Catalog.hs:427-430 audit); `sortF` uses `sort_by_cached_key` + `std::cmp::Reverse`; wiring: `pub mod catalog;` in database.rs + the new catalog.rs declaring `pub mod filter;`; reviewer A/B dispatch hit 429 twice, both reviews performed INLINE per DEV-001; inline fix round)
 - `database/catalog/store.rs` — `0461423` (line 50; the `Store` class (1/1 source export) -> `pub trait Store` with five `&self` methods; `IO` -> `Result<_, StoreError>` (`Io`/`Other`, constructor-shaped `Display` + `Error`, RunQueryError precedent); `Repo`/`Meta` by reference, `list` returns an owned HashMap (one PERF marker for the deep clone); ONE closed enum for the `Some Catalog.Store` / `forall local. Store local => Catalog` sites, owned by this module and added by row 54; wiring: `pub mod store;` appended in catalog.rs; 2 reviews (A: PARTIAL, B: PASS WITH MINOR) + fix round incl. the catchAll correction and the Files `get` double-join carry-forward)
+- `repo/text.rs` — `6ce4e79` (line 51; the 8 pure Repo text helpers; NEW `repo/` area: src/repo.rs declares `pub mod text;`, crate-root `pub mod repo;` recorded as a Step-4 contract)
+- `database/repo.rs` — `94787f9` (line 52; `databasePath`/`databaseSubdir`/`inRepo` + the `</>` image; row 51's trailer fix rode along)
+- `database/exception.rs` — `84bbbba` (line 53; `DbError` Msg/Other, `dbException`/`dbError`, `DBAlreadyExists` From/TryFrom; the single error funnel)
+- `database/catalog.rs` — `5789c9a` (line 54; the Catalog layer: closed `CatalogStore`/`Some Catalog.Store` enum, `Catalog` record, `startRestoring`/restore paths; wiring `pub mod catalog;`)
+- `database/acl_config.rs` — `b127b29` (line 55; ACL config parse/merge; A/B reviews inline)
+- `database/backup/backend.rs` — `3e37497` (line 56; `Data`/`RestoreSource`/`remove_path_forcibly`/`next_unique`/`RemoveOnDrop` seams; A/B reviews inline)
+- `rts/foreign/ownership.rs` — `b19c72e` (line 57; Ownership/ComputedOwnership/DefineOwnership/Slice, UnitIterator, compute/computeDerivedOwnership, 48 unsafe constructs itemized; 2 reviews + fix round)
+- `database/storage.rs` — `311e6af` (line 58; the `Storage`/`DatabaseOps` traits, Mode/CreateSchema/WriteLock, canOpenVersion/currentVersion, withMaterializedFile; the Some DatabaseOps forwarding impls deferred to row 104)
+- `database/acl_ownership.rs` — `2d1dfd4` (line 59; augmentWithACL; `From<FfiError> for DbError` seam)
+- `database/data.rs` — `8ec2141` (line 60; the Data record)
+- `database/backup/mock.rs` — `c1b69d5` (line 61; the in-memory backup backend; Send+Sync carry-forward)
+- `database/batch_location.rs` — `624a030` (line 62; BatchLocation parse/render)
+- `util/io.rs` — `dd316cf` (line 63; read/write/withTempFile/backupOnError; the HandleIO classification row)
+- `catalog/local/files.rs` — `4cb683c` (line 64; the Files backend; reproduces the `.../meta/meta` double-join with a source-defect marker; adds `StoreError::Db`)
+- `catalog/local/memory.rs` — `0fa926e` (line 65; `Mutex<HashMap<Repo,Meta>>` per the STM_GROUP row; closes the CatalogStore enum)
+- `schema/compute_ids.rs` — `ca5a639` (line 66; the schema hasher: Tarjan SCCs, Data.Binary encodings, Text-vs-[Char] cross-unit correction; 1 TODO for old-binary schema-id parity)
+- `storage/db.rs` — `21505c8` (line 67; the RocksDB DatabaseOps layer: 29 externs incl. the shared `database_free`, `DB::from_raw` owns the finalizer, checkpoint bracketOnError + makeAbsolute normalise; 2 A/B reviews 429'd, inline review)
 
-### 4.2 Immediate next-unit orientation (row 51 — NEXT UP)
+### 4.2 Immediate next-unit orientation (row 68 — NEXT UP)
 
-**Row 51**: `glean/hs/Glean/Repo/Text.hs` (72 lines) ->
-`rust/glean-core/src/repo/text.rs`. Orientation only — brief it FRESH
-from the source + inventory per §3.1. Essentials:
-- **Wiring**: a NEW `Repo/` area inside glean-core. Create `src/repo.rs`
-  (Rust-only directory module) declaring `pub mod text;`. glean-core has
-  NO crate-root `lib.rs`/`Cargo.toml` — Step 4 owns that scaffold (§2),
-  so the `pub mod repo;` line is a Step-4 contract, not this unit's;
-  record it in the header and do NOT create lib.rs.
-- **Shape**: 8 pure exports (:10-19) — `showRepo` (:28-29), `showRepoSep`
-  (:31-33), `repoToText` (:36-37), `repoToTextSep` (:39-40), `readRepo`
-  (:42-46), `parseRepo` (:50-51), `parseRepoText` (:55-56),
-  `parseRepoTextSep` (:64-72).
-  Imports `Data.Maybe` (:21), `Data.Text` (:22-23), `Glean.Types` (:25).
-  Outbound depmap edges: NONE (Glean.Types is generated/assumed).
-- **Fidelity traps to probe in the brief**: `showRepoSep`/`repoToText`
-  concatenate name+sep+hash with no escaping; `readRepo sep s` falls back
-  to `Repo (Text.pack s) ""` when the separator is absent (`fromMaybe` of
-  the parse); `parseRepoTextSep` splits at the LAST separator via
-  `Text.breakOnEnd` and yields `Nothing` only for `("", _)`; the source's
-  own examples (`parseRepo "." "a.b.c.d" == Just (Repo "a.b.c" "d")`,
-  `parseRepo "/" "a.b.c.d" == Nothing`) are probe targets; the
-  `Text.dropEnd (Text.length sep) pfx` step for a MULTI-CHAR separator;
-  the empty-separator edge (`Text.breakOnEnd ""`) — probe the source;
-  `Text.pack`/`unpack` -> String boundaries (RULE §1); Repo's generated
-  fields name/hash (glean.thrift:106-109).
-- **Consumers** (edges.tsv :78/:110/:112/:164/:168/:208/:305/:336/:352/
-  :419/:434): client Glean.hs re-exports all 8 (:64-71); client/Repo.hs
-  (:148/:151) and Util/ShellPrint.hs (:212-224) use `showRepo`;
-  Backup/Locator.hs:51 uses `parseRepoTextSep "."`; db/Repo.hs's
-  `databaseSubdir = showRepoSep "/"` (:20-21) is the DB path builder.
-  Re-grep exact call sites in the brief.
-- **Inventory**: precise grep for `Repo/Text.hs` across inventory*.tsv —
-  zero hits (verified at this refresh); no governing row expected
-  (re-grep in the brief).
+**Row 68**: `glean/util/Glean/Impl/MemoryReader.hs` (16 lines) ->
+`rust/glean-util/src/impl/memory_reader.rs`. The source is the
+open-source STUB (`totalMemCapacityKB = return Nothing`); port the stub.
+NEW `Impl/` area: the crate-root line is `pub mod r#impl;` (keyword) and
+`src/impl.rs` declares `pub mod memory_reader;`. Then rows 69 (Disk.hs),
+70 (LMDB), 71 (Memory), 72 (RocksDB). §2.4 has the same orientation; brief
+every unit fresh from the source + inventory per §3.1.
+
 
 ## 5. Operational lessons (behavior-changing; carried forward)
 
