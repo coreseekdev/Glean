@@ -6,12 +6,15 @@
 
 //! RUST-ONLY SCAFFOLDING: this file has NO Haskell counterpart — the
 //! Haskell area has no `Glean.Util` root module (glean/util/Glean/Util/
-//! contains only Some.hs, Vector.hs, …). It exists so lib.rs's
+//! holds the Util/*.hs sources). It exists so lib.rs's
 //! `pub mod util;` resolves to the `src/util/` directory the manifest's
 //! RULE §4 naming generates (glean/util/Glean/Util/Some.hs ->
 //! src/util/some.rs). Owned by the same unit that owns the crate
 //! scaffolding (src/util/some.rs, manifest line 38). Later units append
 //! their own `pub mod` lines here.
+
+// glean/util/Glean/Util/Disk.hs -> src/util/disk.rs (manifest line 69)
+pub mod disk;
 
 // glean/util/Glean/Util/IO.hs -> src/util/io.rs (manifest line 63)
 pub mod io;
@@ -22,10 +25,11 @@ pub mod some;
 pub mod thrift_service;
 pub mod vector;
 
-// Coverage: six `pub mod` lines wiring every glean-util file shipped
-// so far (util/io.rs, util/retry_channel_exception.rs, util/service.rs,
-// util/some.rs, util/thrift_service.rs, util/vector.rs) and nothing
-// else — no re-exports (each submodule is its own facade).
+// Coverage: seven `pub mod` lines wiring every glean-util file shipped
+// so far (util/disk.rs, util/io.rs, util/retry_channel_exception.rs,
+// util/service.rs, util/some.rs, util/thrift_service.rs, util/vector.rs)
+// and nothing else — no re-exports (each submodule is its own facade).
+// Row 69's append (disk.rs) is CONSUMED (past tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos
 // (wiring is complete for all shipped files), no source-defect
