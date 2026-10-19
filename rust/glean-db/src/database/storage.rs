@@ -38,7 +38,7 @@
 // src/database/storage/db.rs): the append is `pub mod db;` at the bottom of
 // this file, binding Storage/DB.hs's port as a child of this file (the
 // source's module nesting is Storage.hs <- Storage/DB.hs). The remaining
-// engine units (row 71 Memory, row 72 RocksDB) will append their own lines.
+// engine unit (row 72 RocksDB) will append its own line.
 //
 // ROW 70'S WIRING CONTRACT — CONSUMED (row 70 shipped
 // src/database/storage/lmdb.rs): the append is `pub mod lmdb;` at the
@@ -46,6 +46,13 @@
 // documented under "ROW 70'S SEAMS" below (with_temp_directory,
 // get_file_size, call_process) because their source modules are outside
 // the manifest and both backends need them.
+//
+// ROW 71'S WIRING CONTRACT — CONSUMED (row 71 shipped
+// src/database/storage/memory.rs): the append is `pub mod memory;` at the
+// bottom of this file. Memory needs no new seam: it reuses
+// with_temp_directory for withSystemTempDirectory (:82). It also needs no
+// extern and owns no raw pointer — the FactSet handle comes from
+// glean-core's shipped fact_set module.
 //
 // INVENTORY (RULE §5):
 //   * inventory.tsv row 19 (line 19, the strict-eager-reads group) names
@@ -166,16 +173,16 @@
 //     this unit.
 //   * crate::database::exception (unit 53) — DbError, plus the additive
 //     From<io::Error> seam.
-//   * OPEN CROSS-UNIT ISSUE (no marker here; owed by the engine units):
-//     commit takes &FactSet, matching the C++ commit's borrow. Row 67 (DB)
-//     has since shipped and needed no choice: every one of its facts
-//     consumers only borrows the handle (storage/db.rs commit/add_ownership).
-//     The Memory engine's image of 'FactSet.append (dbFacts db) facts'
-//     (Storage/Memory.hs:91) is the open case — it needs a mutable fact
-//     store behind interior mutability, and FactSet is deliberately
-//     !Send + !Sync while append takes &mut self (fact_set.rs:415-424,
-//     :879). Row 71 must choose its fact representation or revisit that
-//     posture; the trait surface here does not force either answer.
+//   * CROSS-UNIT ISSUE — RESOLVED at row 71: commit takes &FactSet,
+//     matching the C++ commit's borrow. Row 67 (DB) needed no choice: every
+//     one of its facts consumers only borrows the handle (storage/db.rs
+//     commit/add_ownership). The Memory engine's image of
+//     'FactSet.append (dbFacts db) facts' (Storage/Memory.hs:107) needed a
+//     mutable store behind interior mutability; row 71 chose
+//     Mutex<FactSet> (memory.rs, MemoryDb), which works because append takes
+//     &mut self (fact_set.rs:879). The consequence — Memory and Database are
+//     !Send, not just !Sync — is row 71's TODO(port) and rows 61/177's
+//     decision, not this trait's.
 
 //! The storage-backend trait layer: Storage (engines), DatabaseOps (an
 //! open database), Mode/CreateSchema/WriteLock, the two pure version
@@ -650,6 +657,10 @@ pub mod db;
 // glean/db/Glean/Database/Storage/LMDB.hs -> src/database/storage/lmdb.rs
 // (manifest line 70). Row 70's append.
 pub mod lmdb;
+
+// glean/db/Glean/Database/Storage/Memory.hs -> src/database/storage/memory.rs
+// (manifest line 71). Row 71's append.
+pub mod memory;
 
 // Marker breakdown (closed set — 1 TODO(port), 0 BUG(port), 0 PERF(port),
 // 0 INVENTORY-BUG-CANDIDATE):
