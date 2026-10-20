@@ -25,20 +25,21 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-20 (HEAD `64f6ff8`, after unit 78)
+## 2. STATUS — 2026-10-20 (HEAD `c4cd47f`, after unit 82)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `64f6ff8`, 119 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `c4cd47f`, 125 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
   Push protocol: the user pushes the fork after batch commits on request —
-  local has since advanced 65 commits to `64f6ff8` (`git rev-list --count
-  9251205..HEAD`; the last five: unit 75 `8cff3e4`, unit 76 `c52dbc1`, unit
-  77 `40fa39c`, unit 78 `64f6ff8`, and the records refresh for 72 `8db01c4`;
-  this records refresh makes 66, and the HANDOFF successor-refresh commit
-  that follows makes 67); sync the fork at the next batch gate.
-- **Step 3 counters: 76 unit-commits / 75 distinct target files shipped;
-  310 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+  local has since advanced 71 commits to `c4cd47f` (`git rev-list --count
+  9251205..HEAD`; the last six: unit 79 `ebe1796`, unit 80 `bf5bb09`, the
+  79/80 amendment `c63bf3a`, unit 81 `829909d`, unit 82 `c4cd47f`, and the
+  records refresh for 73-78 `3d2a9d8`; this records refresh makes 72, and
+  the HANDOFF successor-refresh commit that follows makes 73); sync the fork
+  at the next batch gate.
+- **Step 3 counters: 80 unit-commits / 79 distinct target files shipped;
+  306 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
   `1f9a2fa` — the only double. Non-unit fix commits: `9354cbb`
   (dead session's hash.rs derive-attachment repair), `42117fc` (the
@@ -83,7 +84,22 @@ in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
   the Itanium-mangled `#[link_name]` extern, folly_uninit, with_unit_test —
   the parser surface deferred as TODO #1 because THREE of its five imports
   are not in the tree, and inventory row 48's open folly question as TODO
-  #2: `confidence=medium todos=2`).
+  #2: `confidence=medium todos=2`). 79 is `Util/ConfigProvider.hs` (the
+  trait with two associated types, the SomeException/Typeable/Deserializer
+  images, the deferred parser method, and the always-failing Null provider
+  with its two ErrorCall panics); 80 is `Util/Observed.hs` (Mutex-backed
+  value + callback chain, the deferred constructor, `UpdateFn` taking
+  `Option<&A>`); 81 is `Util/ThriftSource.hs` (the record of rank-2 fields
+  re-expressed as two boxed closures with the rank-2 variables lifted to
+  the struct's C parameter and `with_value`'s B, the acquire/cancel bracket
+  as `CancelOnDrop`, the deferred Observed, and the seven divergences); 82
+  is `github/DefaultConfigs.hs` (four constants, the first github straggler
+  wired at the glean-db crate root). `c63bf3a` AMENDED rows 79/80 for row
+  81: the deserializer became an `Arc` (the Haskell value is shared and
+  ThriftSource keeps one in two closures), the subscribe callback became
+  fallible (`IO ()` throws; the acquire path must fall back to the
+  default), and `changing_value_deferred` was added for the source's
+  `changingValue (error ...)` bottom.
 - Steps 0/0b/1/2 records: see DECISIONS.md's dated entries and §7 below.
 - RULEBOOK v0.3 + the §4 assumed-imports paragraph are transcribed and
   current (2026-10-16/17).
@@ -163,8 +179,8 @@ not old commit numbers. Going forward: manifest file lines only.
 | glean-core | 19 | 10 | FFI/RTS/bytecode layer done + repo/text (51) + ownership (57); remaining rows 23/24 blocked, 94/101/109/113/114/139/278/279 |
 | glean-bytecode | 1 | 5 | types.rs only; sys_calls/decode/generate/{instruction,cpp,haskell} remain |
 | glean-typed | 9 | 0 | COMPLETE (lib.rs + Cargo.toml + query-module wiring at lib.rs per the source-shape rule; Angle DSL = unit 44) |
-| glean-util | 10 | 18 | rows 27/38/39/40/42/63/68/69/77/78: vector, some.rs, service, thrift_service, retry_channel_exception, util/io, impl/memory_reader, util/disk, test_runner, init — plus the crate scaffolding |
-| glean-db | 29 | 61 | rows 41/43/45-50 + 52-56/58-62/64-67 + 70-76 (database area: exception/repo/catalog(+local files,memory)/acl_config/acl_ownership/storage(+db,+lmdb,+rocks_db)/backup(+backend,mock)/data/batch_location/schema(+compute_ids)/trace/acl_knobs + the Logger/ area); crate wired per §4.2 (no [dependencies] yet) |
+| glean-util | 13 | 15 | rows 27/38/39/40/42/63/68/69/77/78 + 79 config_provider, 80 observed, 81 thrift_source — plus the crate scaffolding |
+| glean-db | 30 | 60 | rows 41/43/45-50 + 52-56/58-62/64-67 + 70-76 (database area: exception/repo/catalog(+local files,memory)/acl_config/acl_ownership/storage(+db,+lmdb,+rocks_db)/backup(+backend,mock)/data/batch_location/schema(+compute_ids)/trace/acl_knobs + the Logger/ area); crate wired per §4.2 (no [dependencies] yet) |
 | glean-glass | 0 | 88 | not started |
 | glean-client | 0 | 27 | not started |
 | glean-cli | 0 | 26 | not started |
@@ -184,44 +200,26 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 79** `glean/util/Glean/Util/ConfigProvider.hs` (110 lines) →
-`rust/glean-util/src/util/config_provider.rs`. Orientation only — brief it
+Next: **row 83** `glean/util/Glean/Util/ShardManager.hs` (95 lines) →
+`rust/glean-util/src/util/shard_manager.rs`. Orientation only — brief it
 fresh per §3.1; §4.2 has the detail. In short:
-- `ConfigProvider` class (:40): `configOptions` (:43),
-  `defaultConfigOptions` (:46), `withConfigProvider` (:49), the associated
-  `Subscription cfg :: * -> *` (:51), `subscribe` (:55-61), `cancel` (:64),
-  `get` (:67), `isConfigFailure` (:70) — plus
-  `TestConfigProvider.setTestConfig` (:74-75) and the always-failing
-  `NullConfigProvider` (:96-110).
-- Governing inventory row `inventory.tsv:110` (EXC_TAXONOMY, status
-  `unknown`) for `isConfigFailure`, with its own open TODO (which impls,
-  which exception set). Row `inventory.tsv:109` is the Impl/ConfigProvider
-  (row 156) STM_GROUP row — not this file's, but its Mutex/inotify decision
-  shapes `subscribe`.
-- `type family ConfigOptions cfg = opts | opts -> cfg` (:36) is INJECTIVE;
-  a Rust associated type cannot say so. Settle the trait's parameterisation
-  before writing the impls.
-- `configOptions :: Parser (ConfigOptions cfg)` and `withConfigOptions`'s
-  `Glean.Init.withOptions` call (:78-88) hit the SAME parser blocker as row
-  78's TODO #1 (optparse-applicative is not in this tree). Decide explicitly
-  — deferred method + TODO owned by the first program-entry unit, or one
-  `Parser` image in glean-util — and never invent a per-call API (RULE §0).
-- `NullConfigProvider`'s `throwIO $ ErrorCall "NullConfigProvider:
-  subscribe"` / `"…: get"` (:107, :109) are the SPEC: panics with those
-  exact messages (RULE §2 partial fns). `isConfigFailure _ _ = True` (:110).
-- Wiring: `pub mod config_provider;` in `rust/glean-util/src/util.rs` plus
-  its tally. No FFI, no unsafe.
+- The record's three fields, the `BaseOfStack` newtype, `noSharding`, and
+  the three `shardBy*` constructors are mechanical.
+- `SomeShardManager` is the design question: a GADT existential over
+  `shard` with `Ord`/`Show`. Janitor.hs:122 unpacks it and runs generic
+  code; every other consumer passes it through. Choose a closed enum over
+  the in-tree shard types (`NoSharding`, `String`) or an object-safe trait
+  with a string shard key, and record the consumer contract.
+- All three `countersForShardSizes` impls return empty; the field is a
+  shape, not behaviour.
+- Wiring: `pub mod shard_manager;` in `rust/glean-util/src/util.rs`.
 
 - Queue correction (2026-10-20, still in force): the old queue jumped from
   72 to 85, which would have forced row 85 (`Database/Config.hs`) to assume
-  NINE unshipped modules — 73 Trace, 79 ConfigProvider, 80 Observed, 81
-  ThriftSource, 83 ShardManager, 84 Trace, 106/124 loggers, 156
-  Impl/ConfigProvider. Walking manifest order turns those guesses into real
-  APIs before Config lands. Rows 73-78 are now shipped, so the correction
-  has paid off six times.
-- Order from here: 79 (ConfigProvider), 80 (Observed), 81 (ThriftSource),
-  82 (`github/DefaultConfigs` → glean-db/src/default_configs.rs), 83
-  (ShardManager), 84 (Util/Trace), then 85 (Config.hs), 89
+  NINE unshipped modules. Rows 73-82 are now shipped, so the correction has
+  paid off ten times.
+- Order from here: 83 (ShardManager), 84 (`Util/Trace.hs`), then 85
+  (Config.hs — also consumes the row-71 `!Send` TODO), 89
   (`Schema/Types.hs` → `pub mod types;` in schema.rs), 98, 104 (the closed
   Storage enum + the `!Send` decision), 105, 117, 125, 148
   (`Backend/Logging`), 177 (S3.hs). Row 85 also consumes the row-71
@@ -415,6 +413,10 @@ staleness check to fire on files it touched (re-read and continue).
 - `util/disk.rs` — `d96790c` (line 69; the `df --output=<field> -B1 '<path>'` shell-out: `/bin/sh -c`, stderr inherited, byte-exact `readCreateProcess: <cmd> (exit N)` parity, GHC panic messages for `(!! 1)`/`read`; one reproduced shell-quoting defect with an injection repro plus six documented divergences; two follow-up commits applied reviewer A's five and reviewer B's seven findings, incl. the `": failed"` Show suffix settled by `981f518` after a GHC 9.4.7 probe)
 - `test_runner.rs` — `40fa39c` (line 77; ZERO-ITEM decision record for `github/TestRunner.hs`: DECISIONS §4 + RULEBOOK §3, the importer survey, and the sibling contract that row 78 drops `withUnitTestOptions`)
 - `init.rs` — `64f6ff8` (line 78; `folly_init` — current_exe + `--logtostderr` + args, NULL-terminated, argc = 1 + length args — `folly_uninit` (empty), `with_unit_test` (`id`), and the `$(mangle ...)` splice as a manual extern with `#[link_name = "_ZN5folly20unsafe_unscoped_initEPiPPPcb"]`; TWO port todos: the parser surface (withOptions/withOptionsGen/InitOptions/parserInfo/set*) owed to the first program-entry unit because `Util.OptParse`, `Util.Text`, `Util.Control.Exception` and `Mangle.TH` are not in this tree, and inventory row 48's open folly question; `confidence=medium todos=2`; INLINE review per DEV-001)
+- `util/config_provider.rs` — `ebe1796` (line 79; the ConfigProvider interface: trait + `Options`/`Subscription<T>` associated types, `TestConfigProvider`, `NullConfigProvider` with byte-identical ErrorCall panics; `Deserializer`/`ConfigPath`/`ConfigError` images; the parser method deferred (optparse-applicative absent); two port todos; amended by `c63bf3a`)
+- `util/observed.rs` — `bf5bb09` (line 80; Mutex-backed value + callback chain, `changing_value`/`fixed_value`/`do_on_update`/`map`, seven divergences; amended by `c63bf3a` with `changing_value_deferred` and the `Option<&A>` update argument)
+- `util/thrift_source.rs` — `829909d` (line 81; the rank-2 record re-expressed as two boxed closures + the C parameter, `value`/`once`/`changes`/`mutable`/`config*`/`file*`/`parse*`/`generic_config`, `ThriftSourceException`, `CancelOnDrop`, the deferred Observed, seven divergences; inline review corrected ~every cite and added the `Deserializer` re-export; probe green)
+- AMENDMENT `c63bf3a` (units 79/80): Arc deserializer, fallible subscribe callback, deferred Observed — all three driven by row 81's call sites.
 
 **glean-db — 29/90, crate wired**
 - `backend/types.rs` — `1aed2f6` (line 41; the `Backend` class + `BackendError` + `until_done`; shipped with lib.rs/backend.rs/Cargo.toml scaffolding + the first `glean_thrift` assumed-import sketch; 2 reviews + 15 inline cite/contract fixes)
@@ -448,46 +450,55 @@ staleness check to fire on files it touched (re-read and continue).
 - `logger/database.rs` — `6a557f5` (line 74; `GleanDatabaseLogger` as an OBJECT-SAFE trait with one `run_log` method, `GleanDatabaseLog` with 14 constructors (`GleanDatabaseLogAnd(Box<…>, Box<…>)` for the cons cell), `combine`/`Default`, `NullGleanDatabaseLogger`; two divergences: `IO ()` -> `()` panics where Haskell throws, and the Box indirection)
 - `logger/server.rs` — `8cff3e4` (line 75; `GleanServerLog` with 41 constructors (Empty, And, 39 fields incl. `SetTimeElapsed(f64)`, `SetFullScans(Vec<String>)`), the object-safe `GleanServerLogger`, `combine`/`Default`, `NullGleanServerLogger`; same two divergences as row 74; the Rust-only `logger.rs` area module declares both and carries both wiring contracts — glean-db lib.rs gains `pub mod logger;` (coverage four -> five))
 - `database/acl_knobs.rs` — `c52dbc1` (line 76; `acl_calculate_enabled`/`acl_check_enabled`/`acl_local_testing_allowed`, all `-> bool` returning `false`; kept as FNS not consts because the source re-runs an IO action, and the sibling contract records that Config.hs:254-255 store the ACTIONS, so row 85 needs `fn() -> bool`)
+- `default_configs.rs` — `c4cd47f` (line 82; the four OSS defaults, the first github straggler at the glean-db crate root; `SchemaLocation::Dir` assumed spelling; inline review fixed the `glean_util::util::` paths)
 
-### 4.2 Immediate next-unit orientation (row 79 — NEXT UP)
+### 4.2 Immediate next-unit orientation (row 83 — NEXT UP)
 
-**Row 79**: `glean/util/Glean/Util/ConfigProvider.hs` (110 lines) →
-`rust/glean-util/src/util/config_provider.rs`. The `ConfigProvider` class
-with its injective type family, the `TestConfigProvider` subclass, and the
-`NullConfigProvider` that always fails. Governing inventory row:
-`inventory.tsv:110` (EXC_TAXONOMY, status `unknown`) for `isConfigFailure`;
-its own TODO — "inventory the ConfigProvider impls and the exact exception
-set each classifies" — is a brief-time question (the OSS `Impl/ConfigProvider.hs`
-row 156 is the only in-tree impl).
+**Row 83**: `glean/util/Glean/Util/ShardManager.hs` (95 lines) →
+`rust/glean-util/src/util/shard_manager.rs`. Orientation only — brief it
+fresh per §3.1.
 
-Known translation hazards to settle in the brief:
-- `type family ConfigOptions cfg = opts | opts -> cfg` (:36) is an INJECTIVE
-  type family: a Rust associated type cannot express the injectivity, so the
-  trait must be parameterised over BOTH (`ConfigProvider<Cfg, Opts>`) or the
-  opts side must become an associated type with a separate tag. Read the two
-  use sites (`withConfigOptions` :80-87, Config.hs row 85) before choosing.
-- `configOptions :: Parser (ConfigOptions cfg)` (:43) is an
-  optparse-applicative `Parser`, which does NOT exist in this tree — the
-  same blocker as row 78's TODO #1. `withConfigOptions` (:78-88) also calls
-  `Glean.Init.withOptions` (shipped at `64f6ff8` but itself deferred). Expect
-  either a deferred method with a TODO owned by the first program-entry unit,
-  or a `Parser` image defined once in glean-util — decide explicitly, do not
-  invent a per-call API (RULE §0).
-- `Typeable a` + `Deserializer a = ByteString -> Either String a` (:32, :61,
-  :67) — the Rust image is `Deserializer<T> = Box<dyn Fn(&[u8]) -> Result<T,
-  String>>` with `T: 'static` for downcasting; `SomeException`
-  (:70) has no direct image (inventory row 110's taxonomy question).
-- `Subscription cfg :: * -> *` (:51) is a second associated type; the
-  Null instance's `subscribe`/`get` throw `ErrorCall "NullConfigProvider:
-  subscribe"` / `"…: get"` — the panic message is the SPEC (RULE §2 partial
-  fn), not a `Result`.
+- Exports (7): `ShardManager(..)` (a record of three fields:
+  `getAssignedShards :: IO (Maybe [shard])`, `computeShardMapping ::
+  IO (BaseOfStack -> Glean.Repo -> shard)`, `countersForShardSizes ::
+  Map shard Int64 -> [(Text, Int)]`), `SomeShardManager(..)` (a GADT
+  existential: `SomeShardManager :: (Ord shard, Show shard) => ShardManager
+  shard -> SomeShardManager`), `BaseOfStack(..)` (a newtype over
+  `Glean.Repo`), `noSharding` (`ShardManager NoSharding`, where
+  `NoSharding` derives Eq/Ord/Show and is NOT exported), and the three
+  constructors `shardByRepo`, `shardByRepoHash`,
+  `shardByBaseOfStackRepoHash` (all `IO (Maybe [Text]) -> ShardManager
+  Text`).
+- The hard part is `SomeShardManager`. Its six importers use it as an
+  opaque handle: Config.hs:246 wraps `noSharding`, Env.hs:86/:109/:161 pass
+  it through, Types.hs:289 stores it, and Janitor.hs:122 UNPACKS it
+  (`SomeShardManager sm`) and then runs generic code over `shard` using
+  only `Ord` (Set/Map keys), `Show` (the log line "running database
+  janitor with shard assignment <show …>") and the three fields. Decide
+  between (a) a closed enum over the in-tree shard types (`NoSharding` and
+  `String` — RULE §2's existential row prefers closed shapes; the row-136
+  `Box<dyn>` carve-out is logger-only) and (b) an object-safe trait with a
+  string `ShardKey` erasure; record the choice and its consumer contract in
+  the file. Note all three `countersForShardSizes` implementations return
+  empty (`const mempty` / `pure []`), so the field is a shape to preserve,
+  not behaviour to exercise.
+- The three fields are `IO` actions, but every in-tree constructor passes
+  `pure`: `getAssignedShards` is the caller's action verbatim
+  (`shardByRepo` etc. take it as an argument), `computeShardMapping` is
+  `pure (\… -> …)`, `countersForShardSizes` is `const []`. Prefer plain
+  values/closures over `Box<dyn Fn() -> …>` where the `IO` buys nothing —
+  and say why in the header.
+- Assumed import: `glean_thrift::Repo` (Glean.Types, already assumed by
+  rows 47/48/60/73); `repo_name`/`repo_hash` are field reads on it.
+- Wiring: `pub mod shard_manager;` in `rust/glean-util/src/util.rs` plus
+  its tally. No FFI, no unsafe, no inventory row beyond the mechanical
+  mapping.
+- Order after 83: 84 (`Util/Trace.hs`), then 85 (`Database/Config.hs` —
+  consumes the row-71 `!Send` TODO and needs rows 79-84's APIs), 89
+  (`Schema/Types.hs`), 98, 104, 105, 117, 125, 148, 177.
 
-Wiring: `pub mod config_provider;` in `rust/glean-util/src/util.rs` (bump
-its tally). No FFI, no unsafe; the only IO is the Null provider's throws.
-
-Then manifest order 80-84 (Observed, ThriftSource, github/DefaultConfigs,
-ShardManager, Util/Trace) before row 85 Config.hs — see §2.4. §2.4 has the
-same orientation; brief every unit fresh from the source + inventory per §3.1.
+§2.4 has the same orientation; brief every unit fresh from the source +
+inventory per §3.1.
 
 ## 5. Operational lessons (behavior-changing; carried forward)
 
