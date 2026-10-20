@@ -30,6 +30,12 @@ pub mod observed;
 
 pub mod retry_channel_exception;
 pub mod service;
+
+// glean/util/Glean/Util/ShardManager.hs -> src/util/shard_manager.rs
+// (manifest line 83). Row 83's append: ShardManager + the closed
+// SomeShardManager enum + the three strategies.
+pub mod shard_manager;
+
 pub mod some;
 pub mod thrift_service;
 
@@ -40,14 +46,14 @@ pub mod thrift_source;
 
 pub mod vector;
 
-// Coverage: ten `pub mod` lines wiring every glean-util file shipped so
-// far (util/config_provider.rs, util/disk.rs, util/io.rs,
+// Coverage: eleven `pub mod` lines wiring every glean-util file shipped
+// so far (util/config_provider.rs, util/disk.rs, util/io.rs,
 // util/observed.rs, util/retry_channel_exception.rs, util/service.rs,
-// util/some.rs, util/thrift_service.rs, util/thrift_source.rs,
-// util/vector.rs) and nothing else — no re-exports (each submodule is its
-// own facade). Row 69's (disk.rs), row 79's (config_provider.rs), row 80's
-// (observed.rs) and row 81's (thrift_source.rs) appends are CONSUMED (past
-// tense above).
+// util/shard_manager.rs, util/some.rs, util/thrift_service.rs,
+// util/thrift_source.rs, util/vector.rs) and nothing else — no re-exports
+// (each submodule is its own facade). Rows 69's (disk.rs), 79's
+// (config_provider.rs), 80's (observed.rs), 81's (thrift_source.rs) and
+// 83's (shard_manager.rs) appends are CONSUMED (past tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos
 // (wiring is complete for all shipped files), no source-defect
