@@ -104,7 +104,16 @@ pub mod database;
 // 106's own body in their units.
 pub mod logger;
 
-// Coverage: five `pub mod`s (backend, query, write, database, logger) and nothing
+// The github/ stragglers: glean/github/Glean/DefaultConfigs.hs
+// (migration/manifest.tsv line 82) maps to src/default_configs.rs — a
+// github file that the depmap assigns to glean-db, so its `pub mod` hangs
+// off the crate root here rather than inside crate::database. Row 82's
+// append; rows 77/78 (glean-util's TestRunner and Init.hsc) are the other
+// github stragglers and live in glean-util.
+pub mod default_configs;
+
+// Coverage: six `pub mod`s (backend, query, write, database, logger,
+// default_configs) and nothing
 // else — no lib-level re-exports (a `pub use` here would fork the
 // namespace the siblings' `crate::backend::…` / `crate::query::…` /
 // `crate::write::…` / `crate::database::…` paths already presume; each
