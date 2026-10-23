@@ -25,21 +25,20 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-20 (HEAD `c4cd47f`, after unit 82)
+## 2. STATUS — 2026-10-23 (HEAD `c95868e`, after unit 84)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `c4cd47f`, 125 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `c95868e`, 128 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
   Push protocol: the user pushes the fork after batch commits on request —
-  local has since advanced 71 commits to `c4cd47f` (`git rev-list --count
-  9251205..HEAD`; the last six: unit 79 `ebe1796`, unit 80 `bf5bb09`, the
-  79/80 amendment `c63bf3a`, unit 81 `829909d`, unit 82 `c4cd47f`, and the
-  records refresh for 73-78 `3d2a9d8`; this records refresh makes 72, and
-  the HANDOFF successor-refresh commit that follows makes 73); sync the fork
-  at the next batch gate.
-- **Step 3 counters: 80 unit-commits / 79 distinct target files shipped;
-  306 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+  local has since advanced 74 commits to `c95868e` (`git rev-list --count
+  9251205..HEAD`; the last six: unit 81 `829909d`, unit 82 `c4cd47f`, the
+  records refresh for 79-82 `327db09`, unit 83 `e2cda1f`, unit 84
+  `c95868e`, and the records refresh this file rides in); sync the fork at
+  the next batch gate.
+- **Step 3 counters: 81 unit-commits / 80 distinct target files shipped;
+  305 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
   `1f9a2fa` — the only double. Non-unit fix commits: `9354cbb`
   (dead session's hash.rs derive-attachment repair), `42117fc` (the
@@ -200,26 +199,25 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 83** `glean/util/Glean/Util/ShardManager.hs` (95 lines) →
-`rust/glean-util/src/util/shard_manager.rs`. Orientation only — brief it
-fresh per §3.1; §4.2 has the detail. In short:
-- The record's three fields, the `BaseOfStack` newtype, `noSharding`, and
-  the three `shardBy*` constructors are mechanical.
-- `SomeShardManager` is the design question: a GADT existential over
-  `shard` with `Ord`/`Show`. Janitor.hs:122 unpacks it and runs generic
-  code; every other consumer passes it through. Choose a closed enum over
-  the in-tree shard types (`NoSharding`, `String`) or an object-safe trait
-  with a string shard key, and record the consumer contract.
-- All three `countersForShardSizes` impls return empty; the field is a
-  shape, not behaviour.
-- Wiring: `pub mod shard_manager;` in `rust/glean-util/src/util.rs`.
+Next: **row 85** `glean/db/Glean/Database/Config.hs` (590 lines) →
+`rust/glean-db/src/database/config.rs`. Orientation only — brief it fresh
+per §3.1; §4.2 has the detail. In short:
+- It is the integration row: it consumes rows 79-84 (ConfigProvider,
+  Observed, ThriftSource, ShardManager, Trace) plus the Catalog/Storage
+  enums, so the brief must pin their REAL signatures.
+- `DataStore.withStorage` is rank-2 (`forall a. ... -> IO a`), so the Rust
+  image needs a generic method or a boxed callback; the payload is
+  `HashMap StorageName (Some Storage)` + `Some CatalogStore`.
+- `options` is an Options.Applicative parser; the CLI mapping is a
+  divergence to record.
+- Carries the row-71 `!Send` TODO (Memory storage's `Mutex<FactSet>`).
+- Wiring: `pub mod config;` in `rust/glean-db/src/database.rs`.
 
 - Queue correction (2026-10-20, still in force): the old queue jumped from
   72 to 85, which would have forced row 85 (`Database/Config.hs`) to assume
   NINE unshipped modules. Rows 73-82 are now shipped, so the correction has
   paid off ten times.
-- Order from here: 83 (ShardManager), 84 (`Util/Trace.hs`), then 85
-  (Config.hs — also consumes the row-71 `!Send` TODO), 89
+- Order from here: 85 (Config.hs — also consumes the row-71 `!Send` TODO), 89
   (`Schema/Types.hs` → `pub mod types;` in schema.rs), 98, 104 (the closed
   Storage enum + the `!Send` decision), 105, 117, 125, 148
   (`Backend/Logging`), 177 (S3.hs). Row 85 also consumes the row-71
@@ -451,51 +449,45 @@ staleness check to fire on files it touched (re-read and continue).
 - `logger/server.rs` — `8cff3e4` (line 75; `GleanServerLog` with 41 constructors (Empty, And, 39 fields incl. `SetTimeElapsed(f64)`, `SetFullScans(Vec<String>)`), the object-safe `GleanServerLogger`, `combine`/`Default`, `NullGleanServerLogger`; same two divergences as row 74; the Rust-only `logger.rs` area module declares both and carries both wiring contracts — glean-db lib.rs gains `pub mod logger;` (coverage four -> five))
 - `database/acl_knobs.rs` — `c52dbc1` (line 76; `acl_calculate_enabled`/`acl_check_enabled`/`acl_local_testing_allowed`, all `-> bool` returning `false`; kept as FNS not consts because the source re-runs an IO action, and the sibling contract records that Config.hs:254-255 store the ACTIONS, so row 85 needs `fn() -> bool`)
 - `default_configs.rs` — `c4cd47f` (line 82; the four OSS defaults, the first github straggler at the glean-db crate root; `SchemaLocation::Dir` assumed spelling; inline review fixed the `glean_util::util::` paths)
+- `util/shard_manager.rs` — `e2cda1f` (line 83; `ShardManager` record + `BaseOfStack`, `no_sharding`, the three `shard_by*` constructors, and `SomeShardManager` as a closed enum (`NoSharding(ShardManager<NoSharding>)` | `Text(ShardManager<String>)`); `counters_for_shard_sizes` returns empty per source; wiring appended in util.rs)
+- `util/trace.rs` — `c95868e` (line 84; `Listener` as ONE erased `dyn Any` sink + `combine`/`Default`, `listener`/`recorder`/`notify`, and the `Expect` algebra with the `expect` matcher over mpsc + VecDeque; A PARTIAL / B PARTIAL — 4 majors applied: the row-116 divergence flag, the STM rollback window at 4 notify sites, the `A: Clone` bound (with `expect` split into a bound-free impl), and the SIBLING-UNIT CONTRACTS block; 1 refuted (the "row 79/80" cite challenge — both are manifest units); 1 PERF(port), 1 INVENTORY-BUG-CANDIDATE, 0 TODO; rustc -D warnings + rustfmt clean)
 
-### 4.2 Immediate next-unit orientation (row 83 — NEXT UP)
+### 4.2 Immediate next-unit orientation (row 85 — NEXT UP)
 
-**Row 83**: `glean/util/Glean/Util/ShardManager.hs` (95 lines) →
-`rust/glean-util/src/util/shard_manager.rs`. Orientation only — brief it
-fresh per §3.1.
+**Row 85**: `glean/db/Glean/Database/Config.hs` (590 lines) →
+`rust/glean-db/src/database/config.rs`. Orientation only — brief it fresh
+per §3.1.
 
-- Exports (7): `ShardManager(..)` (a record of three fields:
-  `getAssignedShards :: IO (Maybe [shard])`, `computeShardMapping ::
-  IO (BaseOfStack -> Glean.Repo -> shard)`, `countersForShardSizes ::
-  Map shard Int64 -> [(Text, Int)]`), `SomeShardManager(..)` (a GADT
-  existential: `SomeShardManager :: (Ord shard, Show shard) => ShardManager
-  shard -> SomeShardManager`), `BaseOfStack(..)` (a newtype over
-  `Glean.Repo`), `noSharding` (`ShardManager NoSharding`, where
-  `NoSharding` derives Eq/Ord/Show and is NOT exported), and the three
-  constructors `shardByRepo`, `shardByRepoHash`,
-  `shardByBaseOfStackRepoHash` (all `IO (Maybe [Text]) -> ShardManager
-  Text`).
-- The hard part is `SomeShardManager`. Its six importers use it as an
-  opaque handle: Config.hs:246 wraps `noSharding`, Env.hs:86/:109/:161 pass
-  it through, Types.hs:289 stores it, and Janitor.hs:122 UNPACKS it
-  (`SomeShardManager sm`) and then runs generic code over `shard` using
-  only `Ord` (Set/Map keys), `Show` (the log line "running database
-  janitor with shard assignment <show …>") and the three fields. Decide
-  between (a) a closed enum over the in-tree shard types (`NoSharding` and
-  `String` — RULE §2's existential row prefers closed shapes; the row-136
-  `Box<dyn>` carve-out is logger-only) and (b) an object-safe trait with a
-  string `ShardKey` erasure; record the choice and its consumer contract in
-  the file. Note all three `countersForShardSizes` implementations return
-  empty (`const mempty` / `pure []`), so the field is a shape to preserve,
-  not behaviour to exercise.
-- The three fields are `IO` actions, but every in-tree constructor passes
-  `pure`: `getAssignedShards` is the caller's action verbatim
-  (`shardByRepo` etc. take it as an argument), `computeShardMapping` is
-  `pure (\… -> …)`, `countersForShardSizes` is `const []`. Prefer plain
-  values/closures over `Box<dyn Fn() -> …>` where the `IO` buys nothing —
-  and say why in the header.
-- Assumed import: `glean_thrift::Repo` (Glean.Types, already assumed by
-  rows 47/48/60/73); `repo_name`/`repo_hash` are field reads on it.
-- Wiring: `pub mod shard_manager;` in `rust/glean-util/src/util.rs` plus
-  its tally. No FFI, no unsafe, no inventory row beyond the mechanical
-  mapping.
-- Order after 83: 84 (`Util/Trace.hs`), then 85 (`Database/Config.hs` —
-  consumes the row-71 `!Send` TODO and needs rows 79-84's APIs), 89
-  (`Schema/Types.hs`), 98, 104, 105, 117, 125, 148, 177.
+- The integration row: it imports Catalog (54/64/65), Storage
+  (58/70/71/72), Trace (73), Logger.Database (74), Logger.Server (75),
+  AclKnobs (76), DefaultConfigs (82), ConfigProvider (79), Observed (80),
+  ThriftSource (81), ShardManager (83), Trace (84) and Some (38) — so its
+  brief must pin the REAL signatures of rows 79-84 before drafting.
+- `DataStore.withStorage` is rank-2:
+  `forall a. ServerConfig.Config -> ((HashMap StorageName (Some Storage),
+  Some Catalog.Store) -> IO a) -> IO a`. The Rust image is a generic
+  method or a boxed `dyn Fn` callback; the payload is `Some` (row 38) over
+  the closed `Storage`/`CatalogStore` enums, keyed by `StorageName`.
+- 25 exports in four groups: the `DataStore(..)` record plus
+  `fileDataStore`/`tmpDataStore`/`memoryDataStore` and the
+  `rocksdbName`/`lmdbName` constants; `Config(..)`/`DebugFlags(..)`/
+  `options` (an Options.Applicative parser — the CLI mapping is a
+  divergence to record); the schema pipeline (`SchemaLocation`,
+  `showSchemaLocation`, `schemaLocation`, `schemaLocationOption`,
+  `processSchema`, `processSchemaCached`, `processOneSchema`,
+  `SchemaIndex`, `schemaForSchemaId`, `ProcessedSchema`,
+  `catSchemaFiles`, `schemaLocationToSource`, `parseSchemaDir`,
+  `parseSchemaIndex`, `loadSchemaIndex`); and four test-only helpers.
+- Carries the row-71 `!Send` TODO: Memory storage holds
+  `Mutex<FactSet>` behind the `Storage` trait, so the decision (keep the
+  map `!Send` and confine it to one thread, or make it `Send` by
+  construction) lands here — copy the TODO's text into the brief.
+- Listener sites: Config.hs:180 (`cfgListener`), :245 and :560
+  (`mempty` → `Listener::default()`; row 84's SIBLING-UNIT CONTRACTS).
+- Wiring: `pub mod config;` in `rust/glean-db/src/database.rs`.
+- Order after 85: 89 (`Schema/Types.hs` → `pub mod types;` in schema.rs),
+  98, 104 (the closed Storage enum + the `!Send` decision), 105, 117, 125,
+  148, 177.
 
 §2.4 has the same orientation; brief every unit fresh from the source +
 inventory per §3.1.
