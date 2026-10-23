@@ -25,20 +25,20 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-23 (HEAD `c95868e`, after unit 84)
+## 2. STATUS — 2026-10-23 (HEAD `59c1d9e`, after unit 85)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `c95868e`, 128 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `59c1d9e`, 130 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
   Push protocol: the user pushes the fork after batch commits on request —
-  local has since advanced 74 commits to `c95868e` (`git rev-list --count
-  9251205..HEAD`; the last six: unit 81 `829909d`, unit 82 `c4cd47f`, the
-  records refresh for 79-82 `327db09`, unit 83 `e2cda1f`, unit 84
-  `c95868e`, and the records refresh this file rides in); sync the fork at
-  the next batch gate.
-- **Step 3 counters: 81 unit-commits / 80 distinct target files shipped;
-  305 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+  local has since advanced 76 commits to `59c1d9e` (`git rev-list --count
+  9251205..HEAD`; the last six: unit 82 `c4cd47f`, the records refresh for
+  79-82 `327db09`, unit 83 `e2cda1f`, unit 84 `c95868e`, its records
+  refresh `10b5999`, and unit 85 `59c1d9e`); sync the fork at the next
+  batch gate.
+- **Step 3 counters: 82 unit-commits / 81 distinct target files shipped;
+  304 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
   `1f9a2fa` — the only double. Non-unit fix commits: `9354cbb`
   (dead session's hash.rs derive-attachment repair), `42117fc` (the
@@ -199,29 +199,26 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 85** `glean/db/Glean/Database/Config.hs` (590 lines) →
-`rust/glean-db/src/database/config.rs`. Orientation only — brief it fresh
-per §3.1; §4.2 has the detail. In short:
-- It is the integration row: it consumes rows 79-84 (ConfigProvider,
-  Observed, ThriftSource, ShardManager, Trace) plus the Catalog/Storage
-  enums, so the brief must pin their REAL signatures.
-- `DataStore.withStorage` is rank-2 (`forall a. ... -> IO a`), so the Rust
-  image needs a generic method or a boxed callback; the payload is
-  `HashMap StorageName (Some Storage)` + `Some CatalogStore`.
-- `options` is an Options.Applicative parser; the CLI mapping is a
-  divergence to record.
-- Carries the row-71 `!Send` TODO (Memory storage's `Mutex<FactSet>`).
-- Wiring: `pub mod config;` in `rust/glean-db/src/database.rs`.
+Next: **row 86** `glean/db/Glean/Query/Codegen/QueryRegs.hs` (142 lines) →
+`rust/glean-db/src/query/codegen/query_regs.rs`. Orientation only — brief it
+fresh per §3.1; §4.2 has the detail. In short:
+- One export: `QueryRegs(..)`, a record of bytecode-emitter functions over
+  `Register 'Word` / `Register 'DataPtr` returning `Code ()`.
+- The `Register` GADT's width phantom is the unit's real question; pin
+  glean-bytecode's shipped image before drafting.
+- Wiring: `pub mod query_regs;` plus the `query/codegen` module chain if it
+  does not exist yet.
 
 - Queue correction (2026-10-20, still in force): the old queue jumped from
   72 to 85, which would have forced row 85 (`Database/Config.hs`) to assume
   NINE unshipped modules. Rows 73-82 are now shipped, so the correction has
   paid off ten times.
-- Order from here: 85 (Config.hs — also consumes the row-71 `!Send` TODO), 89
-  (`Schema/Types.hs` → `pub mod types;` in schema.rs), 98, 104 (the closed
-  Storage enum + the `!Send` decision), 105, 117, 125, 148
-  (`Backend/Logging`), 177 (S3.hs). Row 85 also consumes the row-71
-  `!Send` TODO; keep that in its brief.
+- Order from here: 86 (`Query/Codegen/QueryRegs.hs`), 87
+  (`Codegen/Types.hs`), 88 (`Typecheck/Types.hs`), 89 (`Schema/Types.hs` →
+  `pub mod types;` in schema.rs), 98, 104 (the closed Storage enum + the
+  `!Send` decision), 105, 117, 125, 148 (`Backend/Logging`), 177 (S3.hs).
+  Rows 86-88 were silently skipped by the old order list; the queue command
+  below is authoritative.
 
 Working style: 1–2 units per session, then a records-refresh commit.
 
@@ -450,44 +447,34 @@ staleness check to fire on files it touched (re-read and continue).
 - `database/acl_knobs.rs` — `c52dbc1` (line 76; `acl_calculate_enabled`/`acl_check_enabled`/`acl_local_testing_allowed`, all `-> bool` returning `false`; kept as FNS not consts because the source re-runs an IO action, and the sibling contract records that Config.hs:254-255 store the ACTIONS, so row 85 needs `fn() -> bool`)
 - `default_configs.rs` — `c4cd47f` (line 82; the four OSS defaults, the first github straggler at the glean-db crate root; `SchemaLocation::Dir` assumed spelling; inline review fixed the `glean_util::util::` paths)
 - `util/shard_manager.rs` — `e2cda1f` (line 83; `ShardManager` record + `BaseOfStack`, `no_sharding`, the three `shard_by*` constructors, and `SomeShardManager` as a closed enum (`NoSharding(ShardManager<NoSharding>)` | `Text(ShardManager<String>)`); `counters_for_shard_sizes` returns empty per source; wiring appended in util.rs)
+- `database/config.rs` — `59c1d9e` (line 85; the integration row: DataStore + file/tmp/memory constructors with the rank-2 withStorage as a generic method over an erased scoped callback, Config<C> over ConfigProvider (20 fields, Default + field-wise Semigroup + Show), DebugFlags, the whole schema pipeline (SchemaIndex/ProcessedSchema, ThriftSource sources, checkVersions, parseSchemaDir/Index, catSchemaFiles, schemaLocation, loadSchemaIndex, processSchema*) and a hand-written std-only options parser (12 flags); A PARTIAL / B PASS WITH MINOR — 3 majors applied (E0382 use-after-move in file_data_store, the SchemaLocation two-owner conflict now a TODO, the false "!Send resolved" claim), plus optparse flag-combination parity, constructor-shaped SchemaError Display, doesFileExist-equivalent directory walk, cite corrections (row 132 for Env.hs, four off-by-one Default cites) and the stale Tracer note in trace.rs; 1 refuted (row 125's consts point is satisfied by SCHEMA_SOURCE_DIR); 7 TODO(port), 0 BUG/PERF/SAFETY; rustc probe shows only unresolved-crate errors, rustfmt clean)
 - `util/trace.rs` — `c95868e` (line 84; `Listener` as ONE erased `dyn Any` sink + `combine`/`Default`, `listener`/`recorder`/`notify`, and the `Expect` algebra with the `expect` matcher over mpsc + VecDeque; A PARTIAL / B PARTIAL — 4 majors applied: the row-116 divergence flag, the STM rollback window at 4 notify sites, the `A: Clone` bound (with `expect` split into a bound-free impl), and the SIBLING-UNIT CONTRACTS block; 1 refuted (the "row 79/80" cite challenge — both are manifest units); 1 PERF(port), 1 INVENTORY-BUG-CANDIDATE, 0 TODO; rustc -D warnings + rustfmt clean)
 
-### 4.2 Immediate next-unit orientation (row 85 — NEXT UP)
+### 4.2 Immediate next-unit orientation (row 86 — NEXT UP)
 
-**Row 85**: `glean/db/Glean/Database/Config.hs` (590 lines) →
-`rust/glean-db/src/database/config.rs`. Orientation only — brief it fresh
-per §3.1.
+**Row 86**: `glean/db/Glean/Query/Codegen/QueryRegs.hs` (142 lines) →
+`rust/glean-db/src/query/codegen/query_regs.rs`. Orientation only — brief
+it fresh per §3.1.
 
-- The integration row: it imports Catalog (54/64/65), Storage
-  (58/70/71/72), Trace (73), Logger.Database (74), Logger.Server (75),
-  AclKnobs (76), DefaultConfigs (82), ConfigProvider (79), Observed (80),
-  ThriftSource (81), ShardManager (83), Trace (84) and Some (38) — so its
-  brief must pin the REAL signatures of rows 79-84 before drafting.
-- `DataStore.withStorage` is rank-2:
-  `forall a. ServerConfig.Config -> ((HashMap StorageName (Some Storage),
-  Some Catalog.Store) -> IO a) -> IO a`. The Rust image is a generic
-  method or a boxed `dyn Fn` callback; the payload is `Some` (row 38) over
-  the closed `Storage`/`CatalogStore` enums, keyed by `StorageName`.
-- 25 exports in four groups: the `DataStore(..)` record plus
-  `fileDataStore`/`tmpDataStore`/`memoryDataStore` and the
-  `rocksdbName`/`lmdbName` constants; `Config(..)`/`DebugFlags(..)`/
-  `options` (an Options.Applicative parser — the CLI mapping is a
-  divergence to record); the schema pipeline (`SchemaLocation`,
-  `showSchemaLocation`, `schemaLocation`, `schemaLocationOption`,
-  `processSchema`, `processSchemaCached`, `processOneSchema`,
-  `SchemaIndex`, `schemaForSchemaId`, `ProcessedSchema`,
-  `catSchemaFiles`, `schemaLocationToSource`, `parseSchemaDir`,
-  `parseSchemaIndex`, `loadSchemaIndex`); and four test-only helpers.
-- Carries the row-71 `!Send` TODO: Memory storage holds
-  `Mutex<FactSet>` behind the `Storage` trait, so the decision (keep the
-  map `!Send` and confine it to one thread, or make it `Send` by
-  construction) lands here — copy the TODO's text into the brief.
-- Listener sites: Config.hs:180 (`cfgListener`), :245 and :560
-  (`mempty` → `Listener::default()`; row 84's SIBLING-UNIT CONTRACTS).
-- Wiring: `pub mod config;` in `rust/glean-db/src/database.rs`.
-- Order after 85: 89 (`Schema/Types.hs` → `pub mod types;` in schema.rs),
-  98, 104 (the closed Storage enum + the `!Send` decision), 105, 117, 125,
-  148, 177.
+- One export: `QueryRegs(..)`, a record of bytecode-emitter functions
+  (`seek`, `seekWithinSection`, `currentSeek`, ...), each taking
+  `Register 'Word` / `Register 'DataPtr` arguments and returning `Code ()`.
+- The `Register` GADT (Glean.Bytecode.Types) is the real question: Rust
+  cannot carry the `'Word`/`'DataPtr` phantom the way the GADT does. Pin
+  how glean-bytecode's shipped `Register` image encodes the width before
+  drafting, and preserve every register's width (RULE §2 FFI/bytecode rows;
+  A1's bytecode-identity gate applies to label emission, not to this
+  record).
+- `Glean.RTS.Bytecode.Code` is another area whose row may still be ahead
+  of this one — check the queue before assuming its type exists.
+- Wiring: `pub mod query_regs;` in a new
+  `rust/glean-db/src/query/codegen.rs`, plus `pub mod codegen;` in
+  `rust/glean-db/src/query.rs` if the chain does not exist yet (verify
+  against `rust/glean-db/src/` first — `query/` currently holds
+  `thrift.rs`).
+- Order after 86: 87 (`Codegen/Types.hs`), 88 (`Typecheck/Types.hs`),
+  89 (`Schema/Types.hs` → `pub mod types;` in schema.rs), 98, 104 (the
+  closed Storage enum + the `!Send` decision), 105, 117, 125, 148, 177.
 
 §2.4 has the same orientation; brief every unit fresh from the source +
 inventory per §3.1.
