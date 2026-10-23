@@ -29,3 +29,4 @@ step	timestamp	wall_clock_min	tokens	subagents	model
 2026-10-20-auto,units79-82	2026-10-20T05:40+0800	300	60000000	2	deepseek-v4.1-flash
 2026-10-23-auto,units84	2026-10-23T17:40+0800	25	5000000	2	deepseek-v4.1-flash
 2026-10-23-auto,units85	2026-10-23T18:38+0800	60	20000000	3	deepseek-v4.1-flash
+2026-10-24-auto,unit86	2026-10-24T00:15+0800	40	5000000	3	glm-5.3
