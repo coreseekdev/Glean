@@ -97,10 +97,12 @@
 // SIBLING-UNIT CONTRACTS
 // ---------------------------------------------------------------------------
 //
-//   * util/trace.rs (row 84, future): `Tracer<A>` is generic over the
-//     message, so it needs nothing from this file beyond the type existing.
-//   * database/config.rs (row 85) and database/types.rs (row 104): the
-//     `cfg_tracer`/`env_tracer` fields are `Tracer<GleanTrace>`.
+//   * `Tracer<A>` has NO manifest unit: it is Control.Trace.Core's type,
+//     external hsthrift. Row 84 (Util/Trace.hs) shipped WITHOUT it — that
+//     file is Glean.Util.Trace's Listener. Its home is decided at Step 4;
+//     until then config.rs owns the sketch, and database/config.rs (row 85)
+//     plus database/types.rs (row 104) use it for the
+//     `cfg_tracer`/`env_tracer` fields as `Tracer<GleanTrace>`.
 //   * database/backup.rs (row 125), database/write/batch.rs (row 112) and
 //     database/writes.rs (row 116) construct the variants listed under
 //     DEPENDENCY TRUTH.
