@@ -25,19 +25,20 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-24 (HEAD `786960e`, after unit 87)
+## 2. STATUS — 2026-10-24 (HEAD `f0d9a38`, after unit 88)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `786960e`, 133 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `f0d9a38`, 135 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
   Push protocol: the user pushes the fork after batch commits on request —
-  local has since advanced 79 commits to `786960e` (`git rev-list --count
-  9251205..HEAD`; the last four: unit 86 `6ae627f`, its records refresh
-  `68d2265`, unit 87 `786960e`, its records refresh); sync the fork at the
-  next batch gate.
-- **Step 3 counters: 84 unit-commits / 83 distinct target files shipped;
-  302 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+  local has since advanced 81 commits to `f0d9a38` (`git rev-list --count
+  9251205..HEAD`; the last five: unit 87 `786960e`, its records refresh
+  `b136bdf`, unit 88 `78032cc` (amended `f0d9a38` for a shell-mangled
+  message — content identical), and unit 87's records refresh
+  `b136bdf`); sync the fork at the next batch gate.
+- **Step 3 counters: 85 unit-commits / 84 distinct target files shipped;
+  301 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
   `1f9a2fa` — the only double. Non-unit fix commits: `9354cbb`
   (dead session's hash.rs derive-attachment repair), `42117fc` (the
@@ -178,7 +179,7 @@ not old commit numbers. Going forward: manifest file lines only.
 | glean-bytecode | 1 | 5 | types.rs only; sys_calls/decode/generate/{instruction,cpp,haskell} remain |
 | glean-typed | 9 | 0 | COMPLETE (lib.rs + Cargo.toml + query-module wiring at lib.rs per the source-shape rule; Angle DSL = unit 44) |
 | glean-util | 13 | 15 | rows 27/38/39/40/42/63/68/69/77/78 + 79 config_provider, 80 observed, 81 thrift_source — plus the crate scaffolding |
-| glean-db | 32 | 58 | rows 41/43/45-50 + 52-56/58-62/64-67 + 70-76 + 86-87 (database area: exception/repo/catalog(+local files,memory)/acl_config/acl_ownership/storage(+db,+lmdb,+rocks_db)/backup(+backend,mock)/data/batch_location/schema(+compute_ids)/trace/acl_knobs + the Logger/ area + query/codegen begun: query_regs + types (the codegen vocabulary) + the codegen.rs anchor for row 110); crate wired per §4.2 (comment-only anticipated deps incl. glean-bytecode) |
+| glean-db | 33 | 57 | rows 41/43/45-50 + 52-56/58-62/64-67 + 70-76 + 86-88 (database area: exception/repo/catalog(+local files,memory)/acl_config/acl_ownership/storage(+db,+lmdb,+rocks_db)/backup(+backend,mock)/data/batch_location/schema(+compute_ids)/trace/acl_knobs + the Logger/ area + query/codegen + query/typecheck begun: query_regs + codegen/types + typecheck/types (+ the row-92 typecheck.rs anchor); the TcPred existential collapsed to concrete SrcSpan per DECISIONS 2026-10-24); crate wired per §4.2 (comment-only anticipated deps incl. glean-bytecode) |
 | glean-glass | 0 | 88 | not started |
 | glean-client | 0 | 27 | not started |
 | glean-cli | 0 | 26 | not started |
@@ -198,28 +199,25 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 88** `glean/db/Glean/Query/Typecheck/Types.hs` →
-`rust/glean-db/src/query/typecheck/types.rs`. Orientation only — brief it
-fresh per §3.1. In short:
-- Rows 86-87 SHIPPED: query_regs.rs (the 22-field QueryRegs record) and
-  types.rs (the codegen vocabulary — full-tree bimap/bifold_map, the
-  free-fn is_wild after the E0117 ruling, bitraverse deferred to row 93).
+Next: **row 89** `glean/db/Glean/Database/Schema/Types.hs` →
+`rust/glean-db/src/database/schema/types.rs` (`pub mod types;` in the
+existing schema.rs). Orientation only — brief it fresh per §3.1. In short:
+- Rows 86-88 SHIPPED: query_regs.rs + codegen/types.rs + typecheck/
+  types.rs. Unit 88's TcPred ruling (DECISIONS 2026-10-24) collapses the
+  Some IsSrcSpan existential to concrete SrcSpan — rows 90/91/92 inherit.
 - ROW 110 NOTE (unchanged): codegen.rs's TODO(port) for Codegen.hs's
   body — row 110's brief MUST delete that marker and consume
-  query_regs.rs's DESIGN block (syscall handles are `Register ('Fun
-  '[…])`).
-- Wiring for 88: the Glean.Query.Typecheck area needs its own wiring
-  (source-shape sibling — `pub mod typecheck;` at lib.rs + a typecheck.rs
-  directory file, following the query.rs pattern).
-- Unit 87 lesson for the queue: coordinator "pinned facts" about Rust
-  coherence (orphan impls) need a probe BEFORE the brief asserts them —
-  the implementer's E0117 disproved one.
+  query_regs.rs's DESIGN block. ROW 92 NOTE: typecheck.rs's TODO(port)
+  for Typecheck.hs's body — same obligation.
+- Unit 87/88 lesson for the queue: coordinator "pinned facts" about Rust
+  coherence (orphan impls) and monad semantics need a probe BEFORE the
+  brief asserts them — E0117 disproved one; check the others.
 
 - Queue correction (2026-10-20, still in force): the old queue jumped from
   72 to 85, which would have forced row 85 (`Database/Config.hs`) to assume
   NINE unshipped modules. Rows 73-82 are now shipped, so the correction has
   paid off ten times.
-- Order from here: 88 (`Typecheck/Types.hs`), 89 (`Schema/Types.hs` →
+- Order from here: 89 (`Schema/Types.hs` →
   `pub mod types;` in schema.rs), 98, 104 (the closed Storage enum + the
   `!Send` decision), 105, 117, 125, 148 (`Backend/Logging`), 177 (S3.hs).
   Rows 86-88 were silently skipped by the old order list; the queue command

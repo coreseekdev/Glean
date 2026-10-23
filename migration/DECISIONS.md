@@ -125,6 +125,25 @@ Applied by the orchestrator under RULEBOOK v0.3's existing rules, no new policy 
   to name glean-typed's decoder units, or pre-build safe pop wrappers in
   glean-core at Step-4 consolidation).
 
+## 2026-10-24 — TcPred existential refinement (row 88; refines the 2026-10-07 Some ruling)
+
+- **`TcPred = (PidRef, Some IsSrcSpan)` collapses to CONCRETE SrcSpan**
+  (row 88, commit f0d9a38, coordinator-verified evidence chain): the
+  typechecker's inhabitant set at this site is the singleton {SrcSpan} —
+  both production callers instantiate at SrcSpan (UserQuery.hs:969/980
+  via Parser.y:422 + Angle/Types.hs:645; Schema.hs:881 via
+  Database/Schema/Types.hs:168) and the tree has exactly two IsSrcSpan
+  impls (SrcSpan; the private SpanAngleDSL never reaches the site — the
+  programmatic DSL renders to text and the server re-parses,
+  backend-api Internal.hs:81-82; even the test caller goes through
+  SrcSpan). Unit-38's mandates honored (span tracking NOT dropped — full
+  SrcSpan carried). REOPEN condition on file in query/typecheck/types.rs
+  with the fieldless-variant image pre-analyzed for rows 90/91/92
+  (SpanAngleDSL is a private payload-less singleton; a fieldless enum
+  variant would be its exact image without naming the private type).
+  Rows 90/91/92 consume this ruling; the reopen TODO in some.rs:126-129
+  remains the survey-refinement hook.
+
 ## 2026-10-18 — Unit-42 surface amendment (coordinator ruling at unit 43)
 
 - **retry_channel_exceptions signature amended post-ship (42117fc)**:
