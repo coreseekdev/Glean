@@ -54,6 +54,9 @@ edition = "2021"
 #   (angle/hash.rs `fingerprint_data`/`Fingerprint`), as inventory.tsv:10
 #   mandates ("reuse the SAME dedicated MD5 fingerprint module as
 #   Hash.hs (one shared module, byte-exact)"). The edge is
+#   fingerprint-only ORIGINALLY — row 87 (query/codegen/types.rs) is
+#   now the first general module-level consumption (edges 550/551:
+#   Angle/Types.hs + Display.hs), so the bullet below stands; the old
 #   fingerprint-only: glean-db must not acquire a general glean-angle
 #   dependency without a row.
 #

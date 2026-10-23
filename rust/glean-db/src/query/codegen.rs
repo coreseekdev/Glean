@@ -46,9 +46,20 @@
 
 pub mod query_regs;
 
-// Coverage: one `pub mod` line (the wiring this file exists for) and
-// nothing else — no re-exports; query_regs is its own facade. The
-// Codegen.hs port itself has NOT started here.
+// Row 87 (glean/db/Glean/Query/Codegen/Types.hs ->
+// query/codegen/types.rs, manifest.tsv line 87): the codegen area's type
+// vocabulary — the flattened-query AST (QueryWithInfo/CgQuery/
+// CgStatement_/Generator_/Match/Var/Typed/TransformAndBind) plus its
+// Display instances — wired as a sibling module of query_regs. The
+// `pub mod` lines remain this file's only content beyond the row-110
+// ownership notes; each submodule is its own facade (see types.rs's
+// header for its own INVENTORY/DEPENDENCY-TRUTH/CONTRACTS blocks).
+pub mod types;
+
+// Coverage: two `pub mod` lines (query_regs — row 86's wiring; types —
+// row 87's wiring) and the ownership notes; no re-exports. The
+// Codegen.hs port itself has NOT started here (row 110's obligation,
+// unchanged by row 87).
 //
 // Marker breakdown (closed set — one TODO(port), zero of every other
 // class): the single port todo below is the row-110 body, named with its
@@ -56,6 +67,7 @@ pub mod query_regs;
 // performance deferrals, no inventory divergence (no row can govern a
 // file whose Haskell counterpart is Codegen.hs's own — its bytecode-
 // adjacent rows, inventory.tsv:37, constrain row 110's mdo/label OUTPUT,
-// not this scaffolding).
+// not this scaffolding). Row 87's types.rs carries its own marker
+// breakdown and trailer.
 //
 // PORT STATUS: confidence=high todos=1
