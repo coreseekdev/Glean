@@ -44,16 +44,22 @@ pub mod thrift_service;
 // three constructor families and with_value/load/load_default.
 pub mod thrift_source;
 
+// glean/util/Glean/Util/Trace.hs -> src/util/trace.rs (manifest line 84).
+// Row 84's append: Listener (+ combine/Default), recorder/notify, and the
+// Expect algebra with its matcher.
+pub mod trace;
+
 pub mod vector;
 
-// Coverage: eleven `pub mod` lines wiring every glean-util file shipped
+// Coverage: twelve `pub mod` lines wiring every glean-util file shipped
 // so far (util/config_provider.rs, util/disk.rs, util/io.rs,
 // util/observed.rs, util/retry_channel_exception.rs, util/service.rs,
 // util/shard_manager.rs, util/some.rs, util/thrift_service.rs,
-// util/thrift_source.rs, util/vector.rs) and nothing else — no re-exports
-// (each submodule is its own facade). Rows 69's (disk.rs), 79's
-// (config_provider.rs), 80's (observed.rs), 81's (thrift_source.rs) and
-// 83's (shard_manager.rs) appends are CONSUMED (past tense above).
+// util/thrift_source.rs, util/trace.rs, util/vector.rs) and nothing else —
+// no re-exports (each submodule is its own facade). Rows 69's (disk.rs),
+// 79's (config_provider.rs), 80's (observed.rs), 81's (thrift_source.rs),
+// 83's (shard_manager.rs) and 84's (trace.rs) appends are CONSUMED (past
+// tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos
 // (wiring is complete for all shipped files), no source-defect
