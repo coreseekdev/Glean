@@ -123,7 +123,10 @@ pub mod default_configs;
 // Marker breakdown (closed set — zero of every class): no port todos
 // (the crate-root wiring is complete — row 47's `pub mod thrift;` inside
 // src/query.rs has since SHIPPED, and row 49's `pub mod catalog;` inside
-// src/database.rs has since SHIPPED; the one remaining CONTRACTED area
+// src/database.rs has since SHIPPED; row 88 has since SHIPPED the
+// Glean.Query.Typecheck area's `pub mod typecheck;` inside src/query.rs
+// (anchor src/query/typecheck.rs — row 92's target, created early
+// following the row-86/codegen.rs precedent); the one remaining CONTRACTED area
 // line so far is row 115's `pub mod json;` inside src/write.rs, named in
 // prose here and in its file; the `logger` line named in the doc header
 // above has since SHIPPED (row 74), and the `haxl`/github-straggler lines

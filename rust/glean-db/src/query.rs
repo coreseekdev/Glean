@@ -37,28 +37,50 @@
 //! contribution, its body is row 110's obligation (ownership handoff in
 //! codegen.rs's header). `crate::query::codegen::query_regs` is now
 //! importable; the codegen AREA grows downward from this line.
+//!
+//! ROW 88'S WIRING CONTRACT — CONSUMED (row 88 shipped): when
+//! src/query/typecheck/types.rs landed (row 88,
+//! Glean.Query.Typecheck.Types — the Glean.Query.Typecheck AREA's first
+//! file), its author appended `pub mod typecheck;` below and created
+//! src/query/typecheck.rs as the Rust-2018 directory-module anchor for
+//! the area's directory-level manifest paths (src/query/typecheck/
+//! types.rs — manifest.tsv line 88; src/query/typecheck/monad.rs — line
+//! 90; src/query/typecheck/unify.rs — line 91). typecheck.rs is manifest
+//! row 92's target (Glean.Query.Typecheck.hs — NOT YET SHIPPED); its
+//! `pub mod types;` anchor line and scaffolding header are row 88's
+//! contribution, its body is row 92's obligation (ownership handoff in
+//! typecheck.rs's header); rows 90/91 append their own `pub mod` lines
+//! there when they land. `crate::query::typecheck::types` is now
+//! importable; the typecheck AREA grows downward from this line.
 
 pub mod thrift;
 
 pub mod codegen;
 
-// Coverage: two `pub mod` lines wiring the area's shipped files and
+pub mod typecheck;
+
+// Coverage: three `pub mod` lines wiring the area's shipped files and
 // nothing else — no re-exports (each submodule is its own facade):
 // query/thrift.rs (row 47 — declares `pub mod internal;` and so also
-// wires row 45's query/thrift/internal.rs) and query/codegen.rs (row
+// wires row 45's query/thrift/internal.rs), query/codegen.rs (row
 // 110's file, created early as row 86's directory anchor — declares `pub
-// mod query_regs;` for row 86's query/codegen/query_regs.rs). The
-// row-47 append promised in prose above has shipped; the row-86 append
-// is the `pub mod codegen;` line above. Nothing remains deferred here.
+// mod query_regs;` for row 86's query/codegen/query_regs.rs), and
+// query/typecheck.rs (row 92's file, created early as row 88's directory
+// anchor — declares `pub mod types;` for row 88's
+// query/typecheck/types.rs). The row-47 append promised in prose above
+// has shipped; the row-86 and row-88 appends are the `pub mod codegen;`
+// and `pub mod typecheck;` lines above. Nothing remains deferred here.
 //
 // Marker breakdown (closed set — zero of every class): no port todos (the
-// row-47 and row-86 appends are done — they are the two `pub mod` lines
-// above; codegen.rs's own row-110 body todo lives in codegen.rs, not
-// here), no source-defect reproductions (no Haskell source), no
-// performance deferrals (the declarations are not runtime code), no
-// inventory divergence (no inventory row can govern a file with no
-// Haskell counterpart — grep "Query/Thrift" across migration/inventory*.tsv:
-// every hit is the Internal.hs:98,106 evidence inside inventory.tsv:56
-// and its inventory.stm.tsv:35 twin, which govern row 45's caches).
+// row-47, row-86 and row-88 appends are done — they are the three `pub
+// mod` lines above; codegen.rs's own row-110 body todo lives in
+// codegen.rs, not here; typecheck.rs's own row-92 body todo lives in
+// typecheck.rs, not here), no source-defect reproductions (no Haskell
+// source), no performance deferrals (the declarations are not runtime
+// code), no inventory divergence (no inventory row can govern a file with
+// no Haskell counterpart — grep "Query/Thrift" across
+// migration/inventory*.tsv: every hit is the Internal.hs:98,106 evidence
+// inside inventory.tsv:56 and its inventory.stm.tsv:35 twin, which govern
+// row 45's caches).
 //
 // PORT STATUS: confidence=high todos=0
