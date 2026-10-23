@@ -43,6 +43,11 @@ edition = "2021"
 # * glean-util — shipped; `DbShard` (thrift_service.rs:433) and the
 #   `Glean.Util.Some` decision record this crate's `SomeBackend` cites.
 #   Outbound edges: depmap/edges.tsv:19-20 (Some.hs, ThriftService.hs).
+# * glean-bytecode — row 86's own outbound edge (depmap/edges.tsv row
+#   548, QueryRegs.hs -> Glean/Bytecode/Types.hs; the first live use is
+#   query/codegen/query_regs.rs's `use glean_bytecode::bytecode::types`).
+#   Recorded here rather than as a real entry, same as below (Step 4
+#   owns the workspace scaffold).
 # * glean-angle — NEW EDGE (not in the Haskell depmap: Backend/Types.hs
 #   imports GHC.Fingerprint directly, Types.hs:63): backend/types.rs
 #   routes `db_shard_word` through the SHARED fingerprint module

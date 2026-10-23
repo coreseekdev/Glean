@@ -25,21 +25,39 @@
 //! reference of the class lib.rs:28-37 names for
 //! `crate::database::types::Env` and `crate::haxl::engine`, and siblings
 //! may now import both.
+//!
+//! ROW 86'S WIRING CONTRACT — CONSUMED (row 86 shipped): when
+//! src/query/codegen/query_regs.rs landed (row 86,
+//! Glean.Query.Codegen.QueryRegs), its author appended `pub mod
+//! codegen;` below and created src/query/codegen.rs as the Rust-2018
+//! directory-module anchor for the directory-level manifest path (the
+//! src/typed.rs + src/typed/ layout). codegen.rs is manifest row 110's
+//! target (Glean.Query.Codegen.hs — NOT YET SHIPPED); its `pub mod
+//! query_regs;` anchor line and scaffolding header are row 86's
+//! contribution, its body is row 110's obligation (ownership handoff in
+//! codegen.rs's header). `crate::query::codegen::query_regs` is now
+//! importable; the codegen AREA grows downward from this line.
 
 pub mod thrift;
 
-// Coverage: one `pub mod` line wiring the area's second shipped file
-// (query/thrift.rs, row 47 — which declares `pub mod internal;` and so
-// also wires row 45's query/thrift/internal.rs) and nothing else — no
-// re-exports (each submodule is its own facade). The append promised in
-// prose above has shipped; nothing remains deferred here.
+pub mod codegen;
+
+// Coverage: two `pub mod` lines wiring the area's shipped files and
+// nothing else — no re-exports (each submodule is its own facade):
+// query/thrift.rs (row 47 — declares `pub mod internal;` and so also
+// wires row 45's query/thrift/internal.rs) and query/codegen.rs (row
+// 110's file, created early as row 86's directory anchor — declares `pub
+// mod query_regs;` for row 86's query/codegen/query_regs.rs). The
+// row-47 append promised in prose above has shipped; the row-86 append
+// is the `pub mod codegen;` line above. Nothing remains deferred here.
 //
 // Marker breakdown (closed set — zero of every class): no port todos (the
-// row-47 append is done — it is the `pub mod` line above), no
-// source-defect reproductions (no Haskell source), no performance
-// deferrals (the declarations are not runtime code), no inventory
-// divergence (no inventory row can govern a file with no Haskell
-// counterpart — grep "Query/Thrift" across migration/inventory*.tsv:
+// row-47 and row-86 appends are done — they are the two `pub mod` lines
+// above; codegen.rs's own row-110 body todo lives in codegen.rs, not
+// here), no source-defect reproductions (no Haskell source), no
+// performance deferrals (the declarations are not runtime code), no
+// inventory divergence (no inventory row can govern a file with no
+// Haskell counterpart — grep "Query/Thrift" across migration/inventory*.tsv:
 // every hit is the Internal.hs:98,106 evidence inside inventory.tsv:56
 // and its inventory.stm.tsv:35 twin, which govern row 45's caches).
 //
