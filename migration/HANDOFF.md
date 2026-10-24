@@ -25,20 +25,20 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-24 (HEAD `fb30db2`, after unit 89)
+## 2. STATUS — 2026-10-24 (HEAD `7bbd619`, after unit 90)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `fb30db2`, 137 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `7bbd619`, 141 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
   Push protocol: the user pushes the fork after batch commits on request —
-  local has since advanced 81 commits to `f0d9a38` (`git rev-list --count
-  9251205..HEAD`; the last five: unit 87 `786960e`, its records refresh
-  `b136bdf`, unit 88 `78032cc` (amended `f0d9a38` for a shell-mangled
-  message — content identical), and unit 87's records refresh
-  `b136bdf`); sync the fork at the next batch gate.
-- **Step 3 counters: 86 unit-commits / 85 distinct target files shipped;
-  300 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+  local has since advanced 87 commits to `7bbd619` (`git rev-list --count
+  9251205..HEAD`; the last six: unit 88 `f0d9a38`, its records refresh
+  `1a70b9d`, the E0072 repair `a4b1b83`, unit 89 `fb30db2`, its records
+  refresh `2ddbb0c`, and unit 90 `7bbd619`); sync the fork at the next
+  batch gate.
+- **Step 3 counters: 87 unit-commits / 86 distinct target files shipped;
+  299 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
   `1f9a2fa` — the only double. Non-unit fix commits: `9354cbb`
   (dead session's hash.rs derive-attachment repair), `42117fc` (the
@@ -199,14 +199,15 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 98** `glean/db/Glean/Database/Env.hs` →
-`rust/glean-db/src/database/env.rs` (check the queue command — rows
-90-97 may interleave). Orientation only — brief it fresh per §3.1. In
-short:
-- Rows 86-89 SHIPPED: query_regs + codegen/types + typecheck/types +
-  schema/types (the DbSchema vocabulary). Unit 88's TcPred ruling
-  (DECISIONS 2026-10-24) collapses the Some IsSrcSpan existential to
-  concrete SrcSpan — rows 90/91/92 inherit.
+Next: **row 91** `glean/db/Glean/Query/Typecheck/Unify.hs` (442 lines) →
+`rust/glean-db/src/query/typecheck/unify.rs`. Orientation only — brief it
+fresh per §3.1; §4.2 has the detail. In short:
+- Four exports (unify, apply, zonkTcQuery, zonkVars); the rest stay private.
+- `unify` is the constructor-by-constructor match over `Type`, including the
+  record branch built with `Data.Map.Merge.Lazy` — pin the merge semantics.
+- The zonk family consumes row 90's pinned monad image (`Result<A, Doc>` +
+  `&mut TypecheckState`); IntMap order is load-bearing (BTreeMap).
+- Wiring: `pub mod unify;` in `rust/glean-db/src/query/typecheck.rs`.
 - ROW 110/92 NOTE (unchanged): codegen.rs's and typecheck.rs's
   TODO(port)s for their bodies — those briefs MUST delete the markers.
 - SECOND SIBLING E0072 repaired pre-ship (a4b1b83): ExpandedType's
@@ -222,11 +223,11 @@ short:
   72 to 85, which would have forced row 85 (`Database/Config.hs`) to assume
   NINE unshipped modules. Rows 73-82 are now shipped, so the correction has
   paid off ten times.
-- Order from here: 89 (`Schema/Types.hs` →
-  `pub mod types;` in schema.rs), 98, 104 (the closed Storage enum + the
-  `!Send` decision), 105, 117, 125, 148 (`Backend/Logging`), 177 (S3.hs).
-  Rows 86-88 were silently skipped by the old order list; the queue command
-  below is authoritative.
+- Order from here: 91 (`Typecheck/Unify.hs`), 93 (`Query/Prune.hs`), 94
+  (`RTS/Foreign/Query.hs`), 95 (`Query/Transform.hs`), 98
+  (`Database/Env.hs`), 104 (the closed Storage enum + the `!Send`
+  decision), 105, 117, 125, 148 (`Backend/Logging`), 177 (S3.hs). The
+  queue command below is authoritative.
 
 Working style: 1–2 units per session, then a records-refresh commit.
 
@@ -456,31 +457,39 @@ staleness check to fire on files it touched (re-read and continue).
 - `default_configs.rs` — `c4cd47f` (line 82; the four OSS defaults, the first github straggler at the glean-db crate root; `SchemaLocation::Dir` assumed spelling; inline review fixed the `glean_util::util::` paths)
 - `util/shard_manager.rs` — `e2cda1f` (line 83; `ShardManager` record + `BaseOfStack`, `no_sharding`, the three `shard_by*` constructors, and `SomeShardManager` as a closed enum (`NoSharding(ShardManager<NoSharding>)` | `Text(ShardManager<String>)`); `counters_for_shard_sizes` returns empty per source; wiring appended in util.rs)
 - `database/config.rs` — `59c1d9e` (line 85; the integration row: DataStore + file/tmp/memory constructors with the rank-2 withStorage as a generic method over an erased scoped callback, Config<C> over ConfigProvider (20 fields, Default + field-wise Semigroup + Show), DebugFlags, the whole schema pipeline (SchemaIndex/ProcessedSchema, ThriftSource sources, checkVersions, parseSchemaDir/Index, catSchemaFiles, schemaLocation, loadSchemaIndex, processSchema*) and a hand-written std-only options parser (12 flags); A PARTIAL / B PASS WITH MINOR — 3 majors applied (E0382 use-after-move in file_data_store, the SchemaLocation two-owner conflict now a TODO, the false "!Send resolved" claim), plus optparse flag-combination parity, constructor-shaped SchemaError Display, doesFileExist-equivalent directory walk, cite corrections (row 132 for Env.hs, four off-by-one Default cites) and the stale Tracer note in trace.rs; 1 refuted (row 125's consts point is satisfied by SCHEMA_SOURCE_DIR); 7 TODO(port), 0 BUG/PERF/SAFETY; rustc probe shows only unresolved-crate errors, rustfmt clean)
+- `query/codegen/query_regs.rs` — `6ae627f` (line 86; the `QueryRegs` record of bytecode-emitter fields, register widths preserved through the shipped `Register<TyTag>` image; row 86 also created `query/codegen.rs`)
+- `query/codegen/types.rs` — `786960e` (line 87; the codegen vocabulary: Var/Typed/Match/TcTerm and friends; inline fix round)
+- `query/typecheck/types.rs` — `f0d9a38` (line 88; the typecheck vocabulary; the TcPred existential collapsed to concrete SrcSpan per DECISIONS 2026-10-24, with the fieldless-variant image pre-analysed for rows 90/91/92)
+- `database/schema/types.rs` — `fb30db2` (line 89; the DbSchema vocabulary — DbSchema + caches, PredicateDetails/TypeDetails, QueryTransformations, the lookup layer; the E0072 infinite-size repair `a4b1b83` boxed ExpandedType's payload)
+- `query/typecheck/monad.rs` — `7bbd619` (line 90; `T<A> = Result<A, Doc>` + explicit `&mut TypecheckState`, FnOnce for unevaluated actions; TypecheckState's 17 fields, TcOpts/TcEnv/TcMode, initialTypecheckState, freshTyVar*, mkWild, the error helpers; A PASS WITH MINOR / B PASS WITH MINOR — 4 phantom RULEBOOK cites replaced with the real authorities, the false "every T-returning fn takes &mut" claim fixed, the HashSet-order divergence promoted to a TODO owned by row 92, the ToRtsType 'static capture contract added for rows 91/92; 1 refuted (:826 is :828); 3 TODO(port))
 - `util/trace.rs` — `c95868e` (line 84; `Listener` as ONE erased `dyn Any` sink + `combine`/`Default`, `listener`/`recorder`/`notify`, and the `Expect` algebra with the `expect` matcher over mpsc + VecDeque; A PARTIAL / B PARTIAL — 4 majors applied: the row-116 divergence flag, the STM rollback window at 4 notify sites, the `A: Clone` bound (with `expect` split into a bound-free impl), and the SIBLING-UNIT CONTRACTS block; 1 refuted (the "row 79/80" cite challenge — both are manifest units); 1 PERF(port), 1 INVENTORY-BUG-CANDIDATE, 0 TODO; rustc -D warnings + rustfmt clean)
 
-### 4.2 Immediate next-unit orientation (row 87 — NEXT UP)
+### 4.2 Immediate next-unit orientation (row 91 — NEXT UP)
 
-**Row 87**: `glean/db/Glean/Query/Codegen/Types.hs` →
-`rust/glean-db/src/query/codegen/types.rs`. Orientation only — brief it
+**Row 91**: `glean/db/Glean/Query/Typecheck/Unify.hs` (442 lines) →
+`rust/glean-db/src/query/typecheck/unify.rs`. Orientation only — brief it
 fresh per §3.1.
 
-- Row 86 (QueryRegs) SHIPPED at `6ae627f`: the 22-field record (19
-  `Box<dyn Fn(<source args in source order>, &mut Code)>` emitters + 3
-  direct `Register<Word>` fields), width phantoms via the shipped
-  `Register<T: TyTag>` layer. Row 87's Types.hs is the codegen area's
-  TYPE VOCABULARY — read the source whole; the shipped sibling surfaces
-  are query_regs.rs (same directory), glean-bytecode's types.rs
-  (Register/TyTag), glean-core's code.rs (Code).
-- Wiring: `pub mod types;` in the EXISTING query/codegen.rs (row 86
-  created it as row 110's early anchor).
-- ROW 110 OBLIGATION (recorded in unit 86's commit): codegen.rs carries
-  one TODO(port) for Codegen.hs's body — row 110's brief MUST delete the
-  marker when the body lands and consume query_regs.rs's header DESIGN
-  block as the fill contract (syscall handles are `Register ('Fun
-  '[…])`, NOT 'Word — that correction is pinned there).
-- Order after 87: 88 (`Typecheck/Types.hs`), 89 (`Schema/Types.hs` →
-  `pub mod types;` in schema.rs), 98, 104 (the closed Storage enum + the
-  `!Send` decision), 105, 117, 125, 148 (`Backend/Logging`), 177 (S3.hs).
+- Four exports: `unify` (:37), `apply` (:192), `zonkTcQuery` (:292),
+  `zonkVars` (:277). The rest stay private: `unifyError`, `extend`,
+  `zonkType`, `resolveHas`, `zonkTcPat`, `zonkMatch`, `zonkTcTerm`,
+  `zonkTcStatement`.
+- `unify` is a constructor-by-constructor match over `Type` (ByteTy/NatTy/
+  StringTy, ArrayTy/SetTy, RecordTy, tuple, ref, named/expanded). The record
+  branch uses `Data.Map.Merge.Lazy` — pin the merge semantics (missing keys,
+  duplicate fields, error text) before drafting, and preserve `unifyError`'s
+  exact messages.
+- The zonk family is the first consumer of row 90's pinned monad image:
+  `Result<A, Doc>` + `&mut TypecheckState`, with `FnOnce` only for the
+  actions that are passed around unevaluated. `tcVars`/`tcSubst` are
+  `BTreeMap<i64, _>` because `IntMap` order is read (row 90's DIVERGENCES d).
+- `zonkTcQuery` is the guarded action Typecheck.hs:108 catches — read that
+  site with row 90's rollback TODO in hand.
+- Wiring: `pub mod unify;` in `rust/glean-db/src/query/typecheck.rs` (its
+  header already says row 91 appends the line).
+- Order after 91: 93 (`Query/Prune.hs`), 94 (`RTS/Foreign/Query.hs`), 95
+  (`Query/Transform.hs`), 98 (`Database/Env.hs`), 104 (the closed Storage
+  enum + the `!Send` decision), 105, 117, 125, 148, 177.
 
 ## 5. Operational lessons (behavior-changing; carried forward)
 

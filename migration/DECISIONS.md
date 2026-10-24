@@ -198,3 +198,17 @@ Applied by the orchestrator under RULEBOOK v0.3's existing rules, no new policy 
   `crate::backend::retry` (shipped unit 43); types.rs was frozen for
   byte-identity during unit 46, reword at its next touch (also carried
   in HANDOFF §2).
+
+## 2026-10-24 — QUEUED RULEBOOK AMENDMENT (human applies between batches)
+
+- **§2 has no container/state rows, but units keep citing them.** Unit 90's
+  review found four citations to "RULE §2's State row", "RULE §1's HashMap
+  row" and "RULE §2's Data.Map -> BTreeMap row" — none exists; the mappings
+  live in RUNBOOK.md:59 (standing facts) and the shipped precedents
+  (rts/bytecode/code.rs:131-160 for `StateT` -> `&mut`, unit 90's header for
+  the monad image). Unit 85 already carried the same phantom HashMap cite.
+  Proposed amendment: add §2 rows for `HashMap`/`BTreeMap`/`BTreeSet`/
+  `IntMap`/`StateT` (or a single "containers and effects" row) naming the
+  canonical image and the ordering obligation, so implementers stop
+  inventing section numbers. Until applied: cite RUNBOOK.md:59 and the
+  precedent, never a §2 row. The rulebook stays read-only inside loops.
