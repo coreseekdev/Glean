@@ -25,19 +25,19 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-24 (HEAD `b001fb0`, after unit 91)
+## 2. STATUS — 2026-10-24 (HEAD `a39b3d0`, after unit 92)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `b001fb0`, 143 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `a39b3d0`, 145 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
   Push protocol: the user pushes the fork after batch commits on request —
-  local has since advanced 89 commits to `b001fb0` (`git rev-list --count
-  9251205..HEAD`; the last five: unit 89 `fb30db2`, its records refresh
-  `2ddbb0c`, unit 90 `7bbd619`, its records refresh `6357eaf`, and unit 91
-  `b001fb0`); sync the fork at the next batch gate.
-- **Step 3 counters: 88 unit-commits / 87 distinct target files shipped;
-  298 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+  local has since advanced 91 commits to `a39b3d0` (`git rev-list --count
+  9251205..HEAD`; the last four: unit 90 `7bbd619`, unit 91 `b001fb0`, its
+  records refresh `3f9eab3`, and unit 92 `a39b3d0`); sync the fork at the
+  next batch gate.
+- **Step 3 counters: 89 unit-commits / 88 distinct target files shipped;
+  297 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
   `1f9a2fa` — the only double. Non-unit fix commits: `9354cbb`
   (dead session's hash.rs derive-attachment repair), `42117fc` (the
@@ -198,22 +198,15 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 92** `glean/db/Glean/Query/Typecheck.hs` (1292 lines) →
-`rust/glean-db/src/query/typecheck.rs` (the file EXISTS as a 74-line anchor,
-so the queue command's file-existence test wrongly reports row 92 as done —
-this is the one known false negative; row 92's body is still unshipped).
-Orientation only — brief it fresh per §3.1; §4.2 has the detail. In short:
-- Ten exports: typecheck, typecheckDeriving, ToRtsType, TcEnv(..),
-  TcOpts(..), defaultTcOpts, emptyTcEnv, tcQueryDeps, tcQueryUsesNegation,
-  UseOfNegation(..).
-- The biggest single-unit body left in the query area: inferQuery,
-  typecheckStatement, inferExpr, typecheckPattern, the variable-visibility
-  machinery (freeVariablesAreErrors/unboundVariablesAreErrors/checkVarCase)
-  and the disjunction/oneBranch control flow.
-- It owns the file's existing TODO(port) — the brief MUST delete the marker
-  when the body lands. Wiring already exists (no `pub mod` append).
-- Consumes rows 87-91; row 90's monad image and row 91's merge/zonk are the
-  immediate contracts.
+Next: **row 93** `glean/db/Glean/Query/Prune.hs` (270 lines) →
+`rust/glean-db/src/query/prune.rs`. Orientation only — brief it fresh per
+§3.1; §4.2 has the detail. In short:
+- One export: `pruneDerivations` (a `PredicateId -> Bool` filter over a
+  `HashMap PredicateId PredicateDetails`).
+- Internals: `prune` (a TypecheckedQuery -> Maybe rewrite), `renumberVars`,
+  a State monad and Data.Graph — pin the traversal order.
+- Consumes row 92's `tcQueryDeps` and rows 87/88's term vocabulary.
+- Wiring: `pub mod prune;` in `rust/glean-db/src/query.rs`.
 - ROW 110/92 NOTE (unchanged): codegen.rs's and typecheck.rs's
   TODO(port)s for their bodies — those briefs MUST delete the markers.
 - SECOND SIBLING E0072 repaired pre-ship (a4b1b83): ExpandedType's
@@ -229,13 +222,12 @@ Orientation only — brief it fresh per §3.1; §4.2 has the detail. In short:
   72 to 85, which would have forced row 85 (`Database/Config.hs`) to assume
   NINE unshipped modules. Rows 73-82 are now shipped, so the correction has
   paid off ten times.
-- Order from here: 92 (`Query/Typecheck.hs` — the anchor file exists, so
-  read this line rather than trusting the queue command for it), 93
-  (`Query/Prune.hs`), 94 (`RTS/Foreign/Query.hs`), 95
+- Order from here: 93 (`Query/Prune.hs`), 94 (`RTS/Foreign/Query.hs`), 95
   (`Query/Transform.hs`), 98 (`Database/Env.hs`), 104 (the closed Storage
   enum + the `!Send` decision), 105, 117, 125, 148 (`Backend/Logging`),
   177 (S3.hs). The queue command below is authoritative EXCEPT for rows
-  whose file was created early as an anchor (92, and 110's codegen.rs).
+  whose file was created early as an anchor (110's codegen.rs is the one
+  left; row 92's anchor has now been filled).
 
 Working style: 1–2 units per session, then a records-refresh commit.
 
@@ -469,35 +461,33 @@ staleness check to fire on files it touched (re-read and continue).
 - `query/codegen/types.rs` — `786960e` (line 87; the codegen vocabulary: Var/Typed/Match/TcTerm and friends; inline fix round)
 - `query/typecheck/types.rs` — `f0d9a38` (line 88; the typecheck vocabulary; the TcPred existential collapsed to concrete SrcSpan per DECISIONS 2026-10-24, with the fieldless-variant image pre-analysed for rows 90/91/92)
 - `database/schema/types.rs` — `fb30db2` (line 89; the DbSchema vocabulary — DbSchema + caches, PredicateDetails/TypeDetails, QueryTransformations, the lookup layer; the E0072 infinite-size repair `a4b1b83` boxed ExpandedType's payload)
+- `query/typecheck.rs` — `a39b3d0` (line 92; 2933 lines in the file that already existed as row 88's anchor — the whole Typecheck.hs port: typecheck/typecheckDeriving, inferQuery, typecheckStatement, inferExpr (30 arms), typecheckPattern (37 arms), the variable machinery, promote/demote/resolvePromote and the negation walkers; A PARTIAL / B PARTIAL — the CRITICAL was a FALSE BUG(port): the source's `ord` is a never-forced cyclic thunk, so ordinary `!(a; b)` negations typecheck while the port panicked; the arm now binds Unordered and the marker is gone. Also flagged typecheck_deriving's inexpressible by-value TcEnv/PredicateDetails/ToRtsType (TODO owned by rows 98/144), corrected the show_doc TODO's mechanism, and fixed the DbSchema owner rows; 4 TODO(port), 0 BUG, 1 PERF)
 - `query/typecheck/unify.rs` — `b001fb0` (line 91; 1532 lines — the 41-clause `unify` (source order, guards fall through), `apply`/`extend` with apply-first cycle avoidance, `resolve_has`, and the zonk family; first consumer of row 90's monad image; the `Map.mergeA` image (clone left, ascending shared-key unify, right-only insert, left value kept) was CONFIRMED empirically with a pinned-GHC containers probe; A PASS WITH MINOR / B PASS WITH MINOR — the show_doc TODO corrected (show(Doc) does not escape; the gaps are layoutPretty's 80-col ribbon and SLine's dropped indent), import/caller cites fixed, TUPLE_FIELD const used, PERF widened to all three clone sites; 1 refuted (no "42 clauses" claim existed); 1 TODO(port), 1 PERF(port))
 - `query/typecheck/monad.rs` — `7bbd619` (line 90; `T<A> = Result<A, Doc>` + explicit `&mut TypecheckState`, FnOnce for unevaluated actions; TypecheckState's 17 fields, TcOpts/TcEnv/TcMode, initialTypecheckState, freshTyVar*, mkWild, the error helpers; A PASS WITH MINOR / B PASS WITH MINOR — 4 phantom RULEBOOK cites replaced with the real authorities, the false "every T-returning fn takes &mut" claim fixed, the HashSet-order divergence promoted to a TODO owned by row 92, the ToRtsType 'static capture contract added for rows 91/92; 1 refuted (:826 is :828); 3 TODO(port))
 - `util/trace.rs` — `c95868e` (line 84; `Listener` as ONE erased `dyn Any` sink + `combine`/`Default`, `listener`/`recorder`/`notify`, and the `Expect` algebra with the `expect` matcher over mpsc + VecDeque; A PARTIAL / B PARTIAL — 4 majors applied: the row-116 divergence flag, the STM rollback window at 4 notify sites, the `A: Clone` bound (with `expect` split into a bound-free impl), and the SIBLING-UNIT CONTRACTS block; 1 refuted (the "row 79/80" cite challenge — both are manifest units); 1 PERF(port), 1 INVENTORY-BUG-CANDIDATE, 0 TODO; rustc -D warnings + rustfmt clean)
 
-### 4.2 Immediate next-unit orientation (row 92 — NEXT UP)
+### 4.2 Immediate next-unit orientation (row 93 — NEXT UP)
 
-**Row 92**: `glean/db/Glean/Query/Typecheck.hs` (1292 lines) →
-`rust/glean-db/src/query/typecheck.rs`. The target file EXISTS as a 74-line
-anchor (row 88's wiring), which is why the queue command skips it. Its
-`// TODO(port): row 92 — the Typecheck.hs port owns this file's body` must be
-DELETED when the body lands. Orientation only — brief it fresh per §3.1.
+**Row 93**: `glean/db/Glean/Query/Prune.hs` (270 lines) →
+`rust/glean-db/src/query/prune.rs`. Orientation only — brief it fresh per
+§3.1.
 
-- Ten exports (:15-26): `typecheck`, `typecheckDeriving`, `ToRtsType`
-  (re-export of row 90's alias), `TcEnv(..)`, `TcOpts(..)`, `defaultTcOpts`,
-  `emptyTcEnv`, `tcQueryDeps`, `tcQueryUsesNegation`, `UseOfNegation(..)`.
-- The largest body left in the query area: `inferQuery` (:217),
-  `typecheckStatement` (:240), `inferExpr` (:274, ~230 lines),
-  `typecheckPattern` (:507, ~215 lines), `inferVar`/`varOcc`/`freshVariable`,
-  the visibility machinery (`freeVariablesAreErrors` :811,
-  `unboundVariablesAreErrors` :821, `checkVarCase` :843) and the
-  `disjunction`/`oneBranch` control flow (:859, :882).
-- Two catchError sites live here (:108 guarded on `zonkTcQuery`, :132 the
-  deriving wrapper) — row 90's rollback TODO and row 91's zonk contract both
-  point at them.
-- Consumes rows 87-91 (codegen types, typecheck types, schema types, monad,
-  unify). Row 90's image (`Result<A, Doc>` + `&mut TypecheckState`) and row
-  91's `unify(&mut st, &a, &b)` shape are the immediate contracts.
-- Wiring: none to add; the file is already declared. Update its coverage and
-  tally, and remove the TODO(port).
+- ONE export: `pruneDerivations :: (PredicateId -> Bool) -> HashMap
+  PredicateId PredicateDetails -> HashMap PredicateId PredicateDetails`
+  (:31-35) — drop every derivation branch that cannot succeed given what is
+  stored.
+- Private: `prune` (:106, TypecheckedQuery -> Maybe TypecheckedQuery),
+  `renumberVars` (:211), plus the graph/state helpers. The State monad
+  (Control.Monad.State) and `Data.Graph` are the two structures to pin
+  before drafting: preserve traversal order, not just the resulting set.
+- Consumes row 92's `tcQueryDeps`, rows 87/88's term vocabulary
+  (TcPat/TcTerm/TcStatement/TcQuery/TypecheckedQuery) and row 89's
+  PredicateDetails.
+- Wiring: `pub mod prune;` in `rust/glean-db/src/query.rs` (it currently
+  declares thrift/codegen/typecheck).
+- Order after 93: 94 (`RTS/Foreign/Query.hs`), 95 (`Query/Transform.hs`),
+  98 (`Database/Env.hs`), 104 (the closed Storage enum + the `!Send`
+  decision), 105, 117, 125, 148, 177.
 
 ## 5. Operational lessons (behavior-changing; carried forward)
 
