@@ -52,6 +52,14 @@
 //! typecheck.rs's header); rows 90/91 append their own `pub mod` lines
 //! there when they land. `crate::query::typecheck::types` is now
 //! importable; the typecheck AREA grows downward from this line.
+//!
+//! ROW 93'S WIRING CONTRACT — CONSUMED (row 93 shipped): when
+//! src/query/prune.rs landed (row 93, Glean.Query.Prune), its author
+//! appended `pub mod prune;` below and nothing else. prune.rs is a
+//! single-export facade (its source, Prune.hs:9, exports only
+//! pruneDerivations), so it declares no submodules and owns no directory
+//! anchor. `crate::query::prune::prune_derivations` is now importable; the
+//! query AREA has no further deferred wiring.
 
 pub mod thrift;
 
@@ -59,23 +67,28 @@ pub mod codegen;
 
 pub mod typecheck;
 
-// Coverage: three `pub mod` lines wiring the area's shipped files and
+pub mod prune;
+
+// Coverage: four `pub mod` lines wiring the area's shipped files and
 // nothing else — no re-exports (each submodule is its own facade):
 // query/thrift.rs (row 47 — declares `pub mod internal;` and so also
 // wires row 45's query/thrift/internal.rs), query/codegen.rs (row
 // 110's file, created early as row 86's directory anchor — declares `pub
-// mod query_regs;` for row 86's query/codegen/query_regs.rs), and
+// mod query_regs;` for row 86's query/codegen/query_regs.rs),
 // query/typecheck.rs (row 92's file, created early as row 88's directory
 // anchor — declares `pub mod types;` for row 88's
-// query/typecheck/types.rs). The row-47 append promised in prose above
-// has shipped; the row-86 and row-88 appends are the `pub mod codegen;`
-// and `pub mod typecheck;` lines above. Nothing remains deferred here.
+// query/typecheck/types.rs), and query/prune.rs (row 93 — a
+// single-export facade with no submodules of its own). The row-47 append
+// promised in prose above has shipped; the row-86, row-88 and row-93
+// appends are the `pub mod codegen;`, `pub mod typecheck;` and `pub mod
+// prune;` lines above. Nothing remains deferred here.
 //
 // Marker breakdown (closed set — zero of every class): no port todos (the
-// row-47, row-86 and row-88 appends are done — they are the three `pub
-// mod` lines above; codegen.rs's own row-110 body todo lives in
+// row-47, row-86, row-88 and row-93 appends are done — they are the four
+// `pub mod` lines above; codegen.rs's own row-110 body todo lives in
 // codegen.rs, not here; typecheck.rs's own row-92 body todo lives in
-// typecheck.rs, not here), no source-defect reproductions (no Haskell
+// typecheck.rs, not here; prune.rs carries its own closed-set trailer), no
+// source-defect reproductions (no Haskell
 // source), no performance deferrals (the declarations are not runtime
 // code), no inventory divergence (no inventory row can govern a file with
 // no Haskell counterpart — grep "Query/Thrift" across
