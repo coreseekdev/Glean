@@ -228,7 +228,11 @@ impl Display for PidRef {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExpandedType {
     pub expanded_type_ref: TypeId,
-    pub expanded_type_type: Type,
+    // Box: the recursion Type_::NamedTy(_, T) -> ExpandedType -> Type_
+    // has no indirection without it (E0072 — discovered at unit 89, the
+    // same latent-blocker class as unit 44's ArrayPrefix find; the
+    // Haskell payload is a lazy pointer share, which the Box preserves).
+    pub expanded_type_type: Box<Type>,
 }
 
 /// `instance Display ExpandedType where display opts (ExpandedType ref _)
