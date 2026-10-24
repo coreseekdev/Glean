@@ -7,7 +7,9 @@
 // RUST-ONLY SCAFFOLDING (no Haskell body yet). This file is the directory
 // module for the Schema/ namespace: it declares 'pub mod compute_ids;' so
 // that rust/glean-db/src/database/schema/compute_ids.rs (row 66's port of
-// Schema/ComputeIds.hs) resolves at crate::database::schema::compute_ids.
+// Schema/ComputeIds.hs) resolves at crate::database::schema::compute_ids,
+// and 'pub mod types;' so that .../schema/types.rs (row 89's port of
+// Database/Schema/Types.hs) resolves at crate::database::schema::types.
 //
 // TWO ROLES AT THIS PATH (the catalog.rs and backup.rs precedent).
 // migration/manifest.tsv line 98 maps glean/db/Glean/Database/Schema.hs to
@@ -23,25 +25,25 @@
 //
 // WIRING: database.rs declares 'pub mod schema;' after
 // 'pub mod batch_location;'; this file in turn declares
-// 'pub mod compute_ids;'.
+// 'pub mod compute_ids;' and 'pub mod types;'.
 //
 // ROW 66'S WIRING CONTRACT — CONSUMED
 // Row 66 (Schema/ComputeIds.hs, manifest line 66) appends
 // 'pub mod compute_ids;' below, resolving .../schema/compute_ids.rs.
 //
-// ROW 89'S WIRING CONTRACT (forward)
-// Row 89 (Schema/Types.hs, manifest line 89) will append 'pub mod types;'
-// below, resolving .../schema/types.rs. This unit does not declare it: the
-// file does not exist yet, and the declaration belongs to the unit that
-// creates it.
+// ROW 89'S WIRING CONTRACT — CONSUMED
+// Row 89 (Schema/Types.hs, manifest line 89) appended 'pub mod types;'
+// below, resolving .../schema/types.rs (its unit also updated this
+// header's scaffolding and coverage paragraphs).
 //
-// Coverage: one 'pub mod' line (compute_ids.rs, row 66) and nothing else;
-// no re-exports. Marker breakdown: zero of every class — no port todos (the
-// types line is a documented forward reference, not a deferral), no
+// Coverage: two 'pub mod' lines (compute_ids.rs, row 66; types.rs, row 89)
+// and nothing else; no re-exports. Marker breakdown: zero of every class —
+// no port todos (the types line is row 89's delivered obligation), no
 // source-defect reproductions (no body yet), no performance deferrals
 // (declarations only), no inventory divergence (no Haskell counterpart
 // governs this scaffolding), no SAFETY notes (no unsafe code).
 
 pub mod compute_ids;
+pub mod types;
 
 // PORT STATUS: confidence=high todos=0
