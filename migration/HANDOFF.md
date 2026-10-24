@@ -178,7 +178,7 @@ not old commit numbers. Going forward: manifest file lines only.
 | glean-bytecode | 1 | 5 | types.rs only; sys_calls/decode/generate/{instruction,cpp,haskell} remain |
 | glean-typed | 9 | 0 | COMPLETE (lib.rs + Cargo.toml + query-module wiring at lib.rs per the source-shape rule; Angle DSL = unit 44) |
 | glean-util | 13 | 15 | rows 27/38/39/40/42/63/68/69/77/78 + 79 config_provider, 80 observed, 81 thrift_source — plus the crate scaffolding |
-| glean-db | 34 | 56 | rows 41/43/45-50 + 52-56/58-62/64-67 + 70-76 + 86-89 (database area: exception/repo/catalog(+local files,memory)/acl_config/acl_ownership/storage(+db,+lmdb,+rocks_db)/backup(+backend,mock)/data/batch_location/schema(+compute_ids)/trace/acl_knobs + the Logger/ area + query/codegen + query/typecheck begun: query_regs + codegen/types + typecheck/types (+ the row-92 typecheck.rs anchor); the TcPred existential collapsed to concrete SrcSpan per DECISIONS 2026-10-24); crate wired per §4.2 (comment-only anticipated deps incl. glean-bytecode) |
+| glean-db | 38 | 52 | rows 41/43/45-50 + 52-56/58-62/64-67 + 70-76 + 86-93 (database area: exception/repo/catalog(+local files,memory)/acl_config/acl_ownership/storage(+db,+lmdb,+rocks_db)/backup(+backend,mock)/data/batch_location/schema(+compute_ids)/trace/acl_knobs + the Logger/ area + query/codegen + query/typecheck + query/prune: query_regs + codegen/types + typecheck/types (+ the row-92 typecheck.rs anchor) + prune.rs; the TcPred existential collapsed to concrete SrcSpan per DECISIONS 2026-10-24); crate wired per §4.2 (comment-only anticipated deps incl. glean-bytecode) |
 | glean-glass | 0 | 88 | not started |
 | glean-client | 0 | 27 | not started |
 | glean-cli | 0 | 26 | not started |
