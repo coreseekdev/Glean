@@ -25,9 +25,9 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-24 (HEAD `f0d9a38`, after unit 88)
+## 2. STATUS — 2026-10-24 (HEAD `fb30db2`, after unit 89)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `f0d9a38`, 135 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `fb30db2`, 137 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
@@ -37,8 +37,8 @@ in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
   `b136bdf`, unit 88 `78032cc` (amended `f0d9a38` for a shell-mangled
   message — content identical), and unit 87's records refresh
   `b136bdf`); sync the fork at the next batch gate.
-- **Step 3 counters: 85 unit-commits / 84 distinct target files shipped;
-  301 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+- **Step 3 counters: 86 unit-commits / 85 distinct target files shipped;
+  300 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
   `1f9a2fa` — the only double. Non-unit fix commits: `9354cbb`
   (dead session's hash.rs derive-attachment repair), `42117fc` (the
@@ -179,7 +179,7 @@ not old commit numbers. Going forward: manifest file lines only.
 | glean-bytecode | 1 | 5 | types.rs only; sys_calls/decode/generate/{instruction,cpp,haskell} remain |
 | glean-typed | 9 | 0 | COMPLETE (lib.rs + Cargo.toml + query-module wiring at lib.rs per the source-shape rule; Angle DSL = unit 44) |
 | glean-util | 13 | 15 | rows 27/38/39/40/42/63/68/69/77/78 + 79 config_provider, 80 observed, 81 thrift_source — plus the crate scaffolding |
-| glean-db | 33 | 57 | rows 41/43/45-50 + 52-56/58-62/64-67 + 70-76 + 86-88 (database area: exception/repo/catalog(+local files,memory)/acl_config/acl_ownership/storage(+db,+lmdb,+rocks_db)/backup(+backend,mock)/data/batch_location/schema(+compute_ids)/trace/acl_knobs + the Logger/ area + query/codegen + query/typecheck begun: query_regs + codegen/types + typecheck/types (+ the row-92 typecheck.rs anchor); the TcPred existential collapsed to concrete SrcSpan per DECISIONS 2026-10-24); crate wired per §4.2 (comment-only anticipated deps incl. glean-bytecode) |
+| glean-db | 34 | 56 | rows 41/43/45-50 + 52-56/58-62/64-67 + 70-76 + 86-89 (database area: exception/repo/catalog(+local files,memory)/acl_config/acl_ownership/storage(+db,+lmdb,+rocks_db)/backup(+backend,mock)/data/batch_location/schema(+compute_ids)/trace/acl_knobs + the Logger/ area + query/codegen + query/typecheck begun: query_regs + codegen/types + typecheck/types (+ the row-92 typecheck.rs anchor); the TcPred existential collapsed to concrete SrcSpan per DECISIONS 2026-10-24); crate wired per §4.2 (comment-only anticipated deps incl. glean-bytecode) |
 | glean-glass | 0 | 88 | not started |
 | glean-client | 0 | 27 | not started |
 | glean-cli | 0 | 26 | not started |
@@ -199,19 +199,24 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 89** `glean/db/Glean/Database/Schema/Types.hs` →
-`rust/glean-db/src/database/schema/types.rs` (`pub mod types;` in the
-existing schema.rs). Orientation only — brief it fresh per §3.1. In short:
-- Rows 86-88 SHIPPED: query_regs.rs + codegen/types.rs + typecheck/
-  types.rs. Unit 88's TcPred ruling (DECISIONS 2026-10-24) collapses the
-  Some IsSrcSpan existential to concrete SrcSpan — rows 90/91/92 inherit.
-- ROW 110 NOTE (unchanged): codegen.rs's TODO(port) for Codegen.hs's
-  body — row 110's brief MUST delete that marker and consume
-  query_regs.rs's DESIGN block. ROW 92 NOTE: typecheck.rs's TODO(port)
-  for Typecheck.hs's body — same obligation.
-- Unit 87/88 lesson for the queue: coordinator "pinned facts" about Rust
-  coherence (orphan impls) and monad semantics need a probe BEFORE the
-  brief asserts them — E0117 disproved one; check the others.
+Next: **row 98** `glean/db/Glean/Database/Env.hs` →
+`rust/glean-db/src/database/env.rs` (check the queue command — rows
+90-97 may interleave). Orientation only — brief it fresh per §3.1. In
+short:
+- Rows 86-89 SHIPPED: query_regs + codegen/types + typecheck/types +
+  schema/types (the DbSchema vocabulary). Unit 88's TcPred ruling
+  (DECISIONS 2026-10-24) collapses the Some IsSrcSpan existential to
+  concrete SrcSpan — rows 90/91/92 inherit.
+- ROW 110/92 NOTE (unchanged): codegen.rs's and typecheck.rs's
+  TODO(port)s for their bodies — those briefs MUST delete the markers.
+- SECOND SIBLING E0072 repaired pre-ship (a4b1b83): ExpandedType's
+  payload boxed; the class of latent blockers (the tree was never
+  compiled whole) has now cost two fixes (41905c2, a4b1b83) — if a
+  third appears, consider a coordinator sweep for unboxed recursion
+  pairs before more units land on the affected crates.
+- Unit 87/88/89 lesson for the queue: coordinator "pinned facts" about
+  Rust coherence (orphan impls) and monad semantics need a probe BEFORE
+  the brief asserts them — E0117 disproved one; check the others.
 
 - Queue correction (2026-10-20, still in force): the old queue jumped from
   72 to 85, which would have forced row 85 (`Database/Config.hs`) to assume
