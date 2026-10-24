@@ -24,7 +24,7 @@
 //     are rows 88's contribution — keep the line, replace nothing else.
 //     Rows 90 (monad.rs) and 91 (unify.rs) append their own `pub mod`
 //     lines beside it when they land: row 90's (`pub mod monad;`) is
-//     already below; row 91's is still to come.
+//     already below; row 91's is below too.
 //   * The FILE BODY (the whole Typecheck.hs port: the `typecheck` /
 //     `typecheckDeriving` entry points — Typecheck.hs:78-116/:119-174,
 //     the infer* drivers, typecheckPattern, promote/demote, resolvePromote,
@@ -49,20 +49,22 @@ pub mod types;
 
 pub mod monad;
 
-// Coverage: two `pub mod` lines (types — row 88's wiring; monad — row
-// 90's wiring) and the ownership notes; no re-exports. The Typecheck.hs
-// port itself has NOT started here (row 92's obligation, unchanged by
-// rows 88/90); row 91 adds `pub mod unify;` when it lands.
+pub mod unify;
+
+// Coverage: three `pub mod` lines (types — row 88's wiring; monad — row
+// 90's wiring; unify — row 91's wiring) and the ownership notes; no
+// re-exports. The Typecheck.hs port itself has NOT started here (row 92's
+// obligation, unchanged by rows 88/90/91).
 //
-// Marker breakdown (closed set — one TODO(port), zero of every other
+// Marker breakdown (closed set — one port todo, zero of every other
 // class): the single port todo below is the row-92 body, named with its
 // owner; no source-defect reproductions (no translated code yet), no
 // performance deferrals, no inventory divergence (grep
 // "Query/Typecheck" over migration/inventory*.tsv: the only Typecheck
 // rows are inventory.tsv:77/:78/:81 — RTS/Foreign/Typecheck.hs and
 // RTS/Typecheck.hs, different modules; db/Glean/Query/Typecheck.hs has
-// no row). Row 88's types.rs and row 90's monad.rs carry their own marker
-// breakdowns and trailers.
+// no row). Row 88's types.rs, row 90's monad.rs and row 91's unify.rs
+// carry their own marker breakdowns and trailers.
 //
 // TODO(port): row 92 — the Typecheck.hs port owns this file's body
 //   (the typecheck/typecheckDeriving entry points, Typecheck.hs:78-116/
