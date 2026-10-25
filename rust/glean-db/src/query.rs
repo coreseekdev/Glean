@@ -69,7 +69,9 @@ pub mod typecheck;
 
 pub mod prune;
 
-// Coverage: four `pub mod` lines wiring the area's shipped files and
+pub mod transform;
+
+// Coverage: five `pub mod` lines wiring the area's shipped files and
 // nothing else — no re-exports (each submodule is its own facade):
 // query/thrift.rs (row 47 — declares `pub mod internal;` and so also
 // wires row 45's query/thrift/internal.rs), query/codegen.rs (row
@@ -77,17 +79,19 @@ pub mod prune;
 // mod query_regs;` for row 86's query/codegen/query_regs.rs),
 // query/typecheck.rs (row 92's file, created early as row 88's directory
 // anchor — declares `pub mod types;` for row 88's
-// query/typecheck/types.rs), and query/prune.rs (row 93 — a
-// single-export facade with no submodules of its own). The row-47 append
-// promised in prose above has shipped; the row-86, row-88 and row-93
-// appends are the `pub mod codegen;`, `pub mod typecheck;` and `pub mod
-// prune;` lines above. Nothing remains deferred here.
+// query/typecheck/types.rs), query/prune.rs (row 93 — a single-export
+// facade), and query/transform.rs (row 95 — Glean.Query.Transform, a
+// single-export-surface module). The row-47 append promised in prose
+// above has shipped; the row-86, row-88, row-93 and row-95 appends are
+// the `pub mod codegen;`, `pub mod typecheck;`, `pub mod prune;` and
+// `pub mod transform;` lines above. Nothing remains deferred here.
 //
 // Marker breakdown (closed set — zero of every class): no port todos (the
-// row-47, row-86, row-88 and row-93 appends are done — they are the four
-// `pub mod` lines above; codegen.rs's own row-110 body todo lives in
-// codegen.rs, not here; typecheck.rs's own row-92 body todo lives in
-// typecheck.rs, not here; prune.rs carries its own closed-set trailer), no
+// row-47, row-86, row-88, row-93 and row-95 appends are done — they are
+// the five `pub mod` lines above; codegen.rs's own row-110 body todo lives
+// in codegen.rs, not here; typecheck.rs's own row-92 body todo lives in
+// typecheck.rs, not here; prune.rs and transform.rs carry their own
+// trailers), no
 // source-defect reproductions (no Haskell
 // source), no performance deferrals (the declarations are not runtime
 // code), no inventory divergence (no inventory row can govern a file with
