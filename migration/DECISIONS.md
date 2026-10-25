@@ -125,6 +125,29 @@ Applied by the orchestrator under RULEBOOK v0.3's existing rules, no new policy 
   to name glean-typed's decoder units, or pre-build safe pop wrappers in
   glean-core at Step-4 consolidation).
 
+## 2026-10-26 — BUG(port)-stamp boundary (row 99; coordinator ruling)
+
+- **Defined ring semantics vs author defects**: Word64 arithmetic that
+  wraps (value*10, value*1000 in Metric.hs) is reproduced with
+  wrapping_mul/add citing RULE §2's numeric-conversions row — the row
+  itself is the canonical mapping and prescribes NO marker; house
+  precedent (lookup_cache.rs:489, lmdb.rs:98) is uniform. A BUG(port)
+  stamp is NOT owed for defined wrap semantics.
+- **Guarded partial functions**: a value-0 division that every CURRENT
+  call site guards (Metric.hs:33 precedes the division; all consumers
+  beginTick 1) is reproduced bug-for-bug and documented with a repro,
+  but fails the reachability test the stamped precedent used
+  (predicate.rs:521's "REACHABLE" maximum). No stamp; documentation
+  sufficient. If a future consumer reaches the arm, THAT unit adds the
+  stamp at its own call site.
+- **The bug-for-bug TEXT of RTS-raised exceptions** (GHC's "divide by
+  zero" vs Rust's "attempt to divide by zero"): the §2 same-message rule
+  targets author-chosen error strings; RTS ArithException text is not
+  author-chosen — a documented divergence suffices (metric.rs:224-229).
+- QUEUED for the human/rulebook: fold this boundary into RULEBOOK §2's
+  BUG rule at the next amendment gate so it is not relitigated per unit
+  (proposed by review B of row 99).
+
 ## 2026-10-24 — TcPred existential refinement (row 88; refines the 2026-10-07 Some ruling)
 
 - **`TcPred = (PidRef, Some IsSrcSpan)` collapses to CONCRETE SrcSpan**
