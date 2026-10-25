@@ -25,9 +25,9 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-25 (HEAD `8ce1907`, after unit 94)
+## 2. STATUS — 2026-10-26 (HEAD `b525924`, after unit 95)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `8ce1907`, 149 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `b525924`, 152 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
@@ -36,8 +36,8 @@ in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
   9251205..HEAD`; the last four: unit 90 `7bbd619`, unit 91 `b001fb0`, its
   records refresh `3f9eab3`, and unit 92 `a39b3d0`); sync the fork at the
   next batch gate.
-- **Step 3 counters: 91 unit-commits / 90 distinct target files shipped;
-  295 of 386 manifest units remain.** (Units 93/94's earlier records
+- **Step 3 counters: 92 unit-commits / 91 distinct target files shipped;
+  294 of 386 manifest units remain.** (Units 93/94's earlier records
   refreshes partially failed to match stale STATUS text — corrected here;
   the commit-message counters were always right.) (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
@@ -200,31 +200,13 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 95** `glean/db/Glean/Query/Transform.hs` →
-`rust/glean-db/src/query/transform.rs` (carries row 93's consumer
-obligation: prune_derivations takes the predicate as an argument —
-precompute HashMap<PredicateId, bool>; &PredicateId, not Copy). Rows
-93 (prune.rs, 6dee10a) and 94 (foreign/query.rs, 786f016 — the FFI
-query executor with the probe-verified #[repr(C)] mirror; foreign.rs
-wiring file created) are SHIPPED. Superseded orientation:
-`rust/glean-db/src/query/prune.rs`. Orientation only — brief it fresh per
-§3.1; §4.2 has the detail. In short:
-- One export: `pruneDerivations` (a `PredicateId -> Bool` filter over a
-  `HashMap PredicateId PredicateDetails`).
-- Internals: `prune` (a TypecheckedQuery -> Maybe rewrite), `renumberVars`,
-  a State monad and Data.Graph — pin the traversal order.
-- Consumes row 92's `tcQueryDeps` and rows 87/88's term vocabulary.
-- Wiring: `pub mod prune;` in `rust/glean-db/src/query.rs`.
-- ROW 110/92 NOTE (unchanged): codegen.rs's and typecheck.rs's
-  TODO(port)s for their bodies — those briefs MUST delete the markers.
-- SECOND SIBLING E0072 repaired pre-ship (a4b1b83): ExpandedType's
-  payload boxed; the class of latent blockers (the tree was never
-  compiled whole) has now cost two fixes (41905c2, a4b1b83) — if a
-  third appears, consider a coordinator sweep for unboxed recursion
-  pairs before more units land on the affected crates.
-- Unit 87/88/89 lesson for the queue: coordinator "pinned facts" about
-  Rust coherence (orphan impls) and monad semantics need a probe BEFORE
-  the brief asserts them — E0117 disproved one; check the others.
+Next: **row 96** `glean/facebook/Glean/ServiceData/Types.hs` →
+`rust/glean-fb303/src/service_data/types.rs` (the glean-fb303 crate's
+FIRST rows — 96/97 back-to-back; new-crate scaffolding per the
+glean-util/glean-typed first-unit precedent). Row 95 (transform.rs,
+b525924 — the transformation engine; the A1 two-pass LabelPlan with pub
+advance API for row 110; the SumTy three-case fix) is SHIPPED, as are
+93/94.
 
 - Queue correction (2026-10-20, still in force): the old queue jumped from
   72 to 85, which would have forced row 85 (`Database/Config.hs`) to assume
