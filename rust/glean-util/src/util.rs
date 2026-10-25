@@ -24,6 +24,14 @@ pub mod disk;
 // glean/util/Glean/Util/IO.hs -> src/util/io.rs (manifest line 63)
 pub mod io;
 
+// glean/util/Glean/Util/Metric.hs -> src/util/metric.rs (manifest line
+// 99). Row 99's append: Tick (+ combine/Default) and Point, the
+// begin_tick/end_tick/end_ticks family over std::time::Instant, and the
+// exact text surfaces show_latency/show_throughput/show_memory/show_count
+// + pad (the std::time image of the `clock` package per RULE §1's Time
+// row).
+pub mod metric;
+
 // glean/util/Glean/Util/Observed.hs -> src/util/observed.rs (manifest line
 // 80). Row 80's append: Observed, changing_value/fixed_value, do_on_update.
 pub mod observed;
@@ -51,15 +59,15 @@ pub mod trace;
 
 pub mod vector;
 
-// Coverage: twelve `pub mod` lines wiring every glean-util file shipped
-// so far (util/config_provider.rs, util/disk.rs, util/io.rs,
+// Coverage: thirteen `pub mod` lines wiring every glean-util file shipped
+// so far (util/config_provider.rs, util/disk.rs, util/io.rs, util/metric.rs,
 // util/observed.rs, util/retry_channel_exception.rs, util/service.rs,
 // util/shard_manager.rs, util/some.rs, util/thrift_service.rs,
 // util/thrift_source.rs, util/trace.rs, util/vector.rs) and nothing else —
 // no re-exports (each submodule is its own facade). Rows 69's (disk.rs),
 // 79's (config_provider.rs), 80's (observed.rs), 81's (thrift_source.rs),
-// 83's (shard_manager.rs) and 84's (trace.rs) appends are CONSUMED (past
-// tense above).
+// 83's (shard_manager.rs), 84's (trace.rs) and 99's (metric.rs) appends are
+// CONSUMED (past tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos
 // (wiring is complete for all shipped files), no source-defect
