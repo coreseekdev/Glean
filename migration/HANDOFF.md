@@ -25,9 +25,9 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-24 (HEAD `a39b3d0`, after unit 92)
+## 2. STATUS — 2026-10-25 (HEAD `8ce1907`, after unit 94)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `a39b3d0`, 145 commits,
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `8ce1907`, 149 commits,
   working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
@@ -36,8 +36,10 @@ in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
   9251205..HEAD`; the last four: unit 90 `7bbd619`, unit 91 `b001fb0`, its
   records refresh `3f9eab3`, and unit 92 `a39b3d0`); sync the fork at the
   next batch gate.
-- **Step 3 counters: 89 unit-commits / 88 distinct target files shipped;
-  297 of 386 manifest units remain.** (`schema/util.rs` carries two commits:
+- **Step 3 counters: 91 unit-commits / 90 distinct target files shipped;
+  295 of 386 manifest units remain.** (Units 93/94's earlier records
+  refreshes partially failed to match stale STATUS text — corrected here;
+  the commit-message counters were always right.) (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
   `1f9a2fa` — the only double. Non-unit fix commits: `9354cbb`
   (dead session's hash.rs derive-attachment repair), `42117fc` (the
@@ -198,7 +200,13 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 93** `glean/db/Glean/Query/Prune.hs` (270 lines) →
+Next: **row 95** `glean/db/Glean/Query/Transform.hs` →
+`rust/glean-db/src/query/transform.rs` (carries row 93's consumer
+obligation: prune_derivations takes the predicate as an argument —
+precompute HashMap<PredicateId, bool>; &PredicateId, not Copy). Rows
+93 (prune.rs, 6dee10a) and 94 (foreign/query.rs, 786f016 — the FFI
+query executor with the probe-verified #[repr(C)] mirror; foreign.rs
+wiring file created) are SHIPPED. Superseded orientation:
 `rust/glean-db/src/query/prune.rs`. Orientation only — brief it fresh per
 §3.1; §4.2 has the detail. In short:
 - One export: `pruneDerivations` (a `PredicateId -> Bool` filter over a
