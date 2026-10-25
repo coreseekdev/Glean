@@ -25,7 +25,7 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-26 (HEAD `b525924`, after unit 95)
+## 2. STATUS — 2026-10-26 (HEAD `e6e3b4d`, after unit 97)
 
 - Repo `Glean/`, branch `migration/rust-port`, HEAD `b525924`, 152 commits,
   working tree clean.
@@ -36,8 +36,8 @@ in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
   9251205..HEAD`; the last four: unit 90 `7bbd619`, unit 91 `b001fb0`, its
   records refresh `3f9eab3`, and unit 92 `a39b3d0`); sync the fork at the
   next batch gate.
-- **Step 3 counters: 92 unit-commits / 91 distinct target files shipped;
-  294 of 386 manifest units remain.** (Units 93/94's earlier records
+- **Step 3 counters: 94 unit-commits / 93 distinct target files shipped;
+  292 of 386 manifest units remain.** (Units 93/94's earlier records
   refreshes partially failed to match stale STATUS text — corrected here;
   the commit-message counters were always right.) (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
@@ -200,13 +200,15 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 96** `glean/facebook/Glean/ServiceData/Types.hs` →
-`rust/glean-fb303/src/service_data/types.rs` (the glean-fb303 crate's
-FIRST rows — 96/97 back-to-back; new-crate scaffolding per the
-glean-util/glean-typed first-unit precedent). Row 95 (transform.rs,
-b525924 — the transformation engine; the A1 two-pass LabelPlan with pub
-advance API for row 110; the SumTy three-case fix) is SHIPPED, as are
-93/94.
+Next: **row 99** `glean/util/Glean/Util/Metric.hs` →
+`rust/glean-util/src/util/metric.rs` (check the queue command — rows
+98/101/105/116/121/122/130/132/144/267 etc. per §2.4's order list).
+Rows 96-97 SHIPPED (623f5fe/e6e3b4d): the glean-fb303 crate scaffolded
+(Cargo.toml/lib.rs/service_data.rs + the two ServiceData no-op-shim
+units — the stub provenance adjudication: the OSS github/ shim's no-ops
+are the source's own semantics). Row 95 (transform.rs, b525924 — the
+transformation engine; the A1 two-pass LabelPlan with pub advance API
+for row 110) SHIPPED, as are 93/94.
 
 - Queue correction (2026-10-20, still in force): the old queue jumped from
   72 to 85, which would have forced row 85 (`Database/Config.hs`) to assume
