@@ -59,6 +59,13 @@ edition = "2021"
 #   Angle/Types.hs + Display.hs), so the bullet below stands; the old
 #   fingerprint-only: glean-db must not acquire a general glean-angle
 #   dependency without a row.
+# * glean-fb303 — rows 96/97's outbound edges (depmap/edges.tsv:378-379:
+#   Database/Schema.hs -> ServiceData/GlobalStats.hs and
+#   ServiceData/Types.hs); the first live use is database/schema.rs's
+#   ServiceData counters (add_stat_value_type / ExportType in
+#   with_db_schema_cache's hit/miss/fail legs). Comment-only, same
+#   disposition as the bullets above (Step 4 owns the workspace scaffold;
+#   no [dependencies] entry).
 #
 # No [dev-dependencies]: tests are not translated (RULE §4 tests row;
 # each crate's tests/ holds re-expressed cases at Step 4). No features
