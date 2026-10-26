@@ -25,7 +25,7 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-27 (HEAD `68da59a`, after unit 98)
+## 2. STATUS — 2026-10-27 (HEAD `0e06e75`, after unit 101)
 
 - Repo `Glean/`, branch `migration/rust-port`, HEAD `b525924`, 152 commits,
   working tree clean.
@@ -36,8 +36,8 @@ in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
   9251205..HEAD`; the last four: unit 90 `7bbd619`, unit 91 `b001fb0`, its
   records refresh `3f9eab3`, and unit 92 `a39b3d0`); sync the fork at the
   next batch gate.
-- **Step 3 counters: 97 unit-commits / 96 distinct target files shipped;
-  289 of 386 manifest units remain.** (Units 93/94's earlier records
+- **Step 3 counters: 98 unit-commits / 97 distinct target files shipped;
+  288 of 386 manifest units remain.** (Units 93/94's earlier records
   refreshes partially failed to match stale STATUS text — corrected here;
   the commit-message counters were always right.) (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
@@ -200,16 +200,18 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: **row 101** `glean/hs/Glean/Write/Stats.hs` →
-`rust/glean-core/src/write/stats.rs` (the Throttle consumer — inventory
-rows 33/82 pin its shape; the write/ area's first file needs the
-pub-mod wiring per the area pattern). Row 98 (schema.rs, 68da59a — the
-schema pipeline core; the biggest unit of the batch) is SHIPPED: the
-hidden-row body landed onto the row-66 anchor, the prune obligation
-discharged, the BLOCKED Traverse/Typecheck imports are LIVE uses
-(compile-error seams until rows 23/24), and 9 TODO + 1 PERF sharing-
-wall seams are queued (the PredicateDetails-Clone decision dissolves
-5 of them — rows 18/87/88; the TcEnv knot — rows 98/144). Rows 96-97
+Next: check the queue command (rows 102 mutex.rs, 104 Storage enum +
+!Send decision, 105, 117, 125, 148, 177 per §2.4's order list). Row 101
+(stats.rs, 0e06e75 — the write-stats group; the single-Mutex image per
+inventory row 82; the log_info ASSUMED-IMPORT per DECISIONS
+2026-10-18's direct-form ruling; glean-core's crate-root wiring debt
+recorded in write.rs) SHIPPED. Row 98 (schema.rs, 68da59a — the schema
+pipeline core; the batch's biggest unit) SHIPPED: the hidden-row body
+landed onto the row-66 anchor, the prune obligation discharged, the
+BLOCKED Traverse/Typecheck imports are LIVE uses (compile-error seams
+until rows 23/24), and 9 TODO + 1 PERF sharing-wall seams are queued
+(the PredicateDetails-Clone decision dissolves 5 of them — rows
+18/87/88; the TcEnv knot — rows 98/144). Rows 96-97
 SHIPPED (623f5fe/e6e3b4d: glean-fb303 scaffolded; the ServiceData
 no-op-shim stub provenance adjudicated as source semantics) and 99
 SHIPPED (83f7210: the metric utilities — 79-row GHC-vs-Rust byte-ident
