@@ -32,6 +32,13 @@ pub mod io;
 // row).
 pub mod metric;
 
+// glean/util/Glean/Util/Mutex.hs -> src/util/mutex.rs (manifest line
+// 102). Row 102's append: the MVar-as-mutex dissolution record — the
+// newtype and all 7 exports map to std::sync::Mutex per
+// inventory.tsv:113 == inventory.stm.tsv:18 (direct std::sync::Mutex,
+// _Safe variants dropped); the module intentionally ships zero items.
+pub mod mutex;
+
 // glean/util/Glean/Util/Observed.hs -> src/util/observed.rs (manifest line
 // 80). Row 80's append: Observed, changing_value/fixed_value, do_on_update.
 pub mod observed;
@@ -65,16 +72,16 @@ pub mod trace;
 
 pub mod vector;
 
-// Coverage: fourteen `pub mod` lines wiring every glean-util file shipped
+// Coverage: fifteen `pub mod` lines wiring every glean-util file shipped
 // so far (util/config_provider.rs, util/disk.rs, util/io.rs, util/metric.rs,
-// util/observed.rs, util/retry_channel_exception.rs, util/service.rs,
-// util/shard_manager.rs, util/some.rs, util/thrift_service.rs,
-// util/thrift_source.rs, util/throttle.rs, util/trace.rs, util/vector.rs)
-// and nothing else —
+// util/mutex.rs, util/observed.rs, util/retry_channel_exception.rs,
+// util/service.rs, util/shard_manager.rs, util/some.rs,
+// util/thrift_service.rs, util/thrift_source.rs, util/throttle.rs,
+// util/trace.rs, util/vector.rs) and nothing else —
 // no re-exports (each submodule is its own facade). Rows 69's (disk.rs),
 // 79's (config_provider.rs), 80's (observed.rs), 81's (thrift_source.rs),
-// 83's (shard_manager.rs), 84's (trace.rs), 99's (metric.rs) and 100's
-// (throttle.rs) appends are
+// 83's (shard_manager.rs), 84's (trace.rs), 99's (metric.rs), 100's
+// (throttle.rs) and 102's (mutex.rs) appends are
 // CONSUMED (past tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos
