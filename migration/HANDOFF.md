@@ -25,7 +25,7 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-27 (HEAD `0e06e75`, after unit 101)
+## 2. STATUS — 2026-10-27 (HEAD `05b8390`, after unit 102)
 
 - Repo `Glean/`, branch `migration/rust-port`, HEAD `b525924`, 152 commits,
   working tree clean.
@@ -36,8 +36,8 @@ in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
   9251205..HEAD`; the last four: unit 90 `7bbd619`, unit 91 `b001fb0`, its
   records refresh `3f9eab3`, and unit 92 `a39b3d0`); sync the fork at the
   next batch gate.
-- **Step 3 counters: 98 unit-commits / 97 distinct target files shipped;
-  288 of 386 manifest units remain.** (Units 93/94's earlier records
+- **Step 3 counters: 99 unit-commits / 98 distinct target files shipped;
+  287 of 386 manifest units remain.** (Units 93/94's earlier records
   refreshes partially failed to match stale STATUS text — corrected here;
   the commit-message counters were always right.) (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
@@ -200,12 +200,14 @@ attempt them unless the Issue module appears.
 
 ### 2.4 Next units and the queue
 
-Next: check the queue command (rows 102 mutex.rs, 104 Storage enum +
-!Send decision, 105, 117, 125, 148, 177 per §2.4's order list). Row 101
-(stats.rs, 0e06e75 — the write-stats group; the single-Mutex image per
-inventory row 82; the log_info ASSUMED-IMPORT per DECISIONS
-2026-10-18's direct-form ruling; glean-core's crate-root wiring debt
-recorded in write.rs) SHIPPED. Row 98 (schema.rs, 68da59a — the schema
+Next: check the queue command (rows 104 Storage enum + !Send decision,
+105, 117, 125, 148, 177 per §2.4's order list). Rows 101 (stats.rs,
+0e06e75 — the write-stats group; the single-Mutex image per inventory
+row 82; the log_info ASSUMED-IMPORT per DECISIONS 2026-10-18's
+direct-form ruling; glean-core's crate-root wiring debt recorded in
+write.rs) and 102 (mutex.rs, 05b8390 — the ZERO-ITEM dissolved-Mutex
+record; NOTE the row's own Async.hs example is false, queued for
+amendment) SHIPPED. Row 98 (schema.rs, 68da59a — the schema
 pipeline core; the batch's biggest unit) SHIPPED: the hidden-row body
 landed onto the row-66 anchor, the prune obligation discharged, the
 BLOCKED Traverse/Typecheck imports are LIVE uses (compile-error seams
