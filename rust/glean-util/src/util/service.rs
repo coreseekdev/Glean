@@ -56,7 +56,11 @@
 // The assumed Rust image, flat at the crate root per the in-tree
 // convention (`glean_thrift::{...}` — first sketches: rust/glean-angle/
 // src/angle/types.rs:52-75/:104, rust/glean-typed/src/typed/build.rs:
-// 100-121, rust/glean-typed/src/typed/binary.rs:54-83):
+// 100-121, rust/glean-typed/src/typed/binary.rs:54-83; the named
+// `pub use glean_thrift::…` re-export below mirrors rust/glean-core/src/
+// rts/types.rs:99-102, the RTS unit's same-shaped `Id` sketch. NOTE
+// rust/glean-bytecode/src/bytecode/types.rs carries NO glean_thrift
+// block — checked and excluded as a precedent):
 //
 //     #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 //     pub struct HostPort { pub host: String, pub port: i32 }
@@ -124,7 +128,7 @@
 //
 // The port below is a faithful transcription of that pipeline for the
 // single projection the heuristic uses (`reads s` must be a singleton
-// `[(port,"")]`). It is documented as such; its differential battery
+// `[(port,"")]`). It is documented as such; its differential battery (recorded in this file's doc-test block above)
 // lives with the port record (probe outputs compared against the real
 // `reads @Int32` on the GHC install).
 //
@@ -569,12 +573,12 @@ fn is_symbol_char(c: char) -> bool {
 //      `mkThriftService (Uri u_)` consumes `uriScheme`/`uriAuthority`/
 //      `uriRegName`/`uriPort` (and `drop 1` on the port, noting "port has
 //      an initial ':'"). Row 166 must import this stand-in
-//      (`glean_util::util::service`) and must NOT fork or re-implement a
+//      (`crate::util::service` (same crate per manifest line 166)) and must NOT fork or re-implement a
 //      parser; this note is the cross-reference it extends.
 //
 // Pinned source of truth: network-uri-2.6.4.2 (Hackage tarball
 // network-uri-2.6.4.2.tar.gz; unpacked during the port at
-// /tmp/opencode/network-uri-2.6.4.2/), Network/URI.hs:
+// network-uri-2.6.4.2 (cabal store ~/.cabal/packages/hackage.haskell.org/network-uri/2.6.4.2/)), Network/URI.hs:
 //   :300-301  parseURI = parseURIAny uri
 //   :360-380  parseURIAny/parseAll — parse, then `eof` (full-string match)
 //   :405-934  the grammar, predicates and helpers transcribed below.
@@ -1313,6 +1317,61 @@ fn ufragment(cur: &mut Cursor) -> PResult<String> {
 }
 
 // ===========================================================================
+// Consumer survey (RULE §0: read the call sites — what each consumer
+// needs from THIS unit; grep "Glean.Util.Service" across glean/)
+// ===========================================================================
+//
+// Eight consumers; depmap edges.tsv carries seven inbound edges (rows
+// 106, 136, 1321, 1409, 1646, 1855, 1858 — the eighth, DemoClient, is
+// below the depmap's glass/tools cut and was found by import grep):
+//
+//   * glean/util/Glean/Util/ThriftService.hs (row 40, SHIPPED as
+//     src/util/thrift_service.rs; edge 1858): `mkThriftService :: Service
+//     -> ThriftServiceOptions -> Maybe (t s)` (ThriftService.hs:41-52)
+//     passes the union opaquely, and `getSelection :: ... -> IO
+//     [(HostName, PortNumber)]` (:50) fixes the two alias widths. Its
+//     port already consumes this file's real API —
+//     `use crate::util::service::{HostName, PortNumber, Service}`
+//     (thrift_service.rs:402).
+//   * glean/util/Glean/Impl/ThriftService.hs (row 166, not yet landed;
+//     edge 1855): `mkThriftService (HostPort h p)` in both transport
+//     arms (:36 thrift, :102 HTTP) and the HTTP arm's
+//     `mkThriftService (Uri u_)` (:105-114), which destructures
+//     parseURI's result — uriScheme/uriAuthority/uriRegName/uriPort
+//     (:106-112), then `drop 1` on the port ("port has an initial ':'",
+//     :119). This is the SECOND parse_uri consumer recorded in the
+//     stand-in section above: row 166 must import `parse_uri` (+ the
+//     `Uri`/`UriAuth` field surfaces) from here, never fork a parser.
+//   * glean/client/hs/Glean/Remote.hs (edge 106): `serviceToString
+//     (clientConfig_serv config')` (:157) and the `HostPort{}` / `Uri{}`
+//     match choosing timeout options (:178-181) — service_to_string +
+//     the enum variants.
+//   * glean/client/hs/local/Glean/LocalOrRemote.hs (edge 136): qualified
+//     `Service.serviceToString (clientConfig_serv config')` (:147) only
+//     — its own `data Service` (LocalOrRemote.hs:91-93) SHADOWS this
+//     module's type, so nothing else of this unit is nameable there.
+//   * glean/index/Glean/Indexer/External.hs (edge 1321) and
+//     glean/lang/clang/Glean/Indexer/Cpp.hs (edge 1409): bare
+//     `serviceToString (clientConfig_serv clientConfig)` (External.hs:
+//     171, Cpp.hs:308).
+//   * glean/shell/Glean/Shell.hs (edge 1646): a full Tier/HostPort/Uri
+//     match for display (:1305-1310; its `_ -> error "shouldn't happen"`
+//     wildcard at :1310 is the same unreachable arm this port dissolves).
+//   * glean/glass/tools/Glean/Glass/Test/DemoClient.hs (no edges.tsv
+//     row — depmap gap, recorded here): `optHost :: Service` (:40),
+//     `defService = HostPort "127.0.0.1" 26073` (:43-44), and
+//     `readService` (:112-119), which builds `HostPort host (fromIntegral
+//     port)` via Text.breakOn/textToInt — NOT through the IsString
+//     heuristic (so the option parser's host:port grammar is its own,
+//     first-colon `breakOn`, unlike fromString's last-colon split).
+//
+// Nobody consumes `HostName` beyond row 40, and NO OSS consumer calls
+// `serviceTier` (grep: zero call sites; it exists for the FB serviceData
+// tier lookup). The export is kept — the source exports it and RULE §0
+// keeps the surface whole. The derives on the assumed image mirror the
+// gen-hs2 deriving map; no consumer demands Ord/Eq in the OSS tree.
+
+// ===========================================================================
 // Coverage / markers / status
 // ===========================================================================
 //
@@ -1331,8 +1390,17 @@ fn ufragment(cur: &mut Cursor) -> PResult<String> {
 // reproductions (the source's only partiality, the two unreachable
 // `error` arms, is dissolved by the closed union, not reproduced); no
 // performance deferrals (the URI parser and the reads emulation are
-// linear-time, no shortcuts taken); no inventory divergence (no
-// inventory.tsv row governs URI parsing or `IsString`).
+// linear-time, no shortcuts taken); no inventory divergence — VERIFIED:
+// no row in any of the six migration/inventory*.tsv files mentions this
+// module (zero hits for "Util/Service", "Glean.Service.Types",
+// "service.thrift"), so nothing governs URI parsing, `IsString` or any
+// other construct here, and there is no row to diverge from; the file's
+// only governance is manifest.tsv line 39 + depmap crates.txt:33 /
+// order.txt:38 + the seven edges.tsv edges surveyed above. A review-round
+// note that a row once re-homed this module between util and server
+// during the crate-partition work corresponds to no artifact in the
+// current tree (manifest, crates, order and all edge rows agree on
+// glean-util) — no INVENTORY-BUG-CANDIDATE, nothing to flag.
 //
 // TODO(port): parseURI stand-in parity — `parse_uri` above must remain
 // acceptance- and field-equivalent to network-uri-2.6.4.2's `parseURI`

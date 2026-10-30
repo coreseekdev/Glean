@@ -396,7 +396,7 @@
 
 // ---------------------------------------------------------------------------
 // Imports (RULE §4): `use crate::…` within the crate; assumed kit surface
-// flat at the generated crate's root, exactly as service.rs:153 consumes it.
+// flat at the generated crate's root, exactly as service.rs:157 consumes it.
 // ---------------------------------------------------------------------------
 
 use crate::util::service::{HostName, PortNumber, Service};

@@ -235,3 +235,12 @@ Applied by the orchestrator under RULEBOOK v0.3's existing rules, no new policy 
   canonical image and the ordering obligation, so implementers stop
   inventing section numbers. Until applied: cite RUNBOOK.md:59 and the
   precedent, never a §2 row. The rulebook stays read-only inside loops.
+
+## 2026-10-17 — Unit-39 review residue
+
+- Queued rulebook wording fix: §1 thrift row says "from `if/*.thrift`" but
+  OSS IDLs also live at glean/config/*.thrift (service.thrift etc.) —
+  mechanism unchanged (build.rs-generated, pinned glean_thrift crate).
+- Review-A's evidence-trail lesson reinforced: /tmp probes must be
+  re-recorded into durable locations (file doc-test blocks), not left
+  as dangling paths.
