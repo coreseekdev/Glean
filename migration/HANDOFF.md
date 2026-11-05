@@ -25,21 +25,25 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-10-27 (HEAD `05b8390`, after unit 102)
+## 2. STATUS — 2026-11-06 (after unit 103)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `b525924`, 152 commits,
-  working tree clean.
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `e5d57e2` + this unit,
+  169 commits, working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
   Push protocol: the user pushes the fork after batch commits on request —
-  local has since advanced 91 commits to `a39b3d0` (`git rev-list --count
-  9251205..HEAD`; the last four: unit 90 `7bbd619`, unit 91 `b001fb0`, its
-  records refresh `3f9eab3`, and unit 92 `a39b3d0`); sync the fork at the
-  next batch gate.
-- **Step 3 counters: 99 unit-commits / 98 distinct target files shipped;
-  287 of 386 manifest units remain.** (Units 93/94's earlier records
+  local has since advanced 115 commits from `9251205` (`git rev-list
+  --count 9251205..HEAD`, after this unit's two commits); sync the fork at
+  the next batch gate. NOTE: the local clone is SHALLOW
+  (`git rev-parse --is-shallow-repository` = true), so `git log` shows
+  fewer commits than the counters below; the counters come from the
+  records refreshes, not from `git rev-list`.
+- **Step 3 counters: 101 unit-commits / 99 distinct target files shipped;
+  285 of 386 manifest units remain.** (Units 93/94's earlier records
   refreshes partially failed to match stale STATUS text — corrected here;
-  the commit-message counters were always right.) (`schema/util.rs` carries two commits:
+  the commit-message counters were always right.) The count since the
+  last refresh adds the unit-39 rework `e5d57e2` (service.rs completed;
+  no new file) and unit 103 (warden.rs). (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
   `1f9a2fa` — the only double. Non-unit fix commits: `9354cbb`
   (dead session's hash.rs derive-attachment repair), `42117fc` (the
@@ -117,6 +121,26 @@ in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
   the compiler cannot stop it. The fix is a distinct non-`Copy` owned
   wrapper (moving the `Static` impl to it) — do it when `db.rs` is next
   touched (row 72 will be the second owned user), not as a drive-by.
+- Recent units (94–103): 94 rts/foreign/query.rs (FFI query executor), 95
+  query/transform.rs (query transformation engine), 96/97
+  glean-fb303 service_data/{types,global_stats}.rs (crate scaffolding),
+  98 database/schema.rs (schema pipeline body), 99 util/metric.rs, 100
+  util/throttle.rs, 101 write/stats.rs, 102 util/mutex.rs (the dissolved
+  MVar-mutex record), 103 util/warden.rs (see below). Unit 39 was
+  reworked in `e5d57e2` (service.rs completed, dual-verified).
+- **Unit 103 (Warden) — the cancellation contract for later consumers.**
+  `rust/glean-util/src/util/warden.rs` (1104 lines) ports
+  `Glean.Util.Warden`; 3 port todos, one row-117 inventory flag. Haskell's
+  `Async` is preemptive (`throwTo`); Rust std has none, so the port is
+  COOPERATIVE: `spawn`/`spawn_` take `FnOnce(&CancelToken) -> A` and
+  `spawn_daemon`'s `io` takes `&CancelToken` (a signature divergence from
+  the source's argument-free `IO a`, ruled in DECISIONS 2026-11-06), and
+  `shutdown` signals every task then joins. Consumers whose actions block
+  must make the wait interruptible (`CancelToken::wait_timeout`, or
+  `recv_timeout` + a token check); otherwise `shutdown` joins unboundedly
+  (the TODO at `warden.rs:886`). `Task::wait_timeout` is the image of a
+  consumer-side `timeout d $ wait a`; `TaskError::is_cancelled` is the
+  `fromException` test.
 - Open doc-staleness item: `backend/types.rs:255-258`'s sibling-contract
   sentence "These paths do not exist in the tree yet" is stale for
   `crate::backend::retry` (shipped unit 43). types.rs is frozen for
@@ -179,7 +203,7 @@ not old commit numbers. Going forward: manifest file lines only.
 | glean-core | 19 | 10 | FFI/RTS/bytecode layer done + repo/text (51) + ownership (57); remaining rows 23/24 blocked, 94/101/109/113/114/139/278/279 |
 | glean-bytecode | 1 | 5 | types.rs only; sys_calls/decode/generate/{instruction,cpp,haskell} remain |
 | glean-typed | 9 | 0 | COMPLETE (lib.rs + Cargo.toml + query-module wiring at lib.rs per the source-shape rule; Angle DSL = unit 44) |
-| glean-util | 13 | 15 | rows 27/38/39/40/42/63/68/69/77/78 + 79 config_provider, 80 observed, 81 thrift_source — plus the crate scaffolding |
+| glean-util | 15 | 13 | rows 27/38/39/40/42/63/68/69/77/78 + 79 config_provider, 80 observed, 81 thrift_source, 102 mutex, 103 warden — plus the crate scaffolding |
 | glean-db | 38 | 52 | rows 41/43/45-50 + 52-56/58-62/64-67 + 70-76 + 86-93 (database area: exception/repo/catalog(+local files,memory)/acl_config/acl_ownership/storage(+db,+lmdb,+rocks_db)/backup(+backend,mock)/data/batch_location/schema(+compute_ids)/trace/acl_knobs + the Logger/ area + query/codegen + query/typecheck + query/prune: query_regs + codegen/types + typecheck/types (+ the row-92 typecheck.rs anchor) + prune.rs; the TcPred existential collapsed to concrete SrcSpan per DECISIONS 2026-10-24); crate wired per §4.2 (comment-only anticipated deps incl. glean-bytecode) |
 | glean-glass | 0 | 88 | not started |
 | glean-client | 0 | 27 | not started |
