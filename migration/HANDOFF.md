@@ -25,25 +25,25 @@ are COMPLETE and signed off** (DECISIONS.md). Step 3 (translation fan-out) is
 in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
 (RULEBOOK §0); it is the batch-boundary referee.
 
-## 2. STATUS — 2026-11-06 (after unit 103)
+## 2. STATUS — 2026-11-06 (after unit 104)
 
-- Repo `Glean/`, branch `migration/rust-port`, HEAD `e5d57e2` + this unit,
-  169 commits, working tree clean.
+- Repo `Glean/`, branch `migration/rust-port`, HEAD `f1aa12e`,
+  171 commits, working tree clean.
 - Remote: the fork `fork` (`git@github.com:coreseekdev/Glean.git`) is verified
   in sync at `9251205`; `origin` is `facebookincubator/Glean` (reference only).
   Push protocol: the user pushes the fork after batch commits on request —
-  local has since advanced 115 commits from `9251205` (`git rev-list
-  --count 9251205..HEAD`, after this unit's two commits); sync the fork at
+  local has since advanced 117 commits from `9251205` (`git rev-list
+  --count 9251205..HEAD`); sync the fork at
   the next batch gate. NOTE: the local clone is SHALLOW
   (`git rev-parse --is-shallow-repository` = true), so `git log` shows
   fewer commits than the counters below; the counters come from the
   records refreshes, not from `git rev-list`.
-- **Step 3 counters: 101 unit-commits / 99 distinct target files shipped;
-  285 of 386 manifest units remain.** (Units 93/94's earlier records
+- **Step 3 counters: 102 unit-commits / 100 distinct target files shipped;
+  284 of 386 manifest units remain.** (Units 93/94's earlier records
   refreshes partially failed to match stale STATUS text — corrected here;
   the commit-message counters were always right.) The count since the
   last refresh adds the unit-39 rework `e5d57e2` (service.rs completed;
-  no new file) and unit 103 (warden.rs). (`schema/util.rs` carries two commits:
+  no new file), unit 103 (warden.rs) and unit 104 (database/types.rs). (`schema/util.rs` carries two commits:
   the early 352-line draft `551a3c8` + the completed 386-line rewrite
   `1f9a2fa` — the only double. Non-unit fix commits: `9354cbb`
   (dead session's hash.rs derive-attachment repair), `42117fc` (the
@@ -141,6 +141,20 @@ in flight. Step 4's `cargo check` is deliberately NOT in the transcript loop
   (the TODO at `warden.rs:886`). `Task::wait_timeout` is the image of a
   consumer-side `timeout d $ wait a`; `TaskError::is_cancelled` is the
   `fromException` test.
+- **Unit 104 (Database/Types) — the data-model hub.** All 15 exported
+  types + `withStorageFor`/`withDefaultStorage`; `Env`'s 42 fields. The
+  review's four CRITICALs were all ownership: the source aliases records
+  across transactions, so the hub now shares them (`MVar` is an
+  Arc-backed `Clone` handle; `env_active: HashMap<Repo, Arc<DB>>`;
+  `DBState::Open(Arc<OpenDB>)`; `Option<Arc<Writing>>`;
+  `Arc<WriteQueue>/Arc<Derivation>/Arc<Write>/Arc<JanitorRunResult>/
+  Arc<Ownership>`). Later units MUST clone the `Arc` and drop the guard
+  before running an action — holding `env_active` or a lifecycle guard
+  across IO deadlocks the recursive opens. Multi-variable STM
+  transactions collapsed to `WriteQueueState`/`WriteQueuesState` with the
+  total order `ENV_ACTIVE -> DB -> WRITING -> WRITE_QUEUES ->
+  WRITE_QUEUE_STATE` (DECISIONS 2026-11-06). 2 todos, 3 inventory flags
+  (rows 33/35/137).
 - Open doc-staleness item: `backend/types.rs:255-258`'s sibling-contract
   sentence "These paths do not exist in the tree yet" is stale for
   `crate::backend::retry` (shipped unit 43). types.rs is frozen for
@@ -204,7 +218,7 @@ not old commit numbers. Going forward: manifest file lines only.
 | glean-bytecode | 1 | 5 | types.rs only; sys_calls/decode/generate/{instruction,cpp,haskell} remain |
 | glean-typed | 9 | 0 | COMPLETE (lib.rs + Cargo.toml + query-module wiring at lib.rs per the source-shape rule; Angle DSL = unit 44) |
 | glean-util | 15 | 13 | rows 27/38/39/40/42/63/68/69/77/78 + 79 config_provider, 80 observed, 81 thrift_source, 102 mutex, 103 warden — plus the crate scaffolding |
-| glean-db | 38 | 52 | rows 41/43/45-50 + 52-56/58-62/64-67 + 70-76 + 86-93 (database area: exception/repo/catalog(+local files,memory)/acl_config/acl_ownership/storage(+db,+lmdb,+rocks_db)/backup(+backend,mock)/data/batch_location/schema(+compute_ids)/trace/acl_knobs + the Logger/ area + query/codegen + query/typecheck + query/prune: query_regs + codegen/types + typecheck/types (+ the row-92 typecheck.rs anchor) + prune.rs; the TcPred existential collapsed to concrete SrcSpan per DECISIONS 2026-10-24); crate wired per §4.2 (comment-only anticipated deps incl. glean-bytecode) |
+| glean-db | 39 | 51 | rows 41/43/45-50 + 52-56/58-62/64-67 + 70-76 + 86-93 (database area: exception/repo/catalog(+local files,memory)/acl_config/acl_ownership/storage(+db,+lmdb,+rocks_db)/backup(+backend,mock)/data/batch_location/schema(+compute_ids)/trace/acl_knobs + the Logger/ area + query/codegen + query/typecheck + query/prune: query_regs + codegen/types + typecheck/types (+ the row-92 typecheck.rs anchor) + prune.rs; the TcPred existential collapsed to concrete SrcSpan per DECISIONS 2026-10-24); crate wired per §4.2 (comment-only anticipated deps incl. glean-bytecode) |
 | glean-glass | 0 | 88 | not started |
 | glean-client | 0 | 27 | not started |
 | glean-cli | 0 | 26 | not started |
