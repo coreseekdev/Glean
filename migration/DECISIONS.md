@@ -244,3 +244,45 @@ Applied by the orchestrator under RULEBOOK v0.3's existing rules, no new policy 
 - Review-A's evidence-trail lesson reinforced: /tmp probes must be
   re-recorded into durable locations (file doc-test blocks), not left
   as dangling paths.
+
+## 2026-11-06 — Warden cancellation image (unit 103): the token is an action parameter
+
+- **`spawn`/`spawn_` take `FnOnce(&CancelToken) -> A`; `spawn_daemon`'s
+  `io` takes `&CancelToken`.** This diverges from the source's
+  argument-free `IO a` / `IO ()`, and it is the ruling, not an accident.
+  Haskell's `Async.cancel` is PREEMPTIVE (`throwTo` + wait), so a
+  `spawn`-owned action is cancellable without cooperating. Rust std has
+  no thread cancellation; the only faithful image is a stop flag the
+  action can observe, and without it every `spawn`-owned task is
+  uncancellable while `shutdown` JOINS — i.e. `closeEnv` hangs on the
+  janitor/backuper/writer loops (Env.hs:230/:233/:244/:259) and
+  CompletePredicates' speculative completion (CompletePredicates.hs:331,
+  cancelled at :337/:342/:345/:351) never returns. The token replaces
+  the `unmask` argument; a caller that needs no checkpoints writes
+  `|_| action()`.
+  Reason: reviewer A reproduced the hang with an isolated harness
+  (`spawn` + `cancel` blocked >500 ms; `spawn_daemon` shutdown blocked
+  forever).
+  Scope: every later Warden consumer. Blocking waits inside a task must
+  be made interruptible (`CancelToken::wait_timeout`, `recv_timeout` +
+  a token check), or `shutdown`'s join is unbounded — the TODO at
+  `warden.rs:886` names the reopen points.
+- **`Task::wait_timeout(dur) -> Option<A>` is the sanctioned image of a
+  consumer-side `timeout d $ wait a`** (CompletePredicates.hs:374-379's
+  single 1 s timeout, then `throwIO (Retry 1)`). A consumer crate cannot
+  add an inherent impl on `Task` (orphan rule), so the helper lives in
+  warden.rs. `None` = timed out; the task keeps running (it is not
+  `cancel`).
+- **`TaskError::is_cancelled()` is the `fromException` test**
+  (Backup.hs:486's `Just AsyncCancelled{} <- fromException exc`); the
+  message stays the `show ex` rendering.
+- **`adopt`'s source deadlock stays a `TODO(port)`, not a `BUG(port)`.**
+  The source's `Nothing` branch cancels inside `modifyMVar_`, which can
+  deadlock against the task's own `finally forget`; the port drops the
+  guard. No `adopt` caller exists outside WardenTest (RULE §4 does not
+  translate tests), so the DECISIONS 2026-10-26 reachability carve-out
+  applies. Reopen if a caller appears or the judge reproduces it.
+- **Row 117's stored value is flagged**: `inventory.tsv:117` sketches
+  `HashMap<ThreadId,JoinHandle>`; the port stores
+  `Arc<dyn TaskControl>` (cancel AND join through one non-generic handle).
+  Carries `// INVENTORY-BUG-CANDIDATE row 117:` per RULE §5/A9.

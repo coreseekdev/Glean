@@ -72,16 +72,24 @@ pub mod trace;
 
 pub mod vector;
 
-// Coverage: fifteen `pub mod` lines wiring every glean-util file shipped
+// glean/util/Glean/Util/Warden.hs -> src/util/warden.rs (manifest line
+// 103). Row 103's append: Warden (abstract) + with_warden, create,
+// shutdown, spawn, spawn_, spawn_mask, spawn_daemon, adopt, plus the
+// Rust-only Task/CancelToken/TaskError image of Control.Concurrent.Async
+// (inventory.tsv:117 == inventory.stm.tsv:16, status "unknown": cooperative
+// cancellation; see warden.rs's header).
+pub mod warden;
+
+// Coverage: sixteen `pub mod` lines wiring every glean-util file shipped
 // so far (util/config_provider.rs, util/disk.rs, util/io.rs, util/metric.rs,
 // util/mutex.rs, util/observed.rs, util/retry_channel_exception.rs,
 // util/service.rs, util/shard_manager.rs, util/some.rs,
 // util/thrift_service.rs, util/thrift_source.rs, util/throttle.rs,
-// util/trace.rs, util/vector.rs) and nothing else —
+// util/trace.rs, util/vector.rs, util/warden.rs) and nothing else —
 // no re-exports (each submodule is its own facade). Rows 69's (disk.rs),
 // 79's (config_provider.rs), 80's (observed.rs), 81's (thrift_source.rs),
 // 83's (shard_manager.rs), 84's (trace.rs), 99's (metric.rs), 100's
-// (throttle.rs) and 102's (mutex.rs) appends are
+// (throttle.rs), 102's (mutex.rs) and 103's (warden.rs) appends are
 // CONSUMED (past tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos
