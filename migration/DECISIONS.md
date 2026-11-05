@@ -286,3 +286,38 @@ Applied by the orchestrator under RULEBOOK v0.3's existing rules, no new policy 
   `HashMap<ThreadId,JoinHandle>`; the port stores
   `Arc<dyn TaskControl>` (cancel AND join through one non-generic handle).
   Carries `// INVENTORY-BUG-CANDIDATE row 117:` per RULE §5/A9.
+
+## 2026-11-06 — Hub handle ownership (unit 104): shared records are `Arc`, guards never cross actions
+
+- **The source shares handles; the port must share them too.** Unit 104's
+  review found four structural cases where a Haskell value is handed out
+  of a TVar/MVar and used concurrently, which a by-value Rust field
+  cannot express: one `MVar` is both `WriteJob.writeDone` and
+  `Write.writeWait` (Queue.hs:91/:114/:132, Writes.hs:431-436); one
+  `WriteQueue` is both `Writing.wrQueue` and an element of
+  `WriteQueues.writeQueues` (Open.hs:209-212, Queue.hs:143-150);
+  `DB`/`OpenDB`/`Writing` escape `envActive` across bracket bodies and
+  recursive opens (Open.hs:455-478, :163-201); `Derivation` is read,
+  used across IO, then re-locked (Derive.hs:494-503, :560-566).
+  Reason: the by-value drafts could not be constructed (the same MVar
+  cannot be in two fields) or deadlocked (holding a non-reentrant mutex
+  across a recursive open).
+  Scope: hub types in `database/types.rs` are `Arc`-shared where the
+  source aliases them — `env_active: HashMap<Repo, Arc<DB>>`,
+  `DBState::Open(Arc<OpenDB>)`, `Option<Arc<Writing>>`,
+  `Arc<WriteQueue>`, `Arc<Derivation>`, `Arc<Write>`,
+  `Arc<JanitorRunResult>`, `Arc<Ownership>` — and `MVar<T>` is an
+  Arc-backed `Clone` handle. Later units must clone the `Arc` and drop
+  the guard before running an action; never hold `env_active` or a
+  lifecycle guard across IO.
+- **Multi-variable STM transactions collapse to one `Mutex<State>`**
+  (the §2 STM row): `WriteQueueState` (queue + four counters) and
+  `WriteQueuesState` (deque + size). Total lock order:
+  `ENV_ACTIVE -> DB -> WRITING -> WRITE_QUEUES -> WRITE_QUEUE_STATE`;
+  enqueue takes `WRITE_QUEUES` first even when the queue is non-empty,
+  preserving the source's "wasEmpty then register" atomicity. Row 35's
+  mpsc sketch is diverged and flagged.
+- **`tryPutMVar`/`tryReadMVar` never block**, so `MVar::try_put`/
+  `try_read` use `try_lock` and return false/None on contention;
+  `try_read` returns `Option<R>`. `read` is repeatable and `put`/
+  `try_put` `notify_all` (two readers must both wake).

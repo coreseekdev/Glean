@@ -69,8 +69,9 @@
 //! ROW 66'S WIRING CONTRACT — CONSUMED (row 66 shipped src/database/schema.rs
 //! and src/database/schema/compute_ids.rs): a new directory module, so the
 //! append is `pub mod schema;`; schema.rs in turn declares
-//! `pub mod compute_ids;`. Schema.hs (row 98) will add its body at
-//! schema.rs, and row 89 will add `pub mod types;` there.
+//! `pub mod compute_ids;`. Both downstream appends have since landed:
+//! row 89 added `pub mod types;` in schema.rs (schema.rs:519) and row 104
+//! added `pub mod types;` in THIS file (database.rs:125).
 
 pub mod meta;
 
@@ -117,7 +118,14 @@ pub mod acl_knobs;
 // 85). Row 85's append.
 pub mod config;
 
-// Coverage: fourteen `pub mod` lines — meta.rs (row 48, the area's first
+// glean/db/Glean/Database/Types.hs -> src/database/types.rs (manifest line
+// 104). Row 104's append — the HUB module every database consumer imports
+// (Env/DB/OpenDB/Writing/WriteQueue/WriteJob/WriteQueues). It also closes
+// storage.rs's forward reference to the two closed existentials and the
+// CanLookup/DatabaseOps forwarding impls (storage.rs:671-678).
+pub mod types;
+
+// Coverage: fifteen `pub mod` lines — meta.rs (row 48, the area's first
 // shipped file), catalog.rs (row 49's directory module, which declares
 // `pub mod filter;`), repo.rs (row 52's port of Repo.hs), exception.rs
 // (row 53's port of Exception.hs), acl_config.rs (row 55's port of
@@ -128,18 +136,19 @@ pub mod config;
 // batch_location.rs (row 62's port of BatchLocation.hs), schema.rs
 // (row 66's directory module, which declares `pub mod compute_ids;`),
 // trace.rs (row 73's port of Trace.hs), acl_knobs.rs (row 76's port of
-// github/Database/AclKnobs.hs) and config.rs (row 85's port of
-// Database/Config.hs) — and nothing else: no re-exports (each submodule is
-// its own facade). Row 49's, row 52's, row 53's, row 55's, row 56's, row
-// 58's, row 59's, row 60's, row 62's, row 66's, row 73's, row 76's and row
-// 85's appends are now CONSUMED (past tense above).
+// github/Database/AclKnobs.hs), config.rs (row 85's port of
+// Database/Config.hs) and types.rs (row 104's port of Database/Types.hs) —
+// and nothing else: no re-exports (each submodule is its own facade).
+// Row 49's, row 52's, row 53's, row 55's, row 56's, row 58's, row 59's,
+// row 60's, row 62's, row 66's, row 73's, row 76's, row 85's and row 104's
+// appends are now CONSUMED (past tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos (the
 // row-49, row-52, row-53, row-55, row-56, row-58, row-59, row-60, row-62,
-// row-66, row-73, row-76 and row-85 wiring is complete; all fourteen
-// `pub mod` lines exist), no source-defect reproductions (no Haskell
-// source), no performance deferrals (the declarations are not runtime
-// code), no inventory divergence (no
+// row-66, row-73, row-76, row-85 and row-104 wiring is complete; all
+// fifteen `pub mod` lines exist), no source-defect reproductions (no
+// Haskell source), no performance deferrals (the declarations are not
+// runtime code), no inventory divergence (no
 // inventory row can govern a file with no Haskell counterpart: the
 // "Database/Catalog" grep hits across migration/inventory*.tsv all name
 // Catalog.hs — its STM_GROUP rows
