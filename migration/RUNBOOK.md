@@ -47,7 +47,9 @@ that ships 1 well-reviewed unit is a success.
 ## Step 1 — implementer (ONE unit, one agent)
 
 Dispatch ONE `general-purpose` agent, **foreground** (idle-time sessions
-have no background agents; foreground-parallel only at Step 2). Prompt
+have no background agents). NOTE 2026-11-06: parallel dual dispatch was
+also killed twice by the platform concurrency limit in interactive
+sessions — MAX ONE live subagent at a time; chain units serially. Prompt
 skeleton (fill in per unit):
 
 - Read RULEBOOK.md whole; the SOURCE file (whole); the shipped sibling
