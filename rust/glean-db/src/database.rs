@@ -72,6 +72,14 @@
 //! `pub mod compute_ids;`. Both downstream appends have since landed:
 //! row 89 added `pub mod types;` in schema.rs (schema.rs:519) and row 104
 //! added `pub mod types;` in THIS file (database.rs:125).
+//!
+//! ROW 105'S WIRING CONTRACT — CONSUMED (row 105 shipped
+//! src/database/write/queue.rs): a new directory module, so the append is
+//! `pub mod write;`; write.rs in turn declares `pub mod queue;`. The Haskell
+//! Write/ namespace has no root module (glean/db/Glean/Database/Write/
+//! holds Queue.hs and Batch.hs only), so write.rs is Rust-only scaffolding
+//! at that level, owned by row 105 — its area's first shipped file (the
+//! backup.rs precedent).
 
 pub mod meta;
 
@@ -125,7 +133,12 @@ pub mod config;
 // CanLookup/DatabaseOps forwarding impls (storage.rs:671-678).
 pub mod types;
 
-// Coverage: fifteen `pub mod` lines — meta.rs (row 48, the area's first
+// glean/db/Glean/Database/Write/Queue.hs -> src/database/write/queue.rs
+// (manifest line 105). Row 105's append — binds the directory module
+// src/database/write.rs, which declares `pub mod queue;`.
+pub mod write;
+
+// Coverage: sixteen `pub mod` lines — meta.rs (row 48, the area's first
 // shipped file), catalog.rs (row 49's directory module, which declares
 // `pub mod filter;`), repo.rs (row 52's port of Repo.hs), exception.rs
 // (row 53's port of Exception.hs), acl_config.rs (row 55's port of
@@ -137,16 +150,18 @@ pub mod types;
 // (row 66's directory module, which declares `pub mod compute_ids;`),
 // trace.rs (row 73's port of Trace.hs), acl_knobs.rs (row 76's port of
 // github/Database/AclKnobs.hs), config.rs (row 85's port of
-// Database/Config.hs) and types.rs (row 104's port of Database/Types.hs) —
+// Database/Config.hs), types.rs (row 104's port of Database/Types.hs) and
+// write.rs (row 105's directory module, which declares `pub mod queue;` for
+// the Write/Queue.hs port) —
 // and nothing else: no re-exports (each submodule is its own facade).
 // Row 49's, row 52's, row 53's, row 55's, row 56's, row 58's, row 59's,
-// row 60's, row 62's, row 66's, row 73's, row 76's, row 85's and row 104's
-// appends are now CONSUMED (past tense above).
+// row 60's, row 62's, row 66's, row 73's, row 76's, row 85's, row 104's and
+// row 105's appends are now CONSUMED (past tense above).
 //
 // Marker breakdown (closed set — zero of every class): no port todos (the
 // row-49, row-52, row-53, row-55, row-56, row-58, row-59, row-60, row-62,
-// row-66, row-73, row-76, row-85 and row-104 wiring is complete; all
-// fifteen `pub mod` lines exist), no source-defect reproductions (no
+// row-66, row-73, row-76, row-85, row-104 and row-105 wiring is complete; all
+// sixteen `pub mod` lines exist), no source-defect reproductions (no
 // Haskell source), no performance deferrals (the declarations are not
 // runtime code), no inventory divergence (no
 // inventory row can govern a file with no Haskell counterpart: the
