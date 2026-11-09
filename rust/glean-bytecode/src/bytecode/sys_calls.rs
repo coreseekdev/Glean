@@ -107,7 +107,7 @@
 //      each via `use glean_bytecode::bytecode::sys_calls::…` (RULE §4).
 //      Row 109 (glean-core rts/bytecode/disassemble.rs) takes the table
 //      as a `&[&str]` parameter and imports nothing from here (point 1
-//      above). As of 2026-11-09 disassemble.rs is NOT yet written
+//      above). disassemble.rs landed 2026-11-10 at that path
 //      (rust/glean-core/src/rts/bytecode/ holds only code.rs and
 //      supply.rs) — the slice-parameter shape above is its pinned
 //      contract when it lands.
