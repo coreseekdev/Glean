@@ -82,6 +82,7 @@
 //! backup.rs precedent).
 
 pub mod meta;
+pub mod open; // ROW 111'S WIRING CONTRACT — CONSUMED (unit 111 shipped src/database/open.rs)
 
 pub mod catalog;
 
